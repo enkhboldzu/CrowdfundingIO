@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Deploy API
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
     paths-ignore:
       - "**.md"
       - ".gitignore"
-      - "dist/**"
-      - "node_modules/**"
+      - "mdFiles/**"
+      - "crowdfund-mn/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,31 +19,23 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-    strategy:
-      matrix:
-        node-version: [24.14.1]
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           clean: false
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "24"
 
-      - name: Install pm2
-        run: npm install -g pm2
+      - name: Run deploy script
+        run: bash scripts/deploy.sh
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Generate Prisma client
-        run: npx prisma generate
-
-      - name: Run DB migrations
-        run: npx prisma migrate deploy
-
-      - name: Restart server
-        run: pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+      - name: Health check
+        run: |
+          sleep 3
+          curl -sf http://127.0.0.1:4000/health \
+            && echo "✓ Server is up" \
+            || (echo "✗ Health check failed" && exit 1)
