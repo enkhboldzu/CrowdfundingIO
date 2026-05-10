@@ -14,10 +14,22 @@ const PUBLIC_PATHS = new Set([
   "/admin/signup",
 ]);
 
+const PUBLIC_PREFIXES = [
+  "/public-api",
+  "/api/projects",
+  "/api/stats/public-summary",
+  "/api/categories/counts",
+];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
+  if (
+    PUBLIC_PATHS.has(pathname) ||
+    PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix))
+  ) {
+    return NextResponse.next();
+  }
 
   // Admin routes require role === "admin" -- verify the JWT here so we
   // never rely solely on client-side role checks.

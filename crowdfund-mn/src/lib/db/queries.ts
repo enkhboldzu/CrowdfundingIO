@@ -6,7 +6,7 @@ export async function getProjectCountsByCategory(): Promise<Record<string, numbe
   try {
     const rows = await prisma.project.groupBy({
       by: ["category"],
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", isDeleted: false },
       _count: { _all: true },
     });
 
@@ -26,9 +26,9 @@ export async function getLandingProjects(limit = 20) {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const [projects, trending] = await Promise.all([
-      // All approved (ACTIVE) and published projects, newest first
+      // All approved (ACTIVE) projects, newest first.
       prisma.project.findMany({
-        where: { status: "ACTIVE", publishedAt: { not: null } },
+        where: { status: "ACTIVE", isDeleted: false },
         include: { creator: true },
         orderBy: { createdAt: "desc" },
         take: limit,
@@ -37,7 +37,7 @@ export async function getLandingProjects(limit = 20) {
       prisma.project.findMany({
         where: {
           status: "ACTIVE",
-          publishedAt: { not: null },
+          isDeleted: false,
           createdAt: { gte: sevenDaysAgo },
         },
         include: { creator: true },
@@ -57,7 +57,7 @@ export async function getLandingProjects(limit = 20) {
 export async function getTrendingProjects(limit = 6) {
   try {
     return await prisma.project.findMany({
-      where: { status: "ACTIVE", isTrending: true },
+      where: { status: "ACTIVE", isTrending: true, isDeleted: false },
       include: { creator: true },
       orderBy: { raised: "desc" },
       take: limit,
@@ -95,7 +95,7 @@ export async function getProjects(options?: {
     return await prisma.project.findMany({
       where: {
         status: "ACTIVE",
-        publishedAt: { not: null },
+        isDeleted: false,
         ...(options?.category ? { category: options.category } : {}),
       },
       include: { creator: true },

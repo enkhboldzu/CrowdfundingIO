@@ -77,7 +77,7 @@ function ExploreContent() {
     if (category && category !== "all") qs.set("category", category);
     if (sort) qs.set("sort", sort);
 
-    fetch(`/api/projects?${qs}`)
+    fetch(`/public-api/projects?${qs}`)
       .then(r => r.json())
       .then(data => {
         setProjects(data.projects ?? []);

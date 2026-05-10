@@ -9,10 +9,10 @@ export async function GET(req: NextRequest) {
   const sort     = searchParams.get("sort") ?? "trending";
 
   try {
-    // Only show projects that are ACTIVE (admin-approved) and have been published
+    // Only show projects that are ACTIVE (admin-approved).
     const where = {
       status: "ACTIVE" as const,
-      publishedAt: { not: null },
+      isDeleted: false,
       ...(category && category !== "all" ? { category } : {}),
       ...(q
         ? {
@@ -37,9 +37,9 @@ export async function GET(req: NextRequest) {
         orderBy,
         take: 60,
       }),
-      prisma.project.count({ where: { status: "ACTIVE" } }),
+      prisma.project.count({ where }),
       prisma.project.aggregate({
-        where: { status: "ACTIVE" },
+        where,
         _sum: { raised: true, backers: true },
       }),
     ]);

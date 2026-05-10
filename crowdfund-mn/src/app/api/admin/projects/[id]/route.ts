@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 
@@ -99,6 +100,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }),
     ]);
 
+    revalidatePublicProjectPages(updated.slug);
+
     return NextResponse.json({ project: updated });
   }
 
@@ -124,6 +127,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     data:  editData,
   });
 
+  revalidatePublicProjectPages(updated.slug);
+
   return NextResponse.json({ project: updated });
 }
 
@@ -135,7 +140,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const project = await prisma.project.findUnique({
     where: { id: params.id },
-    select: { id: true, isDeleted: true },
+    select: { id: true, slug: true, isDeleted: true },
   });
 
   if (!project || project.isDeleted) {
@@ -147,5 +152,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     data:  { isDeleted: true },
   });
 
+  revalidatePublicProjectPages(project.slug);
+
   return NextResponse.json({ ok: true });
+}
+
+function revalidatePublicProjectPages(slug?: string) {
+  revalidatePath("/");
+  revalidatePath("/explore");
+  revalidatePath("/categories");
+  if (slug) revalidatePath(`/projects/${slug}`);
 }
