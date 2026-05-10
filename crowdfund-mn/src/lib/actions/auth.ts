@@ -12,6 +12,10 @@ function isEmail(value: string) {
   return value.includes("@");
 }
 
+function normalizeIdentifier(value: string) {
+  return value.trim();
+}
+
 /* ── Register ──────────────────────────────────────────────────────── */
 
 export async function registerUser(data: {
@@ -20,12 +24,13 @@ export async function registerUser(data: {
   password: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const emailField = isEmail(data.identifier);
+    const identifier = normalizeIdentifier(data.identifier);
+    const emailField = isEmail(identifier);
 
     const existing = await prisma.user.findFirst({
       where: emailField
-        ? { email: data.identifier }
-        : { phone: data.identifier },
+        ? { email: { equals: identifier, mode: "insensitive" } }
+        : { phone: identifier },
     });
 
     if (existing) {
@@ -36,9 +41,9 @@ export async function registerUser(data: {
 
     await prisma.user.create({
       data: {
-        name: data.name,
-        email: emailField ? data.identifier : null,
-        phone: emailField ? null : data.identifier,
+        name: data.name.trim(),
+        email: emailField ? identifier.toLowerCase() : null,
+        phone: emailField ? null : identifier,
         passwordHash,
       },
     });
@@ -57,12 +62,18 @@ export async function loginUser(data: {
   role?: "user" | "admin";
 }): Promise<{ success: boolean; error?: string; role?: "user" | "admin"; name?: string }> {
   try {
-    const emailField = isEmail(data.identifier);
+    const identifier = normalizeIdentifier(data.identifier);
+    const emailField = isEmail(identifier);
 
     const user = await prisma.user.findFirst({
       where: emailField
-        ? { email: data.identifier }
-        : { phone: data.identifier },
+        ? { email: { equals: identifier, mode: "insensitive" } }
+        : {
+            OR: [
+              { phone: identifier },
+              { name: { equals: identifier, mode: "insensitive" } },
+            ],
+          },
     });
 
     if (!user) {

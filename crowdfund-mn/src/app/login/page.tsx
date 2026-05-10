@@ -72,9 +72,10 @@ function LoginContent() {
   const [error,      setError]      = useState("");
 
   const inputPhone = isPhone(identifier);
+  const inputEmail = identifier.includes("@");
 
   function validate() {
-    if (!identifier.trim()) return "Имэйл эсвэл утасны дугаараа оруулна уу.";
+    if (!identifier.trim()) return role === "admin" ? "Нэр, имэйл эсвэл утасны дугаараа оруулна уу." : "Имэйл эсвэл утасны дугаараа оруулна уу.";
     if (!password.trim())   return "Нууц үгээ оруулна уу.";
     if (password.length < 6) return "Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой.";
     return "";
@@ -151,18 +152,20 @@ function LoginContent() {
               {/* Identifier */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
-                  Имэйл эсвэл Утасны дугаар
+                  {role === "admin" ? "Нэр, имэйл эсвэл утасны дугаар" : "Имэйл эсвэл утасны дугаар"}
                 </label>
                 <div className="relative">
                   {inputPhone
                     ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={2} />
-                    : <Mail  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={2} />
+                    : role === "admin" && !inputEmail
+                      ? <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={2} />
+                      : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" strokeWidth={2} />
                   }
                   <input
-                    type={inputPhone ? "tel" : "email"}
+                    type={inputPhone ? "tel" : role === "admin" ? "text" : "email"}
                     value={identifier}
                     onChange={e => setIdentifier(e.target.value)}
-                    placeholder="email@example.com эсвэл 9900-0000"
+                    placeholder={role === "admin" ? "Tumenochir, email@example.com эсвэл 9900-0000" : "email@example.com эсвэл 9900-0000"}
                     autoComplete="username"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
                   />
