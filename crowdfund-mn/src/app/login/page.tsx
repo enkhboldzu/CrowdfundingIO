@@ -62,8 +62,9 @@ function LoginContent() {
   const router = useRouter();
   const { login } = useAuth();
   const searchParams = useSearchParams();
+  const initialRole: UserRole = searchParams.get("role") === "admin" ? "admin" : "user";
 
-  const [role,       setRole]       = useState<UserRole>("user");
+  const [role,       setRole]       = useState<UserRole>(initialRole);
   const [identifier, setIdentifier] = useState("");
   const [password,   setPassword]   = useState("");
   const [showPw,     setShowPw]     = useState(false);
@@ -97,9 +98,13 @@ function LoginContent() {
       return;
     }
 
-    login(result.role!, { name: result.name! });
+    login(result.role!, {
+      name:   result.name  ?? "",
+      email:  result.email ?? null,
+      avatar: result.avatar ?? null,
+    });
     const from = searchParams.get("from");
-    const defaultDest = role === "admin" ? "/admin/dashboard" : "/";
+    const defaultDest = result.role === "admin" ? "/admin/dashboard" : "/";
     router.push(from && from.startsWith("/") ? from : defaultDest);
   }
 
@@ -165,7 +170,7 @@ function LoginContent() {
                     type={inputPhone ? "tel" : role === "admin" ? "text" : "email"}
                     value={identifier}
                     onChange={e => setIdentifier(e.target.value)}
-                    placeholder={role === "admin" ? "Tumenochir, email@example.com эсвэл 9900-0000" : "email@example.com эсвэл 9900-0000"}
+                    placeholder={role === "admin" ? "admin_name, email@example.com эсвэл 9900-0000" : "email@example.com эсвэл 9900-0000"}
                     autoComplete="username"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
                   />

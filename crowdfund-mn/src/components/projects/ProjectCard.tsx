@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Badge }       from "@/components/ui/Badge";
@@ -9,6 +10,9 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { fundingPercent, daysLeftLabel } from "@/lib/utils";
 import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80";
 
 const CATEGORY_LABELS: Record<string, string> = {
   technology:  "Технологи",
@@ -34,8 +38,9 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, featured = false, className }: ProjectCardProps) {
-  const percent = fundingPercent(project.raised, project.goal);
-  const router  = useRouter();
+  const percent  = fundingPercent(project.raised, project.goal);
+  const router   = useRouter();
+  const [imgSrc, setImgSrc] = useState(project.coverImage || FALLBACK_IMAGE);
 
   return (
     /*
@@ -66,11 +71,12 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
       {/* Cover image */}
       <div className={cn("relative z-0 overflow-hidden bg-slate-100", featured ? "sm:w-[45%] h-48 sm:h-auto" : "h-48")}>
         <Image
-          src={project.coverImage}
+          src={imgSrc}
           alt={project.title}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes={featured ? "(max-width: 640px) 100vw, 45vw" : "(max-width: 768px) 100vw, 33vw"}
+          onError={() => setImgSrc(FALLBACK_IMAGE)}
         />
         <div className="absolute top-3 left-3">
           <Badge variant="blue" className="backdrop-blur-sm bg-blue-800/90 text-white border-0">

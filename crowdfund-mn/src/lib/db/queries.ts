@@ -19,6 +19,39 @@ export async function getProjectCountsByCategory(): Promise<Record<string, numbe
   }
 }
 
+/* ── Landing page projects: all active (newest first) + trending ────── */
+
+export async function getLandingProjects(limit = 20) {
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [projects, trending] = await Promise.all([
+      // All approved (ACTIVE) and published projects, newest first
+      prisma.project.findMany({
+        where: { status: "ACTIVE", publishedAt: { not: null } },
+        include: { creator: true },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+      // Trending: most backers in the last 7 days; falls back to newest via page.tsx logic
+      prisma.project.findMany({
+        where: {
+          status: "ACTIVE",
+          publishedAt: { not: null },
+          createdAt: { gte: sevenDaysAgo },
+        },
+        include: { creator: true },
+        orderBy: [{ backers: "desc" }, { createdAt: "desc" }],
+        take: 4,
+      }),
+    ]);
+
+    return { projects, trending };
+  } catch {
+    return { projects: [], trending: [] };
+  }
+}
+
 /* ── Trending / Featured projects (for server components) ──────────── */
 
 export async function getTrendingProjects(limit = 6) {
@@ -62,6 +95,7 @@ export async function getProjects(options?: {
     return await prisma.project.findMany({
       where: {
         status: "ACTIVE",
+        publishedAt: { not: null },
         ...(options?.category ? { category: options.category } : {}),
       },
       include: { creator: true },

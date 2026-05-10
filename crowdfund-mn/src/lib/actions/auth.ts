@@ -60,7 +60,14 @@ export async function loginUser(data: {
   identifier: string;
   password: string;
   role?: "user" | "admin";
-}): Promise<{ success: boolean; error?: string; role?: "user" | "admin"; name?: string }> {
+}): Promise<{
+  success: boolean;
+  error?: string;
+  role?: "user" | "admin";
+  name?: string;
+  email?: string | null;
+  avatar?: string | null;
+}> {
   try {
     const identifier = normalizeIdentifier(data.identifier);
     const emailField = isEmail(identifier);
@@ -101,7 +108,7 @@ export async function loginUser(data: {
       path: "/",
     });
 
-    return { success: true, role: dbRole, name: user.name };
+    return { success: true, role: dbRole, name: user.name, email: user.email, avatar: user.avatar };
   } catch {
     return { success: false, error: "Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу." };
   }

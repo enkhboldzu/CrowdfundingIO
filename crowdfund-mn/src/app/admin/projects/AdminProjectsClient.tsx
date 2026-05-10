@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CheckCircle, XCircle, Clock, Eye, ChevronRight, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle, XCircle, Clock, Eye, ChevronRight, Loader2, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
 
@@ -15,6 +16,7 @@ interface PendingProject {
   goal: number;
   location: string;
   createdAt: string;
+  coverImage: string | null;
   creator: { id: string; name: string; email: string | null; phone: string | null };
   rewards: { id: string; title: string; amount: number }[];
 }
@@ -145,7 +147,33 @@ export function AdminProjectsClient() {
 
                 {/* Expanded detail */}
                 {expanded === project.id && (
-                  <div className="px-5 pb-4 border-t border-slate-50 pt-3 space-y-3 text-sm text-slate-600">
+                  <div className="px-5 pb-4 border-t border-slate-50 pt-3 space-y-4 text-sm text-slate-600">
+
+                    {/* Cover image preview for admin verification */}
+                    <div>
+                      <p className="font-semibold text-slate-700 mb-2">Нүүр зураг:</p>
+                      {project.coverImage ? (
+                        <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                          <Image
+                            src={project.coverImage}
+                            alt={project.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 896px) 100vw, 896px"
+                            onError={e => {
+                              const img = e.currentTarget as HTMLImageElement;
+                              img.style.display = "none";
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-slate-400 bg-slate-50 rounded-xl px-4 py-3 border border-slate-200">
+                          <ImageOff className="w-4 h-4" />
+                          <span className="text-xs">Зураг байхгүй</span>
+                        </div>
+                      )}
+                    </div>
+
                     <div>
                       <span className="font-semibold text-slate-700">Холбоо барих:</span>{" "}
                       {project.creator.email ?? project.creator.phone ?? "—"}

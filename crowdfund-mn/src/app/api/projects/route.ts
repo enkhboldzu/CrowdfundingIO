@@ -9,8 +9,10 @@ export async function GET(req: NextRequest) {
   const sort     = searchParams.get("sort") ?? "trending";
 
   try {
+    // Only show projects that are ACTIVE (admin-approved) and have been published
     const where = {
       status: "ACTIVE" as const,
+      publishedAt: { not: null },
       ...(category && category !== "all" ? { category } : {}),
       ...(q
         ? {

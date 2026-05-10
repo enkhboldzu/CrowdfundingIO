@@ -6,8 +6,8 @@ const ts = require("typescript");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
 
-const ADMIN_LOGIN_NAME = "Tumenochir";
-const ADMIN_PASSWORD = "tumee123456";
+const ADMIN_LOGIN_NAME = "admin_b9eKNp5r";
+const ADMIN_PASSWORD = "JYPBFpTHmtUwXyTx";
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;

@@ -16,7 +16,7 @@ interface RewardTier {
   description: string;
 }
 
-interface FormData {
+interface FormValues {
   title:           string;
   blurb:           string;
   category:        string;
@@ -31,7 +31,7 @@ interface FormData {
   rewards:         RewardTier[];
 }
 
-type StringKey = keyof Omit<FormData, "rewards">;
+type StringKey = keyof Omit<FormValues, "rewards">;
 type ErrMap    = Record<string, string>;
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
@@ -80,7 +80,7 @@ const STEPS = [
   { num: 4, label: "Урамшуулал" },
 ];
 
-const EMPTY: FormData = {
+const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
   story: "", coverImageName: "",
@@ -89,7 +89,7 @@ const EMPTY: FormData = {
 
 /* ── Validation ─────────────────────────────────────────────────────────── */
 
-function validate(step: number, d: FormData): ErrMap {
+function validate(step: number, d: FormValues): ErrMap {
   const e: ErrMap = {};
 
   if (step === 1) {
@@ -238,34 +238,86 @@ function FTextarea({ id, value, onChange, placeholder, error, rows = 6 }: {
   );
 }
 
-/* ── Image upload ───────────────────────────────────────────────────────── */
+/* ── Image upload with live preview ─────────────────────────────────────── */
 
-function ImageUpload({ value, onChange }: { value: string; onChange: (n: string) => void }) {
+interface ImageUploadProps {
+  file: File | null;
+  preview: string;
+  onChange: (file: File | null, preview: string) => void;
+}
+
+function ImageUpload({ file, preview, onChange }: ImageUploadProps) {
   const ref = useRef<HTMLInputElement>(null);
-  const selected = !!value;
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    // Revoke previous object URL to avoid memory leaks
+    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+    onChange(selected, URL.createObjectURL(selected));
+    // Reset input so selecting the same file again triggers onChange
+    e.target.value = "";
+  }
+
+  function handleRemove() {
+    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+    onChange(null, "");
+  }
 
   return (
     <>
-      <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp"
-        className="hidden" onChange={e => onChange(e.target.files?.[0]?.name ?? "")} />
-      <button type="button" onClick={() => ref.current?.click()}
-        className={cn(
-          "w-full border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 group",
-          selected
-            ? "border-emerald-300 bg-emerald-50/40 hover:border-emerald-400"
-            : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
-        )}>
-        {selected ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center">
-              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <input
+        ref={ref}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {preview ? (
+        /* ── Preview state ── */
+        <div className="rounded-2xl overflow-hidden border-2 border-emerald-200 bg-slate-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={preview}
+            alt="Нүүр зургийн урьдчилан харах"
+            className="w-full h-52 object-cover"
+          />
+          {/* Footer bar */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-50 border-t border-emerald-100">
+            <div className="flex items-center gap-2 min-w-0">
+              <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
+              <span className="text-xs font-semibold text-emerald-700 truncate">
+                {file?.name ?? "Зураг сонгогдсон"}
+              </span>
             </div>
-            <p className="text-sm font-semibold text-slate-700">{value}</p>
-            <p className="text-xs text-slate-400">Өөр зураг сонгохын тулд дарна уу</p>
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              <button
+                type="button"
+                onClick={() => ref.current?.click()}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Өөрчлөх
+              </button>
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
+              >
+                Устгах
+              </button>
+            </div>
           </div>
-        ) : (
+        </div>
+      ) : (
+        /* ── Empty / pick state ── */
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          className="w-full border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-2xl p-8 text-center transition-all duration-200 group"
+        >
           <div className="flex flex-col items-center gap-2">
             <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
               <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -276,8 +328,8 @@ function ImageUpload({ value, onChange }: { value: string; onChange: (n: string)
             <p className="text-sm font-semibold text-slate-600">Зураг оруулахын тулд дарна уу</p>
             <p className="text-xs text-slate-400">PNG, JPG, WEBP · Дээд тал нь 5 MB</p>
           </div>
-        )}
-      </button>
+        </button>
+      )}
     </>
   );
 }
@@ -353,7 +405,7 @@ function Stepper({ current }: { current: number }) {
 
 /* ── Step 1 — Үндсэн мэдээлэл ───────────────────────────────────────────── */
 
-function Step1({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => void; e: ErrMap }) {
+function Step1({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) => void; e: ErrMap }) {
   return (
     <div className="space-y-6">
       <div>
@@ -392,7 +444,7 @@ function Step1({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => v
 
 /* ── Step 2 — Санхүүжилт ────────────────────────────────────────────────── */
 
-function Step2({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => void; e: ErrMap }) {
+function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) => void; e: ErrMap }) {
   return (
     <div className="space-y-6">
       <div>
@@ -450,7 +502,17 @@ function Step2({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => v
 
 /* ── Step 3 — Агуулга ───────────────────────────────────────────────────── */
 
-function Step3({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => void; e: ErrMap }) {
+function Step3({
+  d, set, e,
+  coverImageFile, coverImagePreview, onCoverImageChange,
+}: {
+  d: FormValues;
+  set: (k: StringKey, v: string) => void;
+  e: ErrMap;
+  coverImageFile: File | null;
+  coverImagePreview: string;
+  onCoverImageChange: (file: File | null, preview: string) => void;
+}) {
   const charCount = d.story.length;
   const charOk    = charCount >= 100;
 
@@ -475,7 +537,11 @@ function Step3({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => v
 
       <div>
         <Label htmlFor="coverImage">Нүүр зураг</Label>
-        <ImageUpload value={d.coverImageName} onChange={v => set("coverImageName", v)} />
+        <ImageUpload
+          file={coverImageFile}
+          preview={coverImagePreview}
+          onChange={onCoverImageChange}
+        />
         <Hint>Санал болгох хэмжээ: 1280×720 px. Өндөр чанарын зураг 2 дахин их дэмжигч татдаг.</Hint>
       </div>
     </div>
@@ -485,7 +551,7 @@ function Step3({ d, set, e }: { d: FormData; set: (k: StringKey, v: string) => v
 /* ── Step 4 — Урамшуулал ────────────────────────────────────────────────── */
 
 function Step4({ d, e, setReward, addReward, removeReward }: {
-  d: FormData;
+  d: FormValues;
   e: ErrMap;
   setReward:    (i: number, k: keyof RewardTier, v: string) => void;
   addReward:    () => void;
@@ -613,11 +679,20 @@ function SuccessScreen({ title }: { title: string }) {
 
 export function CreateProjectClient() {
   const [step,        setStep]        = useState(1);
-  const [data,        setData]        = useState<FormData>(EMPTY);
+  const [data,        setData]        = useState<FormValues>(EMPTY);
   const [errors,      setErrors]      = useState<ErrMap>({});
   const [submitted,  setSubmitted]  = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+
+  // Image state managed separately so Step3 can pass a File object
+  const [coverImageFile,    setCoverImageFile]    = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string>("");
+
+  function handleCoverImageChange(file: File | null, preview: string) {
+    setCoverImageFile(file);
+    setCoverImagePreview(preview);
+  }
 
   /* Field setters */
   function set(k: StringKey, v: string) {
@@ -661,6 +736,26 @@ export function CreateProjectClient() {
     }
 
     setSubmitting(true);
+
+    // Upload image first (if the user selected one), then create the project
+    let coverImageUrl: string | undefined;
+    if (coverImageFile) {
+      try {
+        const fd = new FormData();       // browser native FormData
+        fd.append("file", coverImageFile);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+        if (uploadRes.ok) {
+          const json = await uploadRes.json() as { url: string };
+          coverImageUrl = json.url;
+        } else {
+          // Non-fatal: project will be created without an image
+          console.warn("[upload] Upload failed:", await uploadRes.text());
+        }
+      } catch (err) {
+        console.warn("[upload] Network error:", err);
+      }
+    }
+
     const result = await createProject({
       title:           data.title,
       blurb:           data.blurb,
@@ -672,7 +767,7 @@ export function CreateProjectClient() {
       bankAccount:     data.bankAccount,
       bankAccountName: data.bankAccountName,
       story:           data.story,
-      coverImage:      data.coverImageName || undefined,
+      coverImage:      coverImageUrl,
       rewards:         data.rewards.map(r => ({
         title:       r.title,
         amount:      Number(r.amount),
@@ -742,7 +837,14 @@ export function CreateProjectClient() {
                   {/* Step content */}
                   {step === 1 && <Step1 d={data} set={set} e={errors} />}
                   {step === 2 && <Step2 d={data} set={set} e={errors} />}
-                  {step === 3 && <Step3 d={data} set={set} e={errors} />}
+                  {step === 3 && (
+                    <Step3
+                      d={data} set={set} e={errors}
+                      coverImageFile={coverImageFile}
+                      coverImagePreview={coverImagePreview}
+                      onCoverImageChange={handleCoverImageChange}
+                    />
+                  )}
                   {step === 4 && (
                     <Step4 d={data} e={errors}
                       setReward={setReward} addReward={addReward} removeReward={removeReward} />

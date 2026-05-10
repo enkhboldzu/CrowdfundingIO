@@ -6,25 +6,27 @@ import { Categories }       from "@/components/landing/Categories";
 import { TrustSection }     from "@/components/landing/TrustSection";
 import { HowItWorks }       from "@/components/landing/HowItWorks";
 import { Footer }           from "@/components/landing/Footer";
-import { getProjects, getProjectCountsByCategory } from "@/lib/db/queries";
+import { getLandingProjects, getProjectCountsByCategory } from "@/lib/db/queries";
 import { toProject } from "@/lib/db/transform";
 import { getPublicStats } from "@/lib/db/stats";
 
 export default async function LandingPage() {
-  const [rawProjects, counts, stats] = await Promise.all([
-    getProjects({ limit: 10 }),
+  const [{ projects: rawProjects, trending: rawTrending }, counts, stats] = await Promise.all([
+    getLandingProjects(20),
     getProjectCountsByCategory(),
     getPublicStats(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const projects = (rawProjects as any[]).map(toProject);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trending = (rawTrending as any[]).map(toProject);
 
   return (
     <>
       <main className="flex flex-col">
         <Hero stats={stats} />
-        <TrendingProjects projects={projects} />
+        <TrendingProjects projects={projects} trending={trending} />
         <Categories counts={counts} />
         <TrustSection />
         <HowItWorks />
