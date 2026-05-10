@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProjectStatus {
+  PENDING
+  ACTIVE
+  FUNDED
+  FAILED
+  CANCELLED
+  REJECTED
+}
+
+enum NotificationType {
+  PROJECT_APPROVED
+  PROJECT_REJECTED
+  NEW_BACKER
+  FUNDING_UPDATE
+  GOAL_REACHED
+}
+
+enum PaymentMethod {
+  QPAY
+  SOCIALPAY
+  CARD
+  APPLE_PAY
+}
+
+enum DonationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String?        @unique
+  phone         String?        @unique
+  passwordHash  String
+  role          Role           @default(USER)
+  avatar        String?
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  projects      Project[]
+  donations     Donation[]
+  notifications Notification[]
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  title           String
+  slug            String        @unique
+  description     String
+  story           String        @db.Text
+  category        String
+  coverImage      String?
+  goal            Int
+  raised          Int           @default(0)
+  backers         Int           @default(0)
+  location        String
+  bankName        String
+  bankAccount     String
+  bankAccountName String
+  endsAt          DateTime
+  status          ProjectStatus @default(PENDING)
+  publishedAt     DateTime?
+  rejectionReason String?
+  isDeleted       Boolean       @default(false)
+  isVerified      Boolean       @default(false)
+  isTrending      Boolean       @default(false)
+  isFeatured      Boolean       @default(false)
+  tags            String[]
+  creatorId       String
+  creator         User          @relation(fields: [creatorId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  rewards         RewardTier[]
+  updates         FundingUpdate[]
+  donations       Donation[]
+}
+
+model RewardTier {
+  id                String     @id @default(cuid())
+  title             String
+  amount            Int
+  description       String     @db.Text
+  backerCount       Int        @default(0)
+  estimatedDelivery String
+  isLimited         Boolean    @default(false)
+  remaining         Int?
+  projectId         String
+  project           Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  donations         Donation[]
+}
+
+model Donation {
+  id            String         @id @default(cuid())
+  amount        Int
+  paymentMethod PaymentMethod  @default(CARD)
+  status        DonationStatus @default(PENDING)
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id])
+  projectId     String
+  project       Project        @relation(fields: [projectId], references: [id])
+  rewardTierId  String?
+  rewardTier    RewardTier?    @relation(fields: [rewardTierId], references: [id])
+  createdAt     DateTime       @default(now())
+}
+
+model Notification {
+  id               String           @id @default(cuid())
+  type             NotificationType
+  title            String
+  message          String
+  isRead           Boolean          @default(false)
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedProjectId String?
+  createdAt        DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+model FundingUpdate {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,486 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  X, Loader2, AlertTriangle, CheckCircle, XCircle,
+  User, Mail, Phone, CalendarDays, FolderKanban,
+  MapPin, Tag, Banknote, Building2, CreditCard,
+  Award, BookOpen, Clock, Users, RefreshCw,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/* ── Types ──────────────────────────────────────────────────────── */
+
+interface RewardTier {
+  id:                string;
+  title:             string;
+  amount:            number;
+  description:       string;
+  estimatedDelivery: string;
+  isLimited:         boolean;
+  remaining:         number | null;
+  backerCount:       number;
+}
+
+interface ProjectDetail {
+  id:              string;
+  title:           string;
+  slug:            string;
+  description:     string;
+  story:           string;
+  category:        string;
+  coverImage:      string | null;
+  goal:            number;
+  raised:          number;
+  backers:         number;
+  location:        string;
+  bankName:        string;
+  bankAccount:     string;
+  bankAccountName: string;
+  endsAt:          string;
+  status:          string;
+  rejectionReason: string | null;
+  isVerified:      boolean;
+  isTrending:      boolean;
+  isFeatured:      boolean;
+  createdAt:       string;
+  creator: {
+    id:         string;
+    name:       string;
+    email:      string | null;
+    phone:      string | null;
+    isVerified: boolean;
+    createdAt:  string;
+    _count:     { projects: number };
+  };
+  rewards: RewardTier[];
+  _count:  { donations: number };
+}
+
+interface Props {
+  projectId: string;
+  onClose:   () => void;
+  onDecide:  (id: string, action: "approve" | "reject", reason?: string) => Promise<void>;
+  acting:    boolean;
+}
+
+const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
+  PENDING:   { label: "Хүлээгдэж байна", bg: "bg-amber-100",   text: "text-amber-700"   },
+  ACTIVE:    { label: "Нийтлэгдсэн",     bg: "bg-emerald-100", text: "text-emerald-700" },
+  REJECTED:  { label: "Татгалзагдсан",   bg: "bg-red-100",     text: "text-red-700"     },
+  FUNDED:    { label: "Санхүүжсэн",      bg: "bg-blue-100",    text: "text-blue-700"    },
+};
+
+/* ── Section header helper ──────────────────────────────────────── */
+function Section({ icon: Icon, title, children }: {
+  icon: React.ElementType; title: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+        <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+          <Icon className="w-3.5 h-3.5 text-blue-600" strokeWidth={2} />
+        </div>
+        <h3 className="font-bold text-slate-900 text-sm">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ── Info row helper ─────────────────────────────────────────────── */
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="text-xs text-slate-400 w-28 flex-shrink-0 pt-0.5">{label}</span>
+      <span className="text-sm font-semibold text-slate-900 flex-1 break-all">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+/* ── Main modal ──────────────────────────────────────────────────── */
+export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Props) {
+  const [detail, setDetail]       = useState<ProjectDetail | null>(null);
+  const [loadSt, setLoadSt]       = useState<"loading" | "ok" | "error">("loading");
+  const [showReject, setShowRej]  = useState(false);
+  const [reason, setReason]       = useState("");
+
+  useEffect(() => {
+    setLoadSt("loading");
+    fetch(`/api/admin/projects/${projectId}`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => { setDetail(d.project); setLoadSt("ok"); })
+      .catch(() => setLoadSt("error"));
+  }, [projectId]);
+
+  /* Close on Escape */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleApprove() {
+    if (!detail) return;
+    await onDecide(detail.id, "approve");
+    onClose();
+  }
+
+  async function handleReject() {
+    if (!detail) return;
+    await onDecide(detail.id, "reject", reason.trim() || undefined);
+    onClose();
+  }
+
+  const isPending = detail?.status === "PENDING";
+  const st = detail ? (STATUS_MAP[detail.status] ?? STATUS_MAP.PENDING) : null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4 py-8">
+      <div
+        className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+
+        {/* ── Sticky header ─────────────────────────────────────── */}
+        <div className="sticky top-0 z-10 flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-white rounded-t-3xl">
+          {st && (
+            <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", st.bg, st.text)}>
+              {st.label}
+            </span>
+          )}
+          <h2 className="flex-1 font-bold text-slate-900 text-base truncate min-w-0">
+            {detail?.title ?? "Төслийн дэлгэрэнгүй"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-4 h-4" strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* ── Body ──────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Loading */}
+          {loadSt === "loading" && (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          )}
+
+          {/* Error */}
+          {loadSt === "error" && (
+            <div className="flex flex-col items-center justify-center py-24 text-center px-6">
+              <AlertTriangle className="w-10 h-10 text-red-400 mb-3" strokeWidth={1.5} />
+              <p className="font-bold text-slate-900 mb-1">Мэдээлэл ачааллахад алдаа гарлаа</p>
+              <p className="text-sm text-slate-400 mb-5">Дахин оролдоно уу.</p>
+              <button
+                onClick={() => { setLoadSt("loading"); fetch(`/api/admin/projects/${projectId}`).then(r => r.ok ? r.json() : Promise.reject()).then(d => { setDetail(d.project); setLoadSt("ok"); }).catch(() => setLoadSt("error")); }}
+                className="flex items-center gap-2 bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Дахин ачаалах
+              </button>
+            </div>
+          )}
+
+          {/* Content */}
+          {loadSt === "ok" && detail && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+
+              {/* ── Left: Story + Rewards + Bank ────────────────── */}
+              <div className="lg:col-span-2 p-6 space-y-7">
+
+                {/* Cover image */}
+                {detail.coverImage && (
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={detail.coverImage}
+                      alt={detail.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Description */}
+                <Section icon={FolderKanban} title="Товч тайлбар">
+                  <p className="text-sm text-slate-600 leading-relaxed">{detail.description}</p>
+                </Section>
+
+                {/* Full story */}
+                <Section icon={BookOpen} title="Бүтэн түүх / Хэрхэн зарцуулах">
+                  <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto pr-2 border border-slate-100 rounded-xl p-4 bg-slate-50">
+                    {detail.story || <span className="italic text-slate-400">Мэдээлэл байхгүй</span>}
+                  </div>
+                </Section>
+
+                {/* Reward tiers */}
+                {detail.rewards.length > 0 && (
+                  <Section icon={Award} title="Шагналын үе шат (Хөрөнгийн хуваарилалт)">
+                    <div className="space-y-2">
+                      {detail.rewards.map(r => (
+                        <div key={r.id} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">
+                              {(r.amount / 1000) >= 1000
+                                ? `${(r.amount / 1_000_000).toFixed(0)}M`
+                                : `${(r.amount / 1000).toFixed(0)}K`}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-sm font-bold text-slate-900">{r.title}</span>
+                              <span className="text-sm font-bold text-blue-700">{r.amount.toLocaleString()}₮</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{r.description}</p>
+                            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-400">
+                              <span>Хүргэлт: {r.estimatedDelivery}</span>
+                              {r.isLimited && r.remaining !== null && (
+                                <span className="text-amber-600 font-semibold">
+                                  {r.remaining} үлдсэн / {r.backerCount} дэмжигч
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
+                {/* Bank info — critical for verification */}
+                <Section icon={Building2} title="Банкны мэдээлэл (Баталгаажуулалтад)">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2.5">
+                    <InfoRow label="Банк" value={
+                      <span className="flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                        {detail.bankName}
+                      </span>
+                    } />
+                    <InfoRow label="Дансны дугаар" value={
+                      <span className="flex items-center gap-1.5 font-mono">
+                        <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                        {detail.bankAccount}
+                      </span>
+                    } />
+                    <InfoRow label="Дансны нэр" value={detail.bankAccountName} />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Баталгаажуулахаасаа өмнө банкны мэдээллийг бүтээгчтэй тулгана уу.
+                  </p>
+                </Section>
+
+              </div>
+
+              {/* ── Right: Creator + Stats ───────────────────────── */}
+              <div className="p-6 space-y-6 bg-slate-50/50 lg:rounded-r-3xl">
+
+                {/* Creator card */}
+                <Section icon={User} title="Бүтээгчийн мэдээлэл">
+                  <div className="space-y-3">
+                    {/* Avatar + name */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                        {detail.creator.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">{detail.creator.name}</p>
+                        {detail.creator.isVerified && (
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                            Баталгаажсан
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Contact info */}
+                    <div className="space-y-2 pt-1">
+                      {detail.creator.email && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="break-all">{detail.creator.email}</span>
+                        </div>
+                      )}
+                      {detail.creator.phone && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span>{detail.creator.phone}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          Бүртгүүлсэн: {new Date(detail.creator.createdAt).toLocaleDateString("mn-MN")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <FolderKanban className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{detail.creator._count.projects} төсөл нийтлэлтэй</span>
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+
+                {/* Project stats */}
+                <Section icon={Banknote} title="Санхүүжилтийн мэдээлэл">
+                  <div className="space-y-2.5">
+                    <InfoRow label="Зорилго" value={`${detail.goal.toLocaleString()}₮`} />
+                    <InfoRow label="Цугласан" value={`${detail.raised.toLocaleString()}₮`} />
+                    <InfoRow label="Дэмжигч" value={`${detail.backers} хүн`} />
+                    <InfoRow label="Хандивлалт" value={`${detail._count.donations} удаа`} />
+                    {detail.goal > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-slate-400">Явц</span>
+                          <span className="font-bold text-slate-600">
+                            {Math.min(100, Math.round((detail.raised / detail.goal) * 100))}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${Math.min(100, (detail.raised / detail.goal) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Section>
+
+                {/* Project meta */}
+                <Section icon={Clock} title="Төслийн мэдээлэл">
+                  <div className="space-y-2.5">
+                    <InfoRow
+                      label="Категори"
+                      value={
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-3 h-3 text-slate-400" />
+                          {detail.category}
+                        </span>
+                      }
+                    />
+                    <InfoRow
+                      label="Байршил"
+                      value={
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          {detail.location}
+                        </span>
+                      }
+                    />
+                    <InfoRow
+                      label="Дуусах огноо"
+                      value={new Date(detail.endsAt).toLocaleDateString("mn-MN")}
+                    />
+                    <InfoRow
+                      label="Илгээсэн"
+                      value={new Date(detail.createdAt).toLocaleDateString("mn-MN")}
+                    />
+                  </div>
+                </Section>
+
+                {/* Documents section */}
+                <Section icon={Users} title="Баримт бичиг">
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center">
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Баримт бичиг хавсаргах модуль одоогоор тохируулагдаагүй байна.
+                      Бүтээгчтэй шууд холбогдон нотолгоо авна уу.
+                    </p>
+                  </div>
+                </Section>
+
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sticky action footer (only for PENDING) ────────────── */}
+        {loadSt === "ok" && detail && isPending && (
+          <div className="sticky bottom-0 border-t border-slate-100 bg-white rounded-b-3xl px-6 py-4">
+
+            {showReject ? (
+              /* Reject with reason */
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">
+                  Татгалзах шалтгаан (заавал биш)
+                </label>
+                <textarea
+                  autoFocus
+                  rows={3}
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  placeholder="Жишээ нь: Мэдээлэл дутуу, баримт бичиг байхгүй..."
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300"
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleReject}
+                    disabled={acting}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {acting
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <XCircle className="w-4 h-4" />
+                    }
+                    Татгалзах
+                  </button>
+                  <button
+                    onClick={() => { setShowRej(false); setReason(""); }}
+                    className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
+                  >
+                    Цуцлах
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Approve / Reject buttons */
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={handleApprove}
+                  disabled={acting}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+                >
+                  {acting
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <CheckCircle className="w-4 h-4" />
+                  }
+                  Батлах
+                </button>
+                <button
+                  onClick={() => setShowRej(true)}
+                  disabled={acting}
+                  className="flex items-center gap-2 border-2 border-red-200 text-red-600 hover:bg-red-50 font-bold text-sm px-6 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Татгалзах
+                </button>
+                <button
+                  onClick={onClose}
+                  className="ml-auto text-sm text-slate-400 hover:text-slate-600 px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  Хаах
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Close button for non-pending projects */}
+        {loadSt === "ok" && detail && !isPending && (
+          <div className="border-t border-slate-100 px-6 py-4 flex justify-end bg-white rounded-b-3xl">
+            <button
+              onClick={onClose}
+              className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              Хаах
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}

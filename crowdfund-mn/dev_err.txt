@@ -1,0 +1,2 @@
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from C:\Users\iZone.mn\Crowdfunding\crowdfund-mn\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from C:\Users\iZone.mn\Crowdfunding\crowdfund-mn\.next\cache\webpack\server-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
