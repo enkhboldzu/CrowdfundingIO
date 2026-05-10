@@ -20,7 +20,7 @@ export function AdminStatsProvider({ children }: { children: ReactNode }) {
   const [pendingCount, setPending] = useState(0);
 
   const refreshPending = useCallback(() => {
-    fetch("/api/admin/stats")
+    fetch("/admin-api/stats")
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setPending(d.pendingCount ?? 0); })
       .catch(() => {});

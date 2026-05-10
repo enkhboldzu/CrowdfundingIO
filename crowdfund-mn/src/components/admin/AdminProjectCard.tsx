@@ -43,7 +43,7 @@ export function AdminProjectCard({ project, featured, className, onMutated }: Pr
   async function approve() {
     setLoading("approve");
     try {
-      const res = await fetch(`/api/admin/projects/${project.id}`, {
+      const res = await fetch(`/admin-api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "approve" }),
@@ -62,7 +62,7 @@ export function AdminProjectCard({ project, featured, className, onMutated }: Pr
   async function reject() {
     setLoading("reject");
     try {
-      const res = await fetch(`/api/admin/projects/${project.id}`, {
+      const res = await fetch(`/admin-api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject" }),
@@ -82,7 +82,7 @@ export function AdminProjectCard({ project, featured, className, onMutated }: Pr
     if (!confirm(`"${project.title}"-г устгах уу?`)) return;
     setLoading("delete");
     try {
-      const res = await fetch(`/api/admin/projects/${project.id}`, { method: "DELETE" });
+      const res = await fetch(`/admin-api/projects/${project.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setDeleted(true);
       show("Төсөл устгагдлаа", "warning");

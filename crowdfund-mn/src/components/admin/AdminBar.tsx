@@ -23,7 +23,7 @@ export function AdminBar() {
 
   useEffect(() => {
     if (role !== "admin") return;
-    fetch("/api/admin/stats")
+    fetch("/admin-api/stats")
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setStats({ pendingCount: d.pendingCount }))
       .catch(() => {});

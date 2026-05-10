@@ -107,7 +107,7 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
 
   useEffect(() => {
     setLoadSt("loading");
-    fetch(`/api/admin/projects/${projectId}`)
+    fetch(`/admin-api/projects/${projectId}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(d => { setDetail(d.project); setLoadSt("ok"); })
       .catch(() => setLoadSt("error"));
@@ -177,7 +177,7 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
               <p className="font-bold text-slate-900 mb-1">Мэдээлэл ачааллахад алдаа гарлаа</p>
               <p className="text-sm text-slate-400 mb-5">Дахин оролдоно уу.</p>
               <button
-                onClick={() => { setLoadSt("loading"); fetch(`/api/admin/projects/${projectId}`).then(r => r.ok ? r.json() : Promise.reject()).then(d => { setDetail(d.project); setLoadSt("ok"); }).catch(() => setLoadSt("error")); }}
+                onClick={() => { setLoadSt("loading"); fetch(`/admin-api/projects/${projectId}`).then(r => r.ok ? r.json() : Promise.reject()).then(d => { setDetail(d.project); setLoadSt("ok"); }).catch(() => setLoadSt("error")); }}
                 className="flex items-center gap-2 bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl"
               >
                 <RefreshCw className="w-4 h-4" />

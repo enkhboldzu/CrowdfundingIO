@@ -416,7 +416,7 @@ function EditModal({
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/projects/${project.id}`, {
+      const res = await fetch(`/admin-api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, goal: Number(form.goal) }),
@@ -535,7 +535,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
         page: String(p),
         ...(search ? { q: search } : {}),
       });
-      const res = await fetch(`/api/admin/projects?${params}`);
+      const res = await fetch(`/admin-api/projects?${params}`);
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         console.error(`[admin/projects] HTTP ${res.status}:`, body || "(empty body)");
@@ -565,7 +565,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
     setActionId(id);
     setProjects(prev => prev.filter(p => p.id !== id));
     try {
-      const res = await fetch(`/api/admin/projects/${id}`, {
+      const res = await fetch(`/admin-api/projects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, reason }),
@@ -587,7 +587,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
     setActionId(id);
     setProjects(prev => prev.filter(p => p.id !== id));
     try {
-      const res = await fetch(`/api/admin/projects/${id}`, { method: "DELETE" });
+      const res = await fetch(`/admin-api/projects/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       show("Төсөл устгагдлаа", "warning");
       setTotal(t => t - 1);
@@ -855,7 +855,7 @@ function UsersTab() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), ...(search ? { q: search } : {}) });
-      const res = await fetch(`/api/admin/users?${params}`);
+      const res = await fetch(`/admin-api/users?${params}`);
       if (!res.ok) {
         console.error(`[users] HTTP ${res.status}`, await res.text().catch(() => ""));
         throw new Error(`HTTP ${res.status}`);
@@ -884,7 +884,7 @@ function UsersTab() {
     setActionId(user.id);
     setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
+      const res = await fetch(`/admin-api/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: newRole }),
@@ -904,7 +904,7 @@ function UsersTab() {
     setActionId(user.id);
     setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isVerified: newVal } : u));
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
+      const res = await fetch(`/admin-api/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isVerified: newVal }),
@@ -1066,7 +1066,7 @@ export function AdminDashboardClient() {
     setOvSt("loading");
     setOvStatus(undefined);
     try {
-      const res = await fetch("/api/admin/overview");
+      const res = await fetch("/admin-api/overview");
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         console.error(`[admin/overview] HTTP ${res.status}:`, body || "(empty body)");

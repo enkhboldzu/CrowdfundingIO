@@ -49,7 +49,7 @@ export function AdminProjectsClient() {
     setFetchError(null);
     let httpStatus: number | null = null;
     try {
-      const res = await fetch("/api/admin/projects?status=pending");
+      const res = await fetch("/admin-api/projects?status=pending");
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         console.error(`[admin/projects] HTTP ${res.status}:`, body || "(empty body)");
@@ -76,7 +76,7 @@ export function AdminProjectsClient() {
     setLoadingId(id);
     setProjects(prev => prev.filter(p => p.id !== id));
     try {
-      const res = await fetch(`/api/admin/projects/${id}`, {
+      const res = await fetch(`/admin-api/projects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, reason }),
