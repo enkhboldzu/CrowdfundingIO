@@ -28,14 +28,14 @@ export async function updateProfile(data: {
       }
       const user = await prisma.user.findUnique({
         where: { id: session.userId },
-        select: { password: true },
+        select: { passwordHash: true },
       });
       if (!user) return { success: false, error: "Хэрэглэгч олдсонгүй." };
 
-      const valid = await bcrypt.compare(data.currentPassword, user.password);
+      const valid = await bcrypt.compare(data.currentPassword, user.passwordHash);
       if (!valid) return { success: false, error: "Одоогийн нууц үг буруу байна." };
 
-      updates.password = await bcrypt.hash(data.newPassword, 12);
+      updates.passwordHash = await bcrypt.hash(data.newPassword, 12);
     }
 
     if (Object.keys(updates).length > 0) {
