@@ -45,7 +45,7 @@ fi
 
 # ── 3. Node.js ───────────────────────────────────────────────
 section "Node.js $NODE_VERSION"
-curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - -qq
 apt-get install -y -qq nodejs
 info "Node $(node -v) installed"
 
