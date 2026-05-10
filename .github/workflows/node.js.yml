@@ -1,0 +1,46 @@
+
+name: Node.js CI
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - "dist/**"
+      - "node_modules/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: self-hosted
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    strategy:
+      matrix:
+        node-version: [24.14.1]
+    # env:
+    #   VUE_WEBSITE_URL: ${{secrets.VUE_WEBSITE_URL}}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          # cache: "npm"
+
+      - run: npm install -g pm2
+      - run: npm install
+
+      # - run: cd ./frontend/ && npm install
+      # - run: cd ./frontend/ && npm run build
+      # - run: cd ./frontend/ && cp -r dist/ ../
+
+      # - run: pm2 restart 0
