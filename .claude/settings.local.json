@@ -4,7 +4,8 @@
       "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
       "PowerShell([System.IO.Directory]::GetFiles\\(\"C:\\\\Users\\\\iZone.mn\\\\Crowdfunding\\\\crowdfund-mn\\\\node_modules\\\\@tailwindcss\\\\postcss\"\\) | Select-Object -First 20)",
       "PowerShell(Set-Location \"C:\\\\Users\\\\iZone.mn\\\\Crowdfunding\\\\crowdfund-mn\"; $res = node -e \"const tw=require\\('tailwindcss'\\); tw.compile\\('body{}',{}\\).then\\(r=>{process.stdout.write\\(Object.keys\\(r\\).join\\(','\\)\\)}\\).catch\\(e=>{process.stderr.write\\(e.message\\)}\\)\"; Write-Host \"Result: $res\")",
-      "PowerShell(& cmd /c \"set NODE_ENV=production && node -e \"\"process.stdout.write\\(String\\(process.env.NODE_ENV\\)\\)\"\"\" 2>&1)"
+      "PowerShell(& cmd /c \"set NODE_ENV=production && node -e \"\"process.stdout.write\\(String\\(process.env.NODE_ENV\\)\\)\"\"\" 2>&1)",
+      "Bash(npm install *)"
     ]
   }
 }
