@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { logoutUser } from "@/lib/actions/auth";
 import { AdminStatsProvider, useAdminStats } from "@/context/AdminStatsContext";
 
 /* ── Nav config ─────────────────────────────────────────────────── */
@@ -152,7 +153,11 @@ function AdminHeader() {
   /* Close mobile menu on route change */
   useEffect(() => { setMobile(false); }, [pathname]);
 
-  function handleLogout() { logout(); router.push("/login"); }
+  async function handleLogout() {
+    await logoutUser(); // clears httpOnly cfmn_session JWT cookie
+    logout();           // clears cfmn_auth cookie + localStorage + React state
+    router.push("/login?role=admin");
+  }
 
   const initials = user?.name
     ? user.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()

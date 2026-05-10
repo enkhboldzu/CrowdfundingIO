@@ -185,23 +185,52 @@ function OverviewSkeleton() {
 }
 
 /* ── Error state ────────────────────────────────────────────────── */
-function OverviewError({ onRetry }: { onRetry: () => void }) {
+function OverviewError({ onRetry, statusCode }: { onRetry: () => void; statusCode?: number }) {
+  const [retrying, setRetrying] = useState(false);
+
+  async function handleRetry() {
+    setRetrying(true);
+    // Give the parent a tick to swap to <OverviewSkeleton> before we stop spinning
+    await new Promise(r => setTimeout(r, 120));
+    onRetry();
+  }
+
+  const authFailed = statusCode === 401 || statusCode === 403;
+
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
         <AlertTriangle className="w-8 h-8 text-red-400" strokeWidth={1.5} />
       </div>
       <h3 className="font-bold text-slate-900 text-lg mb-1">Мэдээлэл ачааллахад алдаа гарлаа</h3>
-      <p className="text-slate-400 text-sm mb-5 max-w-xs">
-        Серверт холбогдоход асуудал гарлаа. Дахин оролдоно уу.
+      <p className="text-slate-400 text-sm mb-1 max-w-xs">
+        {authFailed
+          ? "Таны сесс дууссан байна. Дахин нэвтэрч орно уу."
+          : "Серверт холбогдоход асуудал гарлаа. Дахин оролдоно уу."}
       </p>
-      <button
-        onClick={onRetry}
-        className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-      >
-        <RefreshCw className="w-4 h-4" strokeWidth={2} />
-        Дахин ачаалах
-      </button>
+      {statusCode && (
+        <p className="text-[11px] text-slate-300 mb-5 font-mono">HTTP {statusCode}</p>
+      )}
+      {!statusCode && <div className="mb-5" />}
+      {authFailed ? (
+        <a
+          href="/login?role=admin"
+          className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+        >
+          Нэвтрэх
+        </a>
+      ) : (
+        <button
+          onClick={handleRetry}
+          disabled={retrying}
+          className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+        >
+          {retrying
+            ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+            : <RefreshCw className="w-4 h-4" strokeWidth={2} />}
+          Дахин ачаалах
+        </button>
+      )}
     </div>
   );
 }
@@ -989,8 +1018,9 @@ export function AdminDashboardClient() {
   const router                    = useRouter();
   const { pendingCount }          = useAdminStats();
 
-  const [overview, setOverview]   = useState<OverviewData | null>(null);
-  const [overviewState, setOvSt]  = useState<"loading" | "ok" | "error">("loading");
+  const [overview, setOverview]      = useState<OverviewData | null>(null);
+  const [overviewState, setOvSt]     = useState<"loading" | "ok" | "error">("loading");
+  const [overviewStatus, setOvStatus] = useState<number | undefined>(undefined);
 
   const tabParam  = searchParams.get("tab") as Tab | null;
   const activeTab: Tab = tabParam ?? "overview";
@@ -998,17 +1028,23 @@ export function AdminDashboardClient() {
 
   const loadOverview = useCallback(async () => {
     setOvSt("loading");
+    setOvStatus(undefined);
     try {
       const res = await fetch("/api/admin/overview");
       if (!res.ok) {
-        console.error(`[overview] HTTP ${res.status}`, await res.text().catch(() => ""));
+        const body = await res.text().catch(() => "");
+        console.error(`[admin/overview] HTTP ${res.status}:`, body || "(empty body)");
+        if (res.status === 401 || res.status === 403) {
+          console.error("[admin/overview] Auth failed — cfmn_session cookie may be missing or expired.");
+        }
+        setOvStatus(res.status);
         throw new Error(`HTTP ${res.status}`);
       }
       const data = await res.json() as OverviewData;
       setOverview(data);
       setOvSt("ok");
     } catch (err) {
-      console.error("[overview] fetch failed", err);
+      console.error("[admin/overview] fetch failed:", err instanceof Error ? err.message : err);
       setOvSt("error");
     }
   }, []);
@@ -1030,7 +1066,7 @@ export function AdminDashboardClient() {
       {activeTab === "overview" && (
         <>
           {overviewState === "loading" && <OverviewSkeleton />}
-          {overviewState === "error"   && <OverviewError onRetry={loadOverview} />}
+          {overviewState === "error"   && <OverviewError onRetry={loadOverview} statusCode={overviewStatus} />}
           {overviewState === "ok" && overview && (
             <div className="space-y-6">
 

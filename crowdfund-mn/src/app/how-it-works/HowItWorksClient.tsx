@@ -681,7 +681,7 @@ export function HowItWorksClient() {
               Таны санаа ирэх<br className="hidden sm:block" /> өдрийг хүлээхгүй
             </h2>
             <p className="text-white/65 text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-              Монголын 85,000+ дэмжигч таны төслийг хүлээж байна.
+              Олон мянган дэмжигч таны төслийг хүлээж байна.
               Бүртгэл үүсгэх нь бүрэн үнэ төлбөргүй.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

@@ -1,8 +1,15 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { getSession } from "@/lib/actions/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession();
+  if (!session || session.role !== "admin") {
+    redirect("/login?role=admin");
+  }
+
   return (
     <Suspense
       fallback={

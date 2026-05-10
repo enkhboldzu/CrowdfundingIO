@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
-  if (!(await requireAdmin(req))) {
+  const admin = await requireAdmin(req);
+  if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -77,16 +78,16 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     stats: {
-      totalProjects,
-      pendingCount,
-      activeCount,
-      rejectedCount,
-      totalUsers,
-      totalRaised:  raisedAgg._sum.raised  ?? 0,
-      totalBackers: raisedAgg._sum.backers ?? 0,
+      totalProjects:  totalProjects  ?? 0,
+      pendingCount:   pendingCount   ?? 0,
+      activeCount:    activeCount    ?? 0,
+      rejectedCount:  rejectedCount  ?? 0,
+      totalUsers:     totalUsers     ?? 0,
+      totalRaised:    Number(raisedAgg._sum.raised  ?? 0),
+      totalBackers:   Number(raisedAgg._sum.backers ?? 0),
     },
-    recentProjects,
-    activity,
+    recentProjects: recentProjects ?? [],
+    activity:       activity       ?? [],
   });
   } catch (err) {
     console.error("[/api/admin/overview]", err);

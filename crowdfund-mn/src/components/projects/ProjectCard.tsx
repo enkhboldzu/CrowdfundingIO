@@ -14,6 +14,12 @@ import { cn } from "@/lib/utils";
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80";
 
+function normalizeSrc(src: string | null | undefined): string {
+  if (!src) return FALLBACK_IMAGE;
+  if (src.startsWith("/") || src.startsWith("http://") || src.startsWith("https://")) return src;
+  return FALLBACK_IMAGE;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   technology:  "Технологи",
   arts:        "Урлаг",
@@ -40,7 +46,8 @@ interface ProjectCardProps {
 export function ProjectCard({ project, featured = false, className }: ProjectCardProps) {
   const percent  = fundingPercent(project.raised, project.goal);
   const router   = useRouter();
-  const [imgSrc, setImgSrc] = useState(project.coverImage || FALLBACK_IMAGE);
+  const [imgSrc,    setImgSrc]    = useState(() => normalizeSrc(project.coverImage));
+  const [avatarSrc, setAvatarSrc] = useState(() => normalizeSrc(project.creator.avatar));
 
   return (
     /*
@@ -95,7 +102,7 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
         {/* Creator */}
         <div className="flex items-center gap-2 mb-3">
           <div className="relative w-6 h-6 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-            <Image src={project.creator.avatar} alt={project.creator.name} fill className="object-cover" />
+            <Image src={avatarSrc} alt={project.creator.name} fill className="object-cover" onError={() => setAvatarSrc(FALLBACK_IMAGE)} />
           </div>
           <span className="text-xs text-slate-500 font-medium truncate">{project.creator.name}</span>
           {project.creator.isVerified && (
