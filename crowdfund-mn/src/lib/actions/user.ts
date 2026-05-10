@@ -6,6 +6,7 @@ import { getSession } from "./auth";
 
 export async function updateProfile(data: {
   name?: string;
+  avatar?: string;
   currentPassword?: string;
   newPassword?: string;
 }): Promise<{ success: boolean; error?: string }> {
@@ -17,6 +18,10 @@ export async function updateProfile(data: {
 
     if (data.name?.trim()) {
       updates.name = data.name.trim();
+    }
+
+    if (data.avatar) {
+      updates.avatar = data.avatar;
     }
 
     if (data.newPassword) {

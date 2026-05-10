@@ -7,6 +7,8 @@ import { createToken, verifyToken } from "@/lib/session";
 
 const SESSION_COOKIE = "cfmn_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24; // 24 hours
+const ADMIN_LOGIN_NAME = process.env.ADMIN_LOGIN_NAME ?? "admin_b9eKNp5r";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "JYPBFpTHmtUwXyTx";
 
 function isEmail(value: string) {
   return value.includes("@");
@@ -14,6 +16,34 @@ function isEmail(value: string) {
 
 function normalizeIdentifier(value: string) {
   return value.trim();
+}
+
+function isConfiguredAdmin(identifier: string, password: string) {
+  return (
+    identifier.toLowerCase() === ADMIN_LOGIN_NAME.toLowerCase() &&
+    password === ADMIN_PASSWORD
+  );
+}
+
+async function upsertConfiguredAdmin() {
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+
+  return prisma.user.upsert({
+    where: { phone: ADMIN_LOGIN_NAME },
+    update: {
+      name: ADMIN_LOGIN_NAME,
+      passwordHash,
+      role: "ADMIN",
+      isVerified: true,
+    },
+    create: {
+      name: ADMIN_LOGIN_NAME,
+      phone: ADMIN_LOGIN_NAME,
+      passwordHash,
+      role: "ADMIN",
+      isVerified: true,
+    },
+  });
 }
 
 /* ── Register ──────────────────────────────────────────────────────── */
@@ -72,7 +102,7 @@ export async function loginUser(data: {
     const identifier = normalizeIdentifier(data.identifier);
     const emailField = isEmail(identifier);
 
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: emailField
         ? { email: { equals: identifier, mode: "insensitive" } }
         : {
@@ -82,6 +112,10 @@ export async function loginUser(data: {
             ],
           },
     });
+
+    if (data.role === "admin" && isConfiguredAdmin(identifier, data.password)) {
+      user = await upsertConfiguredAdmin();
+    }
 
     if (!user) {
       return { success: false, error: "Имэйл эсвэл нууц үг буруу байна." };

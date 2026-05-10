@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { GuardedLink } from "@/components/ui/GuardedLink";
 import Image from "next/image";
+import { useAuth }  from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import {
   Calendar, Check, Edit3, Plus,
   Heart, FolderOpen, Settings2, Bell,
@@ -111,15 +113,27 @@ interface ProfileClientProps {
 }
 
 export function ProfileClient({
-  user,
+  user: initialUser,
   donationStats,
   backedDonations,
   createdProjects,
   initialTab = "backed",
 }: ProfileClientProps) {
-  const [tab, setTab]     = useState<ProfileTab>(initialTab);
-  const displayName       = getDisplayName(user);
-  const memberSince       = formatMemberSince(user.createdAt);
+  const [tab, setTab] = useState<ProfileTab>(initialTab);
+
+  // Shadow the prop so hero/avatar update instantly after Settings save
+  const [user, setUser] = useState<ProfileUser>(initialUser);
+
+  function handleProfileUpdate(updates: { name?: string | null; avatar?: string | null }) {
+    setUser(prev => ({
+      ...prev,
+      ...(updates.name   !== undefined ? { name:   updates.name   } : {}),
+      ...(updates.avatar !== undefined ? { avatar: updates.avatar } : {}),
+    }));
+  }
+
+  const displayName = getDisplayName(user);
+  const memberSince = formatMemberSince(user.createdAt);
 
   const stats = [
     { label: "Нийт дэмжсэн",    value: `₮${donationStats.totalAmount.toLocaleString()}`, icon: Wallet,     color: "text-blue-700",    bg: "bg-blue-50"    },
@@ -267,7 +281,7 @@ export function ProfileClient({
 
           {tab === "backed"   && <BackedTab donations={backedDonations} />}
           {tab === "projects" && <ProjectsTab projects={createdProjects} />}
-          {tab === "settings" && <SettingsTab user={user} />}
+          {tab === "settings" && <SettingsTab user={user} onProfileUpdate={handleProfileUpdate} />}
         </div>
 
       </main>
@@ -515,25 +529,72 @@ function CreatedProjectCard({ project }: { project: Project }) {
 
 /* ── Settings tab ───────────────────────────────────────────────── */
 
-function SettingsTab({ user }: { user: ProfileUser }) {
-  const displayEmail = user.email ?? user.phone ?? "";
+function SettingsTab({
+  user,
+  onProfileUpdate,
+}: {
+  user: ProfileUser;
+  onProfileUpdate: (updates: { name?: string | null; avatar?: string | null }) => void;
+}) {
+  const { user: authUser, role, login: authLogin } = useAuth();
+  const { show: showToast }                        = useToast();
 
-  const [profile,   setProfile]   = useState({ name: user.name ?? "" });
-  const [password,  setPassword]  = useState({ current: "", next: "", confirm: "" });
-  const [notifs,    setNotifs]    = useState({
+  const displayEmail = user.email ?? user.phone ?? "";
+  const fallbackName = user.name?.trim() || user.email?.split("@")[0] || "Гишүүн";
+
+  const [profile,  setProfile]  = useState({ name: user.name ?? "" });
+  const [password, setPassword] = useState({ current: "", next: "", confirm: "" });
+  const [notifs,   setNotifs]   = useState({
     newBacker: true, projectUpdates: true, emailNotifs: true,
     fundingAlerts: false, weeklyDigest: true,
   });
-  const [saved,     setSaved]     = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [saving,    setSaving]    = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  /* ── Avatar ──────────────────────────────────────────────────── */
+  const avatarInputRef                         = useRef<HTMLInputElement>(null);
+  const [avatarPreview,   setAvatarPreview]    = useState<string>(user.avatar ?? "");
+  const [avatarUrl,       setAvatarUrl]        = useState<string | null>(user.avatar ?? null);
+  const [avatarUploading, setAvatarUploading]  = useState(false);
+  const avatarChanged = avatarUrl !== user.avatar;
+
+  async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show blob preview immediately
+    if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarUploading(true);
+    e.target.value = "";
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json() as { url: string };
+      setAvatarUrl(url);
+    } catch {
+      showToast("Зураг хуулахад алдаа гарлаа.", "error");
+      setAvatarPreview(user.avatar ?? "");
+      setAvatarUrl(user.avatar ?? null);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  function handleRevertAvatar() {
+    if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(user.avatar ?? "");
+    setAvatarUrl(user.avatar ?? null);
+  }
+
+  /* ── Save ────────────────────────────────────────────────────── */
   async function handleSave(e: React.SyntheticEvent) {
     e.preventDefault();
-    setError(null);
 
     if (password.next && password.next !== password.confirm) {
-      setError("Шинэ нууц үг таарахгүй байна.");
+      showToast("Шинэ нууц үг таарахгүй байна.", "error");
       return;
     }
 
@@ -541,16 +602,28 @@ function SettingsTab({ user }: { user: ProfileUser }) {
     try {
       const result = await updateProfile({
         name:            profile.name || undefined,
+        avatar:          avatarUrl    ?? undefined,
         currentPassword: password.current || undefined,
         newPassword:     password.next    || undefined,
       });
 
       if (result.success) {
-        setSaved(true);
+        showToast("Өөрчлөлтүүд амжилттай хадгалагдлаа.", "info");
         setPassword({ current: "", next: "", confirm: "" });
-        setTimeout(() => setSaved(false), 3000);
+
+        // Update profile hero immediately (no page reload needed)
+        onProfileUpdate({ name: profile.name || null, avatar: avatarUrl });
+
+        // Sync global auth state → navbar name/avatar update instantly
+        if (role) {
+          authLogin(role, {
+            name:   profile.name.trim() || authUser?.name || "",
+            email:  authUser?.email ?? null,
+            avatar: avatarUrl,
+          });
+        }
       } else {
-        setError(result.error ?? "Алдаа гарлаа.");
+        showToast(result.error ?? "Алдаа гарлаа.", "error");
       }
     } finally {
       setSaving(false);
@@ -560,23 +633,69 @@ function SettingsTab({ user }: { user: ProfileUser }) {
   return (
     <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
 
-      {saved && (
-        <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold px-4 py-3.5 rounded-xl animate-fade-up">
-          <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-            <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+      {/* ── Profile photo ────────────────────────────── */}
+      <SettingsCard icon={<Edit3 className="w-4 h-4" strokeWidth={2} />} title="Профайл зураг">
+        <div className="flex items-center gap-5">
+
+          {/* Preview circle */}
+          <div className="relative flex-shrink-0">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-slate-200 bg-slate-100">
+              {(avatarPreview || avatarUrl) ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={avatarPreview || avatarUrl!}
+                  alt="Профайл зураг"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <InitialAvatar name={fallbackName} className="w-full h-full text-2xl" />
+              )}
+            </div>
+            {avatarUploading && (
+              <div className="absolute inset-0 rounded-2xl bg-black/45 flex items-center justify-center">
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
+              </div>
+            )}
           </div>
-          Өөрчлөлтүүд амжилттай хадгалагдлаа.
-        </div>
-      )}
 
-      {error && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 text-sm font-semibold px-4 py-3.5 rounded-xl">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" strokeWidth={2} />
-          {error}
-        </div>
-      )}
+          {/* Controls */}
+          <div className="space-y-2">
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleAvatarSelect}
+            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 border border-slate-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 px-4 py-2 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {avatarUploading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Edit3 className="w-4 h-4" strokeWidth={2} />}
+                {avatarUploading ? "Хуулж байна..." : "Зураг солих"}
+              </button>
 
-      {/* ── Profile info ──────────────────────────────── */}
+              {avatarChanged && !avatarUploading && (
+                <button
+                  type="button"
+                  onClick={handleRevertAvatar}
+                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
+                >
+                  Буцаах
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">PNG, JPG, WEBP · Дээд тал нь 5 MB</p>
+          </div>
+        </div>
+      </SettingsCard>
+
+      {/* ── Profile name ─────────────────────────────── */}
       <SettingsCard icon={<Edit3 className="w-4 h-4" strokeWidth={2} />} title="Хувийн мэдээлэл">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1.5">Нэр</label>
@@ -611,9 +730,9 @@ function SettingsTab({ user }: { user: ProfileUser }) {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Нууц үг солих</p>
 
           {([
-            { id: "current", label: "Одоогийн нууц үг",       placeholder: "••••••••"  },
-            { id: "next",    label: "Шинэ нууц үг",           placeholder: "8+ тэмдэгт"},
-            { id: "confirm", label: "Шинэ нууц үгийг давтах", placeholder: "••••••••"  },
+            { id: "current", label: "Одоогийн нууц үг",       placeholder: "••••••••"   },
+            { id: "next",    label: "Шинэ нууц үг",           placeholder: "8+ тэмдэгт" },
+            { id: "confirm", label: "Шинэ нууц үгийг давтах", placeholder: "••••••••"   },
           ] as const).map(f => (
             <div key={f.id}>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">{f.label}</label>
@@ -670,14 +789,14 @@ function SettingsTab({ user }: { user: ProfileUser }) {
         </div>
       </SettingsCard>
 
-      {/* Save button */}
+      {/* ── Action buttons ────────────────────────────── */}
       <div className="flex items-center justify-end gap-3 pt-1">
         <button
           type="button"
           onClick={() => {
             setProfile({ name: user.name ?? "" });
             setPassword({ current: "", next: "", confirm: "" });
-            setError(null);
+            handleRevertAvatar();
           }}
           className="text-sm font-semibold text-slate-600 hover:text-slate-800 px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
         >
@@ -685,13 +804,12 @@ function SettingsTab({ user }: { user: ProfileUser }) {
         </button>
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || avatarUploading}
           className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-cta transition-colors"
         >
           {saving
             ? <Loader2 className="w-4 h-4 animate-spin" />
-            : <Check className="w-4 h-4" strokeWidth={2.5} />
-          }
+            : <Check className="w-4 h-4" strokeWidth={2.5} />}
           Хадгалах
         </button>
       </div>

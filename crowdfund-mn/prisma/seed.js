@@ -6,8 +6,8 @@ const ts = require("typescript");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
 
-const ADMIN_LOGIN_NAME = "admin_b9eKNp5r";
-const ADMIN_PASSWORD = "JYPBFpTHmtUwXyTx";
+const DEFAULT_ADMIN_LOGIN_NAME = "admin_b9eKNp5r";
+const DEFAULT_ADMIN_PASSWORD = "JYPBFpTHmtUwXyTx";
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -63,6 +63,9 @@ function seedId(prefix, slug, id) {
 
 loadEnvFile(path.join(__dirname, "..", ".env.local"));
 loadEnvFile(path.join(__dirname, "..", ".env"));
+
+const ADMIN_LOGIN_NAME = process.env.ADMIN_LOGIN_NAME ?? DEFAULT_ADMIN_LOGIN_NAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? DEFAULT_ADMIN_PASSWORD;
 
 const prisma = new PrismaClient();
 const { MOCK_PROJECTS, MOCK_REWARD_TIERS, MOCK_UPDATES } = loadMockData();
