@@ -14,6 +14,7 @@ interface DBProject {
   description: string;
   category: string;
   coverImage: string | null;
+  galleryImages?: string[];
   goal: number;
   raised: number;
   backers: number;
@@ -59,6 +60,17 @@ function sanitizeImage(src: string | null | undefined): string {
   return DEFAULT_COVER;
 }
 
+function sanitizeGallery(images: string[] | null | undefined): string[] {
+  if (!images?.length) return [];
+  return Array.from(
+    new Set(
+      images
+        .map((src) => src.trim())
+        .filter((src) => /^(https?:\/\/|\/)/.test(src))
+    )
+  ).slice(0, 3);
+}
+
 export function toProject(p: DBProject): Project {
   const daysLeft = Math.max(
     0,
@@ -72,6 +84,7 @@ export function toProject(p: DBProject): Project {
     description:     p.description,
     category:        p.category as Project["category"],
     coverImage:      sanitizeImage(p.coverImage),
+    galleryImages:   sanitizeGallery(p.galleryImages),
     goal:            p.goal,
     raised:          p.raised,
     backers:         p.backers,

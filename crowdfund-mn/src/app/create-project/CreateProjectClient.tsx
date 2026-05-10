@@ -16,6 +16,12 @@ interface RewardTier {
   description: string;
 }
 
+interface SelectedProjectImage {
+  id:      string;
+  file:    File;
+  preview: string;
+}
+
 interface FormValues {
   title:           string;
   blurb:           string;
@@ -33,6 +39,8 @@ interface FormValues {
 
 type StringKey = keyof Omit<FormValues, "rewards">;
 type ErrMap    = Record<string, string>;
+
+const MAX_PROJECT_IMAGES = 3;
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
@@ -241,48 +249,79 @@ function FTextarea({ id, value, onChange, placeholder, error, rows = 6 }: {
 /* ── Image upload with live preview ─────────────────────────────────────── */
 
 interface ImageUploadProps {
-  file: File | null;
-  preview: string;
-  onChange: (file: File | null, preview: string) => void;
+  images: SelectedProjectImage[];
+  error?: string;
+  onChange: (images: SelectedProjectImage[]) => void;
 }
 
-function ImageUpload({ file, preview, onChange }: ImageUploadProps) {
+function ImageUpload({ images, error, onChange }: ImageUploadProps) {
   const ref = useRef<HTMLInputElement>(null);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-    // Revoke previous object URL to avoid memory leaks
-    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-    onChange(selected, URL.createObjectURL(selected));
-    // Reset input so selecting the same file again triggers onChange
+    const remaining = MAX_PROJECT_IMAGES - images.length;
+    const selected = Array.from(e.target.files ?? [])
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, remaining)
+      .map((file) => ({
+        id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+
+    if (selected.length > 0) onChange([...images, ...selected]);
     e.target.value = "";
   }
 
-  function handleRemove() {
-    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-    onChange(null, "");
+  function handleRemove(id: string) {
+    const removed = images.find((image) => image.id === id);
+    if (removed?.preview.startsWith("blob:")) URL.revokeObjectURL(removed.preview);
+    onChange(images.filter((image) => image.id !== id));
   }
 
   return (
     <>
       <input
         ref={ref}
+        id="coverImages"
         type="file"
+        multiple
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={handleFileSelect}
       />
 
-      {preview ? (
+      {images.length > 0 ? (
         /* ── Preview state ── */
-        <div className="rounded-2xl overflow-hidden border-2 border-emerald-200 bg-slate-100">
+        <div className={cn(
+          "rounded-2xl border-2 bg-slate-50 p-3",
+          error ? "border-red-300" : "border-emerald-200"
+        )}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={preview}
+            src={images[0]?.preview ?? ""}
             alt="Нүүр зургийн урьдчилан харах"
             className="w-full h-52 object-cover"
           />
+          {images.length > 1 && (
+            <div className="grid grid-cols-3 gap-2 p-3 bg-white">
+              {images.map((image, index) => (
+                <button
+                  key={image.id}
+                  type="button"
+                  onClick={() => handleRemove(image.id)}
+                  className="relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-100 group/thumb"
+                  aria-label={`Зураг ${index + 1} устгах`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image.preview} alt="" className="w-full h-full object-cover" />
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-blue-700 px-2 py-0.5 text-[10px] font-bold text-white">
+                    {index === 0 ? "Нүүр" : index + 1}
+                  </span>
+                  <span className="absolute inset-0 bg-red-600/0 group-hover/thumb:bg-red-600/20 transition-colors" />
+                </button>
+              ))}
+            </div>
+          )}
           {/* Footer bar */}
           <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-50 border-t border-emerald-100">
             <div className="flex items-center gap-2 min-w-0">
@@ -290,20 +329,22 @@ function ImageUpload({ file, preview, onChange }: ImageUploadProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-xs font-semibold text-emerald-700 truncate">
-                {file?.name ?? "Зураг сонгогдсон"}
+                {images.length} / {MAX_PROJECT_IMAGES} зураг сонгосон
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0 ml-3">
+              {images.length < MAX_PROJECT_IMAGES && (
+                <button
+                  type="button"
+                  onClick={() => ref.current?.click()}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Зураг нэмэх
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => ref.current?.click()}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                Өөрчлөх
-              </button>
-              <button
-                type="button"
-                onClick={handleRemove}
+                onClick={() => images[0] && handleRemove(images[0].id)}
                 className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
               >
                 Устгах
@@ -325,11 +366,12 @@ function ImageUpload({ file, preview, onChange }: ImageUploadProps) {
                   d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
             </div>
-            <p className="text-sm font-semibold text-slate-600">Зураг оруулахын тулд дарна уу</p>
-            <p className="text-xs text-slate-400">PNG, JPG, WEBP · Дээд тал нь 5 MB</p>
+            <p className="text-sm font-semibold text-slate-600">1-3 зураг оруулахын тулд дарна уу</p>
+            <p className="text-xs text-slate-400">PNG, JPG, WEBP · нэг зураг 5 MB хүртэл</p>
           </div>
         </button>
       )}
+      <ErrMsg msg={error} />
     </>
   );
 }
@@ -504,14 +546,13 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
 
 function Step3({
   d, set, e,
-  coverImageFile, coverImagePreview, onCoverImageChange,
+  projectImages, onProjectImagesChange,
 }: {
   d: FormValues;
   set: (k: StringKey, v: string) => void;
   e: ErrMap;
-  coverImageFile: File | null;
-  coverImagePreview: string;
-  onCoverImageChange: (file: File | null, preview: string) => void;
+  projectImages: SelectedProjectImage[];
+  onProjectImagesChange: (images: SelectedProjectImage[]) => void;
 }) {
   const charCount = d.story.length;
   const charOk    = charCount >= 100;
@@ -536,13 +577,13 @@ function Step3({
       </div>
 
       <div>
-        <Label htmlFor="coverImage">Нүүр зураг</Label>
+        <Label htmlFor="coverImages" required>Төслийн зураг</Label>
         <ImageUpload
-          file={coverImageFile}
-          preview={coverImagePreview}
-          onChange={onCoverImageChange}
+          images={projectImages}
+          error={e.coverImages}
+          onChange={onProjectImagesChange}
         />
-        <Hint>Санал болгох хэмжээ: 1280×720 px. Өндөр чанарын зураг 2 дахин их дэмжигч татдаг.</Hint>
+        <Hint>1-3 бодит зураг оруулна. Эхний зураг нүүрэнд гарч, карт дээр зургууд хажуу тийш гулсаж солигдоно.</Hint>
       </div>
     </div>
   );
@@ -685,13 +726,17 @@ export function CreateProjectClient() {
   const [submitting, setSubmitting] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
-  // Image state managed separately so Step3 can pass a File object
-  const [coverImageFile,    setCoverImageFile]    = useState<File | null>(null);
-  const [coverImagePreview, setCoverImagePreview] = useState<string>("");
+  const [projectImages, setProjectImages] = useState<SelectedProjectImage[]>([]);
 
-  function handleCoverImageChange(file: File | null, preview: string) {
-    setCoverImageFile(file);
-    setCoverImagePreview(preview);
+  function handleProjectImagesChange(images: SelectedProjectImage[]) {
+    setProjectImages(images);
+    if (errors.coverImages) {
+      setErrors((e) => {
+        const n = { ...e };
+        delete n.coverImages;
+        return n;
+      });
+    }
   }
 
   /* Field setters */
@@ -722,6 +767,9 @@ export function CreateProjectClient() {
     if (submitting) return;
 
     const errs = validate(step, data);
+    if (step === 3 && projectImages.length === 0) {
+      errs.coverImages = "1-3 зураг оруулна уу";
+    }
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -737,23 +785,24 @@ export function CreateProjectClient() {
 
     setSubmitting(true);
 
-    // Upload image first (if the user selected one), then create the project
-    let coverImageUrl: string | undefined;
-    if (coverImageFile) {
-      try {
-        const fd = new FormData();       // browser native FormData
-        fd.append("file", coverImageFile);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (uploadRes.ok) {
-          const json = await uploadRes.json() as { url: string };
-          coverImageUrl = json.url;
-        } else {
-          // Non-fatal: project will be created without an image
-          console.warn("[upload] Upload failed:", await uploadRes.text());
+    let uploadedImages: string[];
+    try {
+      uploadedImages = await Promise.all(projectImages.map(async (image) => {
+        const fd = new FormData();
+        fd.append("file", image.file);
+        const uploadRes = await fetch("/upload-api", { method: "POST", body: fd });
+        if (!uploadRes.ok) {
+          throw new Error(await uploadRes.text());
         }
-      } catch (err) {
-        console.warn("[upload] Network error:", err);
-      }
+        const json = await uploadRes.json() as { url: string };
+        return json.url;
+      }));
+    } catch (err) {
+      console.warn("[upload] Upload failed:", err);
+      setSubmitting(false);
+      setErrors({ submit: "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу." });
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
     }
 
     const result = await createProject({
@@ -767,7 +816,8 @@ export function CreateProjectClient() {
       bankAccount:     data.bankAccount,
       bankAccountName: data.bankAccountName,
       story:           data.story,
-      coverImage:      coverImageUrl,
+      coverImage:      uploadedImages[0],
+      galleryImages:   uploadedImages,
       rewards:         data.rewards.map(r => ({
         title:       r.title,
         amount:      Number(r.amount),
@@ -840,9 +890,8 @@ export function CreateProjectClient() {
                   {step === 3 && (
                     <Step3
                       d={data} set={set} e={errors}
-                      coverImageFile={coverImageFile}
-                      coverImagePreview={coverImagePreview}
-                      onCoverImageChange={handleCoverImageChange}
+                      projectImages={projectImages}
+                      onProjectImagesChange={handleProjectImagesChange}
                     />
                   )}
                   {step === 4 && (

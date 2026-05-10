@@ -17,9 +17,16 @@ function makeSlug(title: string): string {
   return `${base || "project"}-${Date.now()}`;
 }
 
-function toStoredCoverImage(coverImage?: string): string | null {
-  if (!coverImage) return null;
-  return /^(https?:\/\/|\/)/.test(coverImage) ? coverImage : null;
+function toStoredImage(image?: string): string | null {
+  if (!image) return null;
+  return /^(https?:\/\/|\/)/.test(image) ? image : null;
+}
+
+function toStoredImages(images?: string[]): string[] {
+  if (!images?.length) return [];
+  return Array.from(
+    new Set(images.map(toStoredImage).filter((image): image is string => Boolean(image)))
+  ).slice(0, 3);
 }
 
 /* ── Create Project ────────────────────────────────────────────────── */
@@ -36,6 +43,7 @@ export async function createProject(data: {
   bankAccountName: string;
   story: string;
   coverImage?: string;
+  galleryImages?: string[];
   rewards: Array<{ title: string; amount: number; description: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
@@ -47,6 +55,8 @@ export async function createProject(data: {
     const endsAt = new Date();
     endsAt.setDate(endsAt.getDate() + data.duration);
     const deliveryMonth = endsAt.toISOString().slice(0, 7);
+    const galleryImages = toStoredImages(data.galleryImages);
+    const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
 
     const project = await prisma.project.create({
       data: {
@@ -55,7 +65,8 @@ export async function createProject(data: {
         description:     data.blurb,
         story:           data.story,
         category:        data.category,
-        coverImage:      toStoredCoverImage(data.coverImage),
+        coverImage,
+        galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
         goal:            data.goal,
         location:        data.location,
         bankName:        data.bankName,
@@ -118,6 +129,7 @@ function formatProject(p: {
   description: string;
   category: string;
   coverImage: string | null;
+  galleryImages: string[];
   goal: number;
   raised: number;
   backers: number;
@@ -140,6 +152,7 @@ function formatProject(p: {
     description: p.description,
     category: p.category,
     coverImage: p.coverImage ?? "",
+    galleryImages: p.galleryImages ?? [],
     goal: p.goal,
     raised: p.raised,
     backers: p.backers,

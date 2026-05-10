@@ -23,6 +23,7 @@ export interface Project {
   description: string;
   category: Category;
   coverImage: string;
+  galleryImages?: string[];
   creator: Creator;
   goal: number;
   raised: number;

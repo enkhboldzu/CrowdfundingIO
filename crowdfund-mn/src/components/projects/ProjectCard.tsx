@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
+import type { MouseEvent } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge }       from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { fundingPercent, daysLeftLabel } from "@/lib/utils";
@@ -14,10 +16,27 @@ import { cn } from "@/lib/utils";
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80";
 
+function validImageSrc(src: string | null | undefined): string | null {
+  const value = src?.trim();
+  if (!value) return null;
+  if (value.startsWith("/") || value.startsWith("http://") || value.startsWith("https://")) return value;
+  return null;
+}
+
 function normalizeSrc(src: string | null | undefined): string {
-  if (!src) return FALLBACK_IMAGE;
-  if (src.startsWith("/") || src.startsWith("http://") || src.startsWith("https://")) return src;
-  return FALLBACK_IMAGE;
+  return validImageSrc(src) ?? FALLBACK_IMAGE;
+}
+
+function projectImages(project: Project): string[] {
+  const images = [
+    ...(project.galleryImages ?? []),
+    project.coverImage,
+  ]
+    .map(validImageSrc)
+    .filter((src): src is string => Boolean(src));
+
+  const unique = Array.from(new Set(images));
+  return unique.length > 0 ? unique : [FALLBACK_IMAGE];
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -46,8 +65,20 @@ interface ProjectCardProps {
 export function ProjectCard({ project, featured = false, className }: ProjectCardProps) {
   const percent  = fundingPercent(project.raised, project.goal);
   const router   = useRouter();
-  const [imgSrc,    setImgSrc]    = useState(() => normalizeSrc(project.coverImage));
+  const images    = useMemo(() => projectImages(project), [project.coverImage, project.galleryImages]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [slideDirection, setSlideDirection] = useState(1);
+  const [failedImages, setFailedImages] = useState<string[]>([]);
   const [avatarSrc, setAvatarSrc] = useState(() => normalizeSrc(project.creator.avatar));
+  const currentImage = images[imageIndex % images.length] ?? FALLBACK_IMAGE;
+  const displayImage = failedImages.includes(currentImage) ? FALLBACK_IMAGE : currentImage;
+
+  function showImage(nextIndex: number, direction: number, event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    setSlideDirection(direction);
+    setImageIndex((nextIndex + images.length) % images.length);
+  }
 
   return (
     /*
@@ -77,21 +108,70 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
 
       {/* Cover image */}
       <div className={cn("relative z-0 overflow-hidden bg-slate-100", featured ? "sm:w-[45%] h-48 sm:h-auto" : "h-48")}>
-        <Image
-          src={imgSrc}
-          alt={project.title}
-          fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-          sizes={featured ? "(max-width: 640px) 100vw, 45vw" : "(max-width: 768px) 100vw, 33vw"}
-          onError={() => setImgSrc(FALLBACK_IMAGE)}
-        />
-        <div className="absolute top-3 left-3">
+        <AnimatePresence mode="popLayout" custom={slideDirection}>
+          <motion.div
+            key={`${displayImage}-${imageIndex}`}
+            custom={slideDirection}
+            initial={{ x: slideDirection * 36, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: slideDirection * -36, opacity: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={displayImage}
+              alt={project.title}
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes={featured ? "(max-width: 640px) 100vw, 45vw" : "(max-width: 768px) 100vw, 33vw"}
+              onError={() => setFailedImages((prev) => prev.includes(currentImage) ? prev : [...prev, currentImage])}
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {images.length > 1 && (
+          <>
+            <div className="absolute inset-x-3 top-1/2 z-[3] flex -translate-y-1/2 justify-between opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={(event) => showImage(imageIndex - 1, -1, event)}
+                className="pointer-events-auto grid h-8 w-8 place-items-center rounded-full bg-white/90 text-slate-800 shadow-sm hover:bg-white"
+                aria-label="Өмнөх зураг"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(event) => showImage(imageIndex + 1, 1, event)}
+                className="pointer-events-auto grid h-8 w-8 place-items-center rounded-full bg-white/90 text-slate-800 shadow-sm hover:bg-white"
+                aria-label="Дараах зураг"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="absolute bottom-3 left-1/2 z-[3] flex -translate-x-1/2 gap-1.5">
+              {images.map((image, index) => (
+                <button
+                  key={`${image}-${index}`}
+                  type="button"
+                  onClick={(event) => showImage(index, index >= imageIndex ? 1 : -1, event)}
+                  className={cn(
+                    "pointer-events-auto h-1.5 rounded-full transition-all",
+                    index === imageIndex % images.length ? "w-5 bg-white" : "w-1.5 bg-white/60"
+                  )}
+                  aria-label={`Зураг ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        <div className="absolute top-3 left-3 z-[4]">
           <Badge variant="blue" className="backdrop-blur-sm bg-blue-800/90 text-white border-0">
             {CATEGORY_LABELS[project.category] ?? project.category}
           </Badge>
         </div>
         {project.isTrending && (
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-3 z-[4]">
             <Badge variant="yellow" className="backdrop-blur-sm">🔥 Онцлох</Badge>
           </div>
         )}
