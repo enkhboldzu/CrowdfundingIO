@@ -106,6 +106,8 @@ router.post("/", authenticate, async (req, res, next) => {
         endsAt: new Date(endsAt),
         coverImage: coverImage ?? null,
         creatorId: req.user.id,
+        status: "PENDING",
+        isPublished: false,
       },
       select: PUBLIC_PROJECT_SELECT,
     });

@@ -5,100 +5,132 @@ import Link from "next/link";
 import { GuardedLink } from "@/components/ui/GuardedLink";
 import Image from "next/image";
 import {
-  MapPin, Calendar, Check, Edit3, Plus,
+  Calendar, Check, Edit3, Plus,
   Heart, FolderOpen, Settings2, Bell,
   Mail, Lock, Wallet, TrendingUp, Users,
-  Eye, Pencil, Clock, AlertCircle, CheckCircle2, XCircle,
+  Eye, Pencil, Clock, AlertCircle, CheckCircle2, XCircle, Loader2,
 } from "lucide-react";
 import { Footer }      from "@/components/landing/Footer";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { MOCK_PROJECTS } from "@/lib/mock-data";
 import { fundingPercent } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types";
+import { updateProfile } from "@/lib/actions/user";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
 type ProfileTab = "backed" | "projects" | "settings";
 
-interface BackedProject {
-  project: Project;
-  pledgeAmount: number;
-  pledgeDate: string;
-  status: "active" | "funded" | "ended";
+export interface ProfileUser {
+  id:         string;
+  name:       string | null;
+  email:      string | null;
+  phone:      string | null;
+  avatar:     string | null;
+  isVerified: boolean;
+  createdAt:  string;
 }
 
-/* ── Mock data ──────────────────────────────────────────────────── */
+export interface DonationStats {
+  totalAmount: number;
+  count:       number;
+}
 
-const USER = {
-  name: "Б. Анарэрдэнэ",
-  email: "baterdeneanarerdene09@gmail.com",
-  bio: "Монголын технологи болон боловсролын салбарт хувь нэмрээ оруулахыг хичээдэг. Шинэ санаа, залуу бизнес эрхлэгчдийг дэмждэг.",
-  avatar: "https://i.pravatar.cc/150?img=47",
-  location: "Улаанбаатар, Монгол",
-  memberSince: "2024 оны 3-р сар",
-  isVerified: true,
+export interface BackedDonation {
+  id:        string;
+  amount:    number;
+  createdAt: string;
+  project:   Project;
+}
+
+/* ── Helpers ────────────────────────────────────────────────────── */
+
+function getDisplayName(user: ProfileUser): string {
+  if (user.name?.trim()) return user.name;
+  if (user.email)        return user.email.split("@")[0];
+  if (user.phone)        return user.phone;
+  return "Гишүүн";
+}
+
+function formatMemberSince(isoDate: string): string {
+  const d = new Date(isoDate);
+  return `${d.getFullYear()} оны ${d.getMonth() + 1}-р сараас`;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  technology: "Технологи", arts: "Урлаг",      film: "Кино",       environment: "Байгаль",
+  games:      "Тоглоом",   health: "Эрүүл мэнд", education: "Боловсрол", community: "Нийгэм",
+  food:       "Хоол & Ундаа", fashion: "Загвар", music: "Хөгжим",   publishing: "Хэвлэл",
 };
 
-const STATS = [
-  { label: "Нийт дэмжсэн",         value: "₮285,000", icon: Wallet,     color: "text-blue-700",    bg: "bg-blue-50"  },
-  { label: "Дэмжсэн төслүүд",      value: "6",         icon: Heart,      color: "text-rose-600",    bg: "bg-rose-50"  },
-  { label: "Үүсгэсэн төслүүд",     value: "2",         icon: TrendingUp, color: "text-emerald-700", bg: "bg-emerald-50" },
+/* ── InitialAvatar ──────────────────────────────────────────────── */
+
+const AVATAR_COLORS = [
+  "bg-blue-500", "bg-violet-500", "bg-emerald-500",
+  "bg-rose-500",  "bg-amber-500",  "bg-cyan-500",
 ];
 
-const BACKED: BackedProject[] = [
-  { project: MOCK_PROJECTS[0], pledgeAmount: 50_000,  pledgeDate: "2025-01-15", status: "active" },
-  { project: MOCK_PROJECTS[1], pledgeAmount: 100_000, pledgeDate: "2024-12-20", status: "active" },
-  { project: MOCK_PROJECTS[3], pledgeAmount: 15_000,  pledgeDate: "2025-02-01", status: "active" },
-  { project: MOCK_PROJECTS[5], pledgeAmount: 75_000,  pledgeDate: "2024-11-10", status: "funded" },
-  { project: MOCK_PROJECTS[7], pledgeAmount: 25_000,  pledgeDate: "2025-01-28", status: "active" },
-  { project: MOCK_PROJECTS[2], pledgeAmount: 20_000,  pledgeDate: "2024-10-05", status: "funded" },
-];
+function InitialAvatar({ name, className }: { name: string; className?: string }) {
+  const char       = (name.trim().charAt(0) || "?").toUpperCase();
+  const colorIndex = char.charCodeAt(0) % AVATAR_COLORS.length;
+  return (
+    <div className={cn(
+      "flex items-center justify-center font-bold text-white select-none",
+      AVATAR_COLORS[colorIndex], className,
+    )}>
+      {char}
+    </div>
+  );
+}
 
-const STATUS_CONFIG = {
-  active: { label: "Идэвхтэй",   dot: "bg-green-400", text: "text-green-700",  bg: "bg-green-50",  border: "border-green-200" },
-  funded: { label: "Санхүүжсэн", dot: "bg-blue-500",  text: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200"  },
-  ended:  { label: "Дууссан",    dot: "bg-slate-400",  text: "text-slate-600",  bg: "bg-slate-50",  border: "border-slate-200" },
+/* ── Status configs ─────────────────────────────────────────────── */
+
+const BACKED_STATUS_CONFIG = {
+  active: { label: "Идэвхтэй",   dot: "bg-green-400", text: "text-green-700", bg: "bg-green-50",  border: "border-green-200" },
+  funded: { label: "Санхүүжсэн", dot: "bg-blue-500",  text: "text-blue-700",  bg: "bg-blue-50",   border: "border-blue-200"  },
+  ended:  { label: "Дууссан",    dot: "bg-slate-400", text: "text-slate-600", bg: "bg-slate-50",  border: "border-slate-200" },
 };
 
 const CREATED_STATUS_CONFIG = {
-  PENDING:   { label: "Хянагдаж байна", icon: Clock,         dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200"   },
-  ACTIVE:    { label: "Нийтлэгдсэн",   icon: CheckCircle2,  dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
-  FUNDED:    { label: "Санхүүжсэн",    icon: CheckCircle2,  dot: "bg-blue-500",    text: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200"    },
-  REJECTED:  { label: "Татгалзсан",    icon: XCircle,       dot: "bg-red-500",     text: "text-red-700",     bg: "bg-red-50",     border: "border-red-200"     },
-  FAILED:    { label: "Дууссан",       icon: AlertCircle,   dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
-  CANCELLED: { label: "Цуцлагдсан",   icon: XCircle,       dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
+  PENDING:   { label: "Хянагдаж байна", icon: Clock,        dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200"   },
+  ACTIVE:    { label: "Нийтлэгдсэн",   icon: CheckCircle2, dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+  FUNDED:    { label: "Санхүүжсэн",    icon: CheckCircle2, dot: "bg-blue-500",    text: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200"    },
+  REJECTED:  { label: "Татгалзсан",    icon: XCircle,      dot: "bg-red-500",     text: "text-red-700",     bg: "bg-red-50",     border: "border-red-200"     },
+  FAILED:    { label: "Дууссан",       icon: AlertCircle,  dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
+  CANCELLED: { label: "Цуцлагдсан",   icon: XCircle,      dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
 } as const;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  technology: "Технологи", arts: "Урлаг",      film: "Кино",    environment: "Байгаль",
-  games: "Тоглоом",        health: "Эрүүл мэнд", education: "Боловсрол", community: "Нийгэм",
-  food: "Хоол & Ундаа",   fashion: "Загвар",   music: "Хөгжим", publishing: "Хэвлэл",
-};
 
 /* ── Root component ─────────────────────────────────────────────── */
 
 interface ProfileClientProps {
-  initialTab?: ProfileTab;
-  createdProjects?: Project[];
-  userName?: string;
+  user:            ProfileUser;
+  donationStats:   DonationStats;
+  backedDonations: BackedDonation[];
+  createdProjects: Project[];
+  initialTab?:     ProfileTab;
 }
 
 export function ProfileClient({
+  user,
+  donationStats,
+  backedDonations,
+  createdProjects,
   initialTab = "backed",
-  createdProjects = [],
-  userName,
 }: ProfileClientProps) {
-  const [tab, setTab] = useState<ProfileTab>(initialTab);
-  const displayName = userName ?? USER.name;
-  const stats = STATS.map((stat, index) =>
-    index === 2 ? { ...stat, value: String(createdProjects.length) } : stat
-  );
+  const [tab, setTab]     = useState<ProfileTab>(initialTab);
+  const displayName       = getDisplayName(user);
+  const memberSince       = formatMemberSince(user.createdAt);
+
+  const stats = [
+    { label: "Нийт дэмжсэн",    value: `₮${donationStats.totalAmount.toLocaleString()}`, icon: Wallet,     color: "text-blue-700",    bg: "bg-blue-50"    },
+    { label: "Дэмжсэн төслүүд", value: String(donationStats.count),                      icon: Heart,      color: "text-rose-600",    bg: "bg-rose-50"    },
+    { label: "Үүсгэсэн төслүүд",value: String(createdProjects.length),                   icon: TrendingUp, color: "text-emerald-700", bg: "bg-emerald-50" },
+  ];
 
   const tabs: { id: ProfileTab; label: string; icon: React.ElementType; count?: number }[] = [
-    { id: "backed",   label: "Дэмжсэн төслүүд", icon: Heart,     count: BACKED.length  },
+    { id: "backed",   label: "Дэмжсэн төслүүд", icon: Heart,      count: donationStats.count    },
     { id: "projects", label: "Миний төслүүд",    icon: FolderOpen, count: createdProjects.length },
-    { id: "settings", label: "Тохиргоо",         icon: Settings2               },
+    { id: "settings", label: "Тохиргоо",         icon: Settings2                                 },
   ];
 
   return (
@@ -107,7 +139,6 @@ export function ProfileClient({
 
         {/* ── Profile hero ──────────────────────────────── */}
         <section className="gradient-brand-hero pt-24 pb-14 relative overflow-hidden">
-          {/* Decorative blobs */}
           <div aria-hidden className="absolute -top-16 -right-16 w-80 h-80 rounded-full opacity-10"
             style={{ background: "radial-gradient(circle, #93C5FD, transparent 70%)" }} />
           <div aria-hidden className="absolute bottom-0 left-1/4 w-96 h-40 opacity-10"
@@ -119,15 +150,19 @@ export function ProfileClient({
               {/* Avatar */}
               <div className="relative flex-shrink-0 self-start sm:self-center">
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/25 shadow-2xl">
-                  <Image
-                    src={USER.avatar}
-                    alt={displayName}
-                    width={112}
-                    height={112}
-                    className="object-cover w-full h-full"
-                  />
+                  {user.avatar ? (
+                    <Image
+                      src={user.avatar}
+                      alt={displayName}
+                      width={112}
+                      height={112}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <InitialAvatar name={displayName} className="w-full h-full text-4xl" />
+                  )}
                 </div>
-                {USER.isVerified && (
+                {user.isVerified && (
                   <div className="absolute -bottom-1.5 -right-1.5 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-md">
                     <Check className="w-4 h-4 text-white" strokeWidth={3} />
                   </div>
@@ -138,33 +173,33 @@ export function ProfileClient({
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                    <div className="flex items-center gap-2.5 flex-wrap mb-2">
                       <h1 className="font-display font-bold text-2xl sm:text-3xl text-white leading-tight">
                         {displayName}
                       </h1>
-                      {USER.isVerified && (
+                      {user.isVerified && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
                           <Check className="w-3 h-3" strokeWidth={3} />
                           Баталгаажсан
                         </span>
                       )}
                     </div>
-                    <p className="text-white/65 text-sm max-w-lg leading-relaxed mb-3">
-                      {USER.bio}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-white/50">
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" strokeWidth={2} />
-                        {USER.location}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" strokeWidth={2} />
-                        {USER.memberSince}-аас гишүүн
-                      </span>
+                    {(user.email || user.phone) && (
+                      <p className="text-white/65 text-sm mb-3 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5" strokeWidth={2} />
+                        {user.email ?? user.phone}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 text-xs text-white/50">
+                      <Calendar className="w-3.5 h-3.5" strokeWidth={2} />
+                      {memberSince} гишүүн
                     </div>
                   </div>
 
-                  <button className="self-start inline-flex items-center gap-2 text-sm font-semibold text-white border border-white/25 hover:border-white/50 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all backdrop-blur-sm flex-shrink-0">
+                  <button
+                    onClick={() => setTab("settings")}
+                    className="self-start inline-flex items-center gap-2 text-sm font-semibold text-white border border-white/25 hover:border-white/50 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all backdrop-blur-sm flex-shrink-0"
+                  >
                     <Edit3 className="w-3.5 h-3.5" strokeWidth={2} />
                     Профайл засах
                   </button>
@@ -202,7 +237,7 @@ export function ProfileClient({
           {/* Tab bar */}
           <div className="inline-flex gap-1 bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 mb-8 w-full sm:w-auto overflow-x-auto">
             {tabs.map(t => {
-              const Icon = t.icon;
+              const Icon     = t.icon;
               const isActive = tab === t.id;
               return (
                 <button
@@ -212,7 +247,7 @@ export function ProfileClient({
                     "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0",
                     isActive
                       ? "bg-blue-800 text-white shadow-md"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
                   )}
                 >
                   <Icon className="w-4 h-4" strokeWidth={2} />
@@ -220,7 +255,7 @@ export function ProfileClient({
                   {t.count !== undefined && (
                     <span className={cn(
                       "text-[11px] font-bold px-1.5 py-0.5 rounded-full leading-none",
-                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500",
                     )}>
                       {t.count}
                     </span>
@@ -230,10 +265,9 @@ export function ProfileClient({
             })}
           </div>
 
-          {/* Tab content */}
-          {tab === "backed"   && <BackedTab />}
+          {tab === "backed"   && <BackedTab donations={backedDonations} />}
           {tab === "projects" && <ProjectsTab projects={createdProjects} />}
-          {tab === "settings" && <SettingsTab />}
+          {tab === "settings" && <SettingsTab user={user} />}
         </div>
 
       </main>
@@ -244,37 +278,48 @@ export function ProfileClient({
 
 /* ── Backed Projects tab ────────────────────────────────────────── */
 
-function BackedTab() {
-  if (BACKED.length === 0) {
+function BackedTab({ donations }: { donations: BackedDonation[] }) {
+  if (donations.length === 0) {
     return (
       <EmptyState
         icon={<Heart className="w-6 h-6 text-slate-400" />}
         title="Дэмжсэн төсөл байхгүй"
         description="Та одоогоор ямар ч төслийг дэмжээгүй байна. Сонирхолтой төслүүдийг үзнэ үү."
-        action={<Link href="/explore" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">Төслүүд харах</Link>}
+        action={
+          <Link href="/explore" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+            Төслүүд харах
+          </Link>
+        }
       />
     );
   }
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {BACKED.map(item => (
-        <BackedCard key={item.project.id} item={item} />
+      {donations.map(item => (
+        <BackedCard key={item.id} item={item} />
       ))}
     </div>
   );
 }
 
-function BackedCard({ item }: { item: BackedProject }) {
-  const { project, pledgeAmount, pledgeDate, status } = item;
-  const percent = fundingPercent(project.raised, project.goal);
-  const cfg = STATUS_CONFIG[status];
+function BackedCard({ item }: { item: BackedDonation }) {
+  const { amount, createdAt, project } = item;
+  const percent       = fundingPercent(project.raised, project.goal);
+  const projectStatus = project.status ?? "ACTIVE";
+  const backedStatus: keyof typeof BACKED_STATUS_CONFIG =
+    projectStatus === "FUNDED" ? "funded" :
+    projectStatus === "ACTIVE" ? "active"  : "ended";
+  const cfg        = BACKED_STATUS_CONFIG[backedStatus];
+  const pledgeDate = createdAt.split("T")[0];
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-200 overflow-hidden group">
       <div className="flex gap-4 p-4 sm:p-5">
         {/* Thumbnail */}
-        <Link href={`/projects/${project.slug}`} className="relative flex-shrink-0 w-[72px] h-[72px] sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100">
+        <Link
+          href={`/projects/${project.slug}`}
+          className="relative flex-shrink-0 w-[72px] h-[72px] sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100"
+        >
           <Image
             src={project.coverImage}
             alt={project.title}
@@ -293,34 +338,28 @@ function BackedCard({ item }: { item: BackedProject }) {
             >
               {project.title}
             </Link>
-            {/* Status badge */}
             <span className={cn(
               "inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border flex-shrink-0",
-              cfg.bg, cfg.text, cfg.border
+              cfg.bg, cfg.text, cfg.border,
             )}>
               <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", cfg.dot)} />
               {cfg.label}
             </span>
           </div>
-
           <p className="text-xs text-slate-400 mb-2">
             {CATEGORY_LABELS[project.category] ?? project.category} · {pledgeDate}
           </p>
-
-          {/* Thank you badge + pledge */}
           <div className="flex items-center gap-2 flex-wrap mb-2.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full">
               <Heart className="w-3 h-3 fill-rose-500 stroke-none" />
               Баярлалаа
             </span>
             <span className="text-xs font-semibold text-slate-700">
-              ₮{pledgeAmount.toLocaleString()} дэмжсэн
+              ₮{amount.toLocaleString()} дэмжсэн
             </span>
           </div>
         </div>
       </div>
-
-      {/* Progress bar footer */}
       <div className="px-4 sm:px-5 pb-4">
         <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
       </div>
@@ -333,7 +372,6 @@ function BackedCard({ item }: { item: BackedProject }) {
 function ProjectsTab({ projects }: { projects: Project[] }) {
   return (
     <div className="space-y-5">
-      {/* Header with Add button */}
       <div className="flex items-center justify-between">
         <p className="text-slate-500 text-sm">{projects.length} төсөл илгээгдсэн</p>
         <GuardedLink
@@ -350,7 +388,11 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
           icon={<FolderOpen className="w-6 h-6 text-slate-400" />}
           title="Үүсгэсэн төсөл байхгүй"
           description="Та одоогоор төсөл нийтлээгүй байна. Өөрийн санааг хэрэгжүүлж эхлэх үү?"
-          action={<GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">Төсөл эхлэх</GuardedLink>}
+          action={
+            <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+              Төсөл эхлэх
+            </GuardedLink>
+          }
         />
       ) : (
         <div className="space-y-4">
@@ -365,7 +407,7 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
 
 function CreatedProjectCard({ project }: { project: Project }) {
   const percent    = fundingPercent(project.raised, project.goal);
-  const daysUrgent = project.daysLeft <= 7;
+  const daysUrgent = (project.daysLeft ?? 0) <= 7;
   const statusKey  = (project.status ?? "ACTIVE") as keyof typeof CREATED_STATUS_CONFIG;
   const cfg        = CREATED_STATUS_CONFIG[statusKey] ?? CREATED_STATUS_CONFIG.ACTIVE;
   const StatusIcon = cfg.icon;
@@ -384,10 +426,9 @@ function CreatedProjectCard({ project }: { project: Project }) {
             sizes="(max-width: 640px) 100vw, 192px"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
-          {/* Status badge over image */}
           <div className={cn(
             "absolute top-3 left-3 inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm",
-            cfg.bg, cfg.text, cfg.border
+            cfg.bg, cfg.text, cfg.border,
           )}>
             <StatusIcon className="w-3 h-3" strokeWidth={2.5} />
             {cfg.label}
@@ -405,7 +446,6 @@ function CreatedProjectCard({ project }: { project: Project }) {
                 {project.title}
               </h3>
             </div>
-            {/* Action buttons */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {isPublic ? (
                 <Link
@@ -432,7 +472,6 @@ function CreatedProjectCard({ project }: { project: Project }) {
             </div>
           </div>
 
-          {/* PENDING notice */}
           {statusKey === "PENDING" && (
             <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3.5 py-2.5 rounded-xl">
               <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" strokeWidth={2} />
@@ -440,7 +479,6 @@ function CreatedProjectCard({ project }: { project: Project }) {
             </div>
           )}
 
-          {/* REJECTED reason */}
           {statusKey === "REJECTED" && (
             <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 text-xs px-3.5 py-2.5 rounded-xl">
               <XCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-red-500" strokeWidth={2} />
@@ -459,7 +497,7 @@ function CreatedProjectCard({ project }: { project: Project }) {
                 <Users className="w-3.5 h-3.5" strokeWidth={2} />
                 {project.backers.toLocaleString()} дэмжигч
               </span>
-              {isPublic && (
+              {isPublic && project.daysLeft !== undefined && (
                 <span className={cn("font-semibold", daysUrgent ? "text-red-600" : "text-slate-600")}>
                   {project.daysLeft} өдөр үлдсэн
                 </span>
@@ -477,36 +515,51 @@ function CreatedProjectCard({ project }: { project: Project }) {
 
 /* ── Settings tab ───────────────────────────────────────────────── */
 
-function SettingsTab() {
-  const [profile, setProfile] = useState({
-    name:     USER.name,
-    bio:      USER.bio,
-    location: USER.location,
-    email:    USER.email,
+function SettingsTab({ user }: { user: ProfileUser }) {
+  const displayEmail = user.email ?? user.phone ?? "";
+
+  const [profile,   setProfile]   = useState({ name: user.name ?? "" });
+  const [password,  setPassword]  = useState({ current: "", next: "", confirm: "" });
+  const [notifs,    setNotifs]    = useState({
+    newBacker: true, projectUpdates: true, emailNotifs: true,
+    fundingAlerts: false, weeklyDigest: true,
   });
+  const [saved,     setSaved]     = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [saving,    setSaving]    = useState(false);
 
-  const [password, setPassword] = useState({ current: "", next: "", confirm: "" });
-
-  const [notifs, setNotifs] = useState({
-    newBacker:       true,
-    projectUpdates:  true,
-    emailNotifs:     true,
-    fundingAlerts:   false,
-    weeklyDigest:    true,
-  });
-
-  const [saved, setSaved] = useState(false);
-
-  function handleSave(e: React.SyntheticEvent) {
+  async function handleSave(e: React.SyntheticEvent) {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setError(null);
+
+    if (password.next && password.next !== password.confirm) {
+      setError("Шинэ нууц үг таарахгүй байна.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const result = await updateProfile({
+        name:            profile.name || undefined,
+        currentPassword: password.current || undefined,
+        newPassword:     password.next    || undefined,
+      });
+
+      if (result.success) {
+        setSaved(true);
+        setPassword({ current: "", next: "", confirm: "" });
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        setError(result.error ?? "Алдаа гарлаа.");
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
 
-      {/* Save success banner */}
       {saved && (
         <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold px-4 py-3.5 rounded-xl animate-fade-up">
           <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -516,83 +569,59 @@ function SettingsTab() {
         </div>
       )}
 
+      {error && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 text-sm font-semibold px-4 py-3.5 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" strokeWidth={2} />
+          {error}
+        </div>
+      )}
+
       {/* ── Profile info ──────────────────────────────── */}
-      <SettingsCard
-        icon={<Edit3 className="w-4 h-4" strokeWidth={2} />}
-        title="Хувийн мэдээлэл"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Нэр</label>
-            <input
-              type="text"
-              value={profile.name}
-              onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
-              placeholder="Таны нэр"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Товч танилцуулга</label>
-            <textarea
-              rows={3}
-              value={profile.bio}
-              onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all resize-none placeholder-slate-400 leading-relaxed"
-              placeholder="Өөрийгөө товч танилцуулна уу..."
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Байршил</label>
-            <div className="relative">
-              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={2} />
-              <input
-                type="text"
-                value={profile.location}
-                onChange={e => setProfile(p => ({ ...p, location: e.target.value }))}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
-                placeholder="Улаанбаатар, Монгол"
-              />
-            </div>
-          </div>
+      <SettingsCard icon={<Edit3 className="w-4 h-4" strokeWidth={2} />} title="Хувийн мэдээлэл">
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Нэр</label>
+          <input
+            type="text"
+            value={profile.name}
+            onChange={e => setProfile({ name: e.target.value })}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
+            placeholder="Таны нэр"
+          />
         </div>
       </SettingsCard>
 
       {/* ── Login info ────────────────────────────────── */}
-      <SettingsCard
-        icon={<Lock className="w-4 h-4" strokeWidth={2} />}
-        title="Нэвтрэх мэдээлэл"
-      >
+      <SettingsCard icon={<Lock className="w-4 h-4" strokeWidth={2} />} title="Нэвтрэх мэдээлэл">
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">И-мэйл хаяг</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">И-мэйл / Утас</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={2} />
               <input
-                type="email"
-                value={profile.email}
-                onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+                type="text"
+                value={displayEmail}
+                readOnly
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-100 text-slate-500 text-sm bg-slate-50 cursor-not-allowed"
               />
             </div>
+            <p className="text-xs text-slate-400 mt-1">И-мэйл болон утасны дугаар өөрчлөх боломжгүй.</p>
           </div>
 
           <div className="h-px bg-slate-100" />
-
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Нууц үг солих</p>
 
-          {[
-            { id: "current", label: "Одоогийн нууц үг",          placeholder: "••••••••" },
-            { id: "next",    label: "Шинэ нууц үг",              placeholder: "8+ тэмдэгт" },
-            { id: "confirm", label: "Шинэ нууц үгийг давтах",    placeholder: "••••••••" },
-          ].map(f => (
+          {([
+            { id: "current", label: "Одоогийн нууц үг",       placeholder: "••••••••"  },
+            { id: "next",    label: "Шинэ нууц үг",           placeholder: "8+ тэмдэгт"},
+            { id: "confirm", label: "Шинэ нууц үгийг давтах", placeholder: "••••••••"  },
+          ] as const).map(f => (
             <div key={f.id}>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">{f.label}</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={2} />
                 <input
                   type="password"
-                  value={password[f.id as keyof typeof password]}
+                  value={password[f.id]}
                   onChange={e => setPassword(p => ({ ...p, [f.id]: e.target.value }))}
                   placeholder={f.placeholder}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
@@ -604,19 +633,16 @@ function SettingsTab() {
       </SettingsCard>
 
       {/* ── Notification prefs ────────────────────────── */}
-      <SettingsCard
-        icon={<Bell className="w-4 h-4" strokeWidth={2} />}
-        title="Мэдэгдлийн тохиргоо"
-      >
-        <div className="space-y-0 divide-y divide-slate-50">
-          {[
-            { key: "newBacker",      label: "Шинэ дэмжигч",             desc: "Таны төслийг хэн нэгэн дэмжихэд мэдэгдэл авах"        },
-            { key: "projectUpdates", label: "Төслийн шинэчлэлт",        desc: "Дэмжсэн төслүүд шинэ шинэчлэлт нийтлэхэд мэдэгдэл авах" },
-            { key: "emailNotifs",    label: "И-мэйл мэдэгдэл",          desc: "Чухал мэдэгдлийг и-мэйлээр хүлээн авах"               },
-            { key: "fundingAlerts",  label: "Санхүүжилтийн дохио",      desc: "Зорилтын 50%, 75%, 100% хүрэхэд мэдэгдэл авах"        },
-            { key: "weeklyDigest",   label: "Долоо хоногийн тойм",      desc: "Долоо хоног бүр шилдэг төслүүдийн хураангуй авах"      },
-          ].map(item => {
-            const isOn = notifs[item.key as keyof typeof notifs];
+      <SettingsCard icon={<Bell className="w-4 h-4" strokeWidth={2} />} title="Мэдэгдлийн тохиргоо">
+        <div className="divide-y divide-slate-50">
+          {([
+            { key: "newBacker",      label: "Шинэ дэмжигч",        desc: "Таны төслийг хэн нэгэн дэмжихэд мэдэгдэл авах"           },
+            { key: "projectUpdates", label: "Төслийн шинэчлэлт",   desc: "Дэмжсэн төслүүд шинэ шинэчлэлт нийтлэхэд мэдэгдэл авах"  },
+            { key: "emailNotifs",    label: "И-мэйл мэдэгдэл",     desc: "Чухал мэдэгдлийг и-мэйлээр хүлээн авах"                  },
+            { key: "fundingAlerts",  label: "Санхүүжилтийн дохио", desc: "Зорилтын 50%, 75%, 100% хүрэхэд мэдэгдэл авах"           },
+            { key: "weeklyDigest",   label: "Долоо хоногийн тойм", desc: "Долоо хоног бүр шилдэг төслүүдийн хураангуй авах"         },
+          ] as const).map(item => {
+            const isOn = notifs[item.key];
             return (
               <div key={item.key} className="flex items-center justify-between gap-4 py-3.5">
                 <div className="min-w-0">
@@ -630,12 +656,12 @@ function SettingsTab() {
                   onClick={() => setNotifs(n => ({ ...n, [item.key]: !isOn }))}
                   className={cn(
                     "relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2",
-                    isOn ? "bg-blue-800" : "bg-slate-200"
+                    isOn ? "bg-blue-800" : "bg-slate-200",
                   )}
                 >
                   <span className={cn(
                     "inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow-md transition-transform duration-200",
-                    isOn ? "translate-x-[22px]" : "translate-x-[3px]"
+                    isOn ? "translate-x-[22px]" : "translate-x-[3px]",
                   )} />
                 </button>
               </div>
@@ -648,16 +674,24 @@ function SettingsTab() {
       <div className="flex items-center justify-end gap-3 pt-1">
         <button
           type="button"
-          onClick={() => setProfile({ name: USER.name, bio: USER.bio, location: USER.location, email: USER.email })}
+          onClick={() => {
+            setProfile({ name: user.name ?? "" });
+            setPassword({ current: "", next: "", confirm: "" });
+            setError(null);
+          }}
           className="text-sm font-semibold text-slate-600 hover:text-slate-800 px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
         >
           Болих
         </button>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-cta transition-colors"
+          disabled={saving}
+          className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-cta transition-colors"
         >
-          <Check className="w-4 h-4" strokeWidth={2.5} />
+          {saving
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <Check className="w-4 h-4" strokeWidth={2.5} />
+          }
           Хадгалах
         </button>
       </div>
@@ -670,8 +704,8 @@ function SettingsTab() {
 function SettingsCard({
   icon, title, children,
 }: {
-  icon: React.ReactNode;
-  title: string;
+  icon:     React.ReactNode;
+  title:    string;
   children: React.ReactNode;
 }) {
   return (
@@ -690,10 +724,10 @@ function SettingsCard({
 function EmptyState({
   icon, title, description, action,
 }: {
-  icon: React.ReactNode;
-  title: string;
+  icon:        React.ReactNode;
+  title:       string;
   description: string;
-  action?: React.ReactNode;
+  action?:     React.ReactNode;
 }) {
   return (
     <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-card">

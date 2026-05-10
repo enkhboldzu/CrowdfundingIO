@@ -5,6 +5,37 @@ const { authenticate, requireAdmin } = require("../middleware/auth");
 const router = express.Router();
 router.use(authenticate, requireAdmin);
 
+// ── SSE: real-time pending badge ─────────────────────────────────────
+const sseClients = new Set();
+
+function broadcastPendingCount(pendingCount) {
+  const data = `data: ${JSON.stringify({ pendingCount })}\n\n`;
+  for (const res of sseClients) {
+    try { res.write(data); } catch { sseClients.delete(res); }
+  }
+}
+
+// ── GET /api/admin/stats-summary — unified single source of truth ────
+router.get("/stats-summary", async (req, res, next) => {
+  try {
+    const [fundingAgg, totalProjects, uniqueBackers, pendingCount] = await Promise.all([
+      prisma.donation.aggregate({ _sum: { amount: true } }),
+      prisma.project.count({ where: { status: "ACTIVE" } }),
+      prisma.donation.groupBy({ by: ["userId"] }),
+      prisma.project.count({ where: { status: "PENDING" } }),
+    ]);
+
+    res.json({
+      totalFunding:  fundingAgg._sum.amount ?? 0,
+      totalProjects,
+      totalBackers:  uniqueBackers.length,
+      pendingCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/admin/overview ──────────────────────────────────────────
 router.get("/overview", async (req, res, next) => {
   try {
@@ -56,7 +87,7 @@ router.get("/overview", async (req, res, next) => {
       stats: {
         totalProjects, pendingCount, activeCount, rejectedCount,
         totalUsers,
-        totalRaised: aggregates._sum.amount ?? 0,
+        totalRaised:  aggregates._sum.amount ?? 0,
         totalBackers: aggregates._count.id,
       },
       recentProjects,
@@ -112,6 +143,50 @@ router.get("/projects", async (req, res, next) => {
   }
 });
 
+// ── POST /api/admin/projects/:id/approve ─────────────────────────────
+router.post("/projects/:id/approve", async (req, res, next) => {
+  try {
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data:  { status: "ACTIVE", isPublished: true, rejectionReason: null },
+      include: {
+        creator: { select: { id: true, name: true, email: true } },
+        _count:  { select: { donations: true } },
+      },
+    });
+
+    const pendingCount = await prisma.project.count({ where: { status: "PENDING" } });
+    broadcastPendingCount(pendingCount);
+
+    res.json({ project, pendingCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/admin/projects/:id/reject ──────────────────────────────
+router.post("/projects/:id/reject", async (req, res, next) => {
+  try {
+    const { rejectionReason } = req.body;
+
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data:  { status: "REJECTED", isPublished: false, rejectionReason: rejectionReason ?? null },
+      include: {
+        creator: { select: { id: true, name: true, email: true } },
+        _count:  { select: { donations: true } },
+      },
+    });
+
+    const pendingCount = await prisma.project.count({ where: { status: "PENDING" } });
+    broadcastPendingCount(pendingCount);
+
+    res.json({ project, pendingCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── PATCH /api/admin/projects/:id ────────────────────────────────────
 router.patch("/projects/:id", async (req, res, next) => {
   try {
@@ -120,9 +195,9 @@ router.patch("/projects/:id", async (req, res, next) => {
     let data = {};
 
     if (action === "approve") {
-      data = { status: "ACTIVE", rejectionReason: null };
+      data = { status: "ACTIVE", isPublished: true, rejectionReason: null };
     } else if (action === "reject") {
-      data = { status: "REJECTED", rejectionReason: reason ?? null };
+      data = { status: "REJECTED", isPublished: false, rejectionReason: reason ?? null };
     } else {
       if (title !== undefined)       data.title       = title;
       if (description !== undefined) data.description = description;
@@ -143,6 +218,11 @@ router.patch("/projects/:id", async (req, res, next) => {
         _count:  { select: { donations: true } },
       },
     });
+
+    if (action === "approve" || action === "reject") {
+      const pendingCount = await prisma.project.count({ where: { status: "PENDING" } });
+      broadcastPendingCount(pendingCount);
+    }
 
     res.json({ project });
   } catch (err) {
@@ -218,6 +298,26 @@ router.patch("/users/:id", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ── GET /api/admin/events — SSE for real-time navbar badge ───────────
+router.get("/events", (req, res) => {
+  res.setHeader("Content-Type",  "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection",    "keep-alive");
+  res.flushHeaders();
+
+  sseClients.add(res);
+  res.write(": connected\n\n");
+
+  const heartbeat = setInterval(() => {
+    try { res.write(": heartbeat\n\n"); } catch { clearInterval(heartbeat); }
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    sseClients.delete(res);
+  });
 });
 
 module.exports = router;

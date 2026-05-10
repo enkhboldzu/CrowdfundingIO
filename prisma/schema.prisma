@@ -55,6 +55,7 @@ model Project {
   isTrending      Boolean       @default(false)
   isFeatured      Boolean       @default(false)
   coverImage      String?
+  isPublished     Boolean       @default(false)
   endsAt          DateTime
   rejectionReason String?
   createdAt       DateTime      @default(now())

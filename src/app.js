@@ -10,6 +10,7 @@ const projectRoutes = require("./routes/projects");
 const userRoutes    = require("./routes/users");
 const adminRoutes   = require("./routes/admin");
 const { errorHandler } = require("./middleware/error");
+const prisma = require("./lib/prisma");
 
 const app = express();
 
@@ -42,6 +43,24 @@ app.use("/api/auth",     authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/users",    userRoutes);
 app.use("/api/admin",    adminRoutes);
+
+// ── GET /api/stats — public landing page stats ────────────────────────
+app.get("/api/stats", async (req, res, next) => {
+  try {
+    const [fundingAgg, totalProjects, uniqueBackers] = await Promise.all([
+      prisma.donation.aggregate({ _sum: { amount: true } }),
+      prisma.project.count({ where: { status: "ACTIVE" } }),
+      prisma.donation.groupBy({ by: ["userId"] }),
+    ]);
+    res.json({
+      totalFunding:  fundingAgg._sum.amount ?? 0,
+      totalProjects,
+      totalBackers:  uniqueBackers.length,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── 404 ──────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: "Хаяг олдсонгүй" }));
