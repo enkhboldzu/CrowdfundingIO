@@ -515,6 +515,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
   const [page, setPage]               = useState(1);
   const [q, setQ]                     = useState("");
   const [loading, setLoading]         = useState(true);
+  const [fetchError, setFetchError]   = useState<number | null>(null);
   const [actionId, setActionId]       = useState<string | null>(null);
   const [rejectId, setRejectId]       = useState<string | null>(null);
   const [rejectReason, setReason]     = useState("");
@@ -526,6 +527,8 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
 
   const fetchProjects = useCallback(async (p = 1, search = q) => {
     setLoading(true);
+    setFetchError(null);
+    let httpStatus: number | null = null;
     try {
       const params = new URLSearchParams({
         status: statusFilter,
@@ -534,19 +537,21 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
       });
       const res = await fetch(`/api/admin/projects?${params}`);
       if (!res.ok) {
-        console.error(`[projects] HTTP ${res.status}`, await res.text().catch(() => ""));
+        const body = await res.text().catch(() => "");
+        console.error(`[admin/projects] HTTP ${res.status}:`, body || "(empty body)");
+        httpStatus = res.status;
         throw new Error(`HTTP ${res.status}`);
       }
       const data = await res.json() as { projects: AdminProject[]; total: number };
       setProjects(data.projects);
       setTotal(data.total);
     } catch (err) {
-      console.error("[projects] fetch failed", err);
-      show("Мэдээлэл ачааллахад алдаа гарлаа.", "error");
+      console.error("[admin/projects] fetch failed:", err instanceof Error ? err.message : err);
+      setFetchError(httpStatus ?? -1);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, q, show]);
+  }, [statusFilter, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchProjects(1); }, [statusFilter]);
 
@@ -637,6 +642,37 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-blue-700" />
+        </div>
+      ) : fetchError !== null ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+            <AlertTriangle className="w-7 h-7 text-red-400" strokeWidth={1.5} />
+          </div>
+          <h3 className="font-bold text-slate-900 text-base mb-1">Мэдээлэл ачааллахад алдаа гарлаа</h3>
+          <p className="text-sm text-slate-400 mb-1 max-w-xs">
+            {fetchError === 401 || fetchError === 403
+              ? "Таны сесс дууссан байна. Дахин нэвтэрч орно уу."
+              : "Серверт холбогдоход асуудал гарлаа."}
+          </p>
+          {fetchError > 0 && (
+            <p className="text-[11px] text-slate-300 mb-5 font-mono">HTTP {fetchError}</p>
+          )}
+          {fetchError === 401 || fetchError === 403 ? (
+            <a
+              href="/login?role=admin"
+              className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            >
+              Нэвтрэх
+            </a>
+          ) : (
+            <button
+              onClick={() => fetchProjects(page)}
+              className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" strokeWidth={2} />
+              Дахин ачаалах
+            </button>
+          )}
         </div>
       ) : projects.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
