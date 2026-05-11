@@ -51,6 +51,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Let API route handlers return JSON auth errors instead of redirecting
+  // multipart/form-data POST bodies to the login page.
+  if (pathname.startsWith("/api/") || pathname === "/upload-api") {
+    return NextResponse.next();
+  }
+
   // Regular auth: presence of cfmn_auth cookie is sufficient.
   if (!request.cookies.get(AUTH_COOKIE)?.value) {
     const url = new URL("/login", request.url);

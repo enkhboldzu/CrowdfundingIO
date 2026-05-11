@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   // Must be a logged-in user (any role)
   const session = await getSession(req);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
   }
 
   let formData: globalThis.FormData;

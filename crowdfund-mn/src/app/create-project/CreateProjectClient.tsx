@@ -24,8 +24,8 @@ interface RewardTier {
 
 interface SelectedProjectImage {
   id:      string;
-  file:    File;
   preview: string;
+  url:     string;
 }
 
 interface FormValues {
@@ -257,14 +257,16 @@ function FTextarea({ id, value, onChange, placeholder, error, rows = 6 }: {
 interface ImageUploadProps {
   images: SelectedProjectImage[];
   error?: string;
+  uploading: boolean;
   onChange: (images: SelectedProjectImage[]) => void;
+  onUploadingChange: (uploading: boolean) => void;
 }
 
-function ImageUpload({ images, error, onChange }: ImageUploadProps) {
+function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: ImageUploadProps) {
   const ref = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const remaining = MAX_PROJECT_IMAGES - images.length;
     const files = Array.from(e.target.files ?? []);
     let nextError: string | null = null;
@@ -283,17 +285,48 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
       return true;
     });
 
-    const selected = validFiles
-      .slice(0, remaining)
-      .map((file) => ({
-        id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-        file,
-        preview: URL.createObjectURL(file),
+    setLocalError(nextError);
+    e.target.value = "";
+
+    const filesToUpload = validFiles.slice(0, remaining);
+    if (filesToUpload.length === 0) return;
+
+    onUploadingChange(true);
+
+    try {
+      const uploaded = await Promise.all(filesToUpload.map(async (file) => {
+        const preview = URL.createObjectURL(file);
+        const fd = new FormData();
+        fd.append("file", file);
+
+        try {
+          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+          if (!uploadRes.ok) {
+            const payload = await uploadRes.json().catch(() => null) as { error?: string } | null;
+            throw new Error(payload?.error ?? "Upload failed");
+          }
+
+          const json = await uploadRes.json() as { url: string };
+          return {
+            id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+            preview,
+            url: json.url,
+          };
+        } catch (err) {
+          URL.revokeObjectURL(preview);
+          throw err;
+        }
       }));
 
-    setLocalError(nextError);
-    if (selected.length > 0) onChange([...images, ...selected]);
-    e.target.value = "";
+      onChange([...images, ...uploaded]);
+    } catch (err) {
+      const message = err instanceof Error && err.message !== "Upload failed"
+        ? err.message
+        : "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу.";
+      setLocalError(message);
+    } finally {
+      onUploadingChange(false);
+    }
   }
 
   function handleRemove(id: string) {
@@ -312,15 +345,20 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
         type="file"
         multiple
         accept={ACCEPTED_IMAGE_INPUT}
+        disabled={uploading}
         className="hidden"
         onChange={handleFileSelect}
       />
+
+      {uploading && (
+        <p className="mb-2 text-xs font-semibold text-blue-600">Зураг хуулж байна...</p>
+      )}
 
       {images.length > 0 ? (
         /* ── Preview state ── */
         <div className={cn(
           "rounded-2xl border-2 bg-slate-50 p-3",
-          error ? "border-red-300" : "border-emerald-200"
+          displayError ? "border-red-300" : "border-emerald-200"
         )}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -363,6 +401,7 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
                 <button
                   type="button"
                   onClick={() => ref.current?.click()}
+                  disabled={uploading}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
                 >
                   Зураг нэмэх
@@ -371,6 +410,7 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
               <button
                 type="button"
                 onClick={() => images[0] && handleRemove(images[0].id)}
+                disabled={uploading}
                 className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
               >
                 Устгах
@@ -383,6 +423,7 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
         <button
           type="button"
           onClick={() => ref.current?.click()}
+          disabled={uploading}
           className="w-full border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-2xl p-8 text-center transition-all duration-200 group"
         >
           <div className="flex flex-col items-center gap-2">
@@ -572,13 +613,15 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
 
 function Step3({
   d, set, e,
-  projectImages, onProjectImagesChange,
+  projectImages, projectImagesUploading, onProjectImagesChange, onProjectImagesUploadingChange,
 }: {
   d: FormValues;
   set: (k: StringKey, v: string) => void;
   e: ErrMap;
   projectImages: SelectedProjectImage[];
+  projectImagesUploading: boolean;
   onProjectImagesChange: (images: SelectedProjectImage[]) => void;
+  onProjectImagesUploadingChange: (uploading: boolean) => void;
 }) {
   const charCount = d.story.length;
   const charOk    = charCount >= 100;
@@ -607,7 +650,9 @@ function Step3({
         <ImageUpload
           images={projectImages}
           error={e.coverImages}
+          uploading={projectImagesUploading}
           onChange={onProjectImagesChange}
+          onUploadingChange={onProjectImagesUploadingChange}
         />
         <Hint>1-3 бодит зураг оруулна. Эхний зураг нүүрэнд гарч, карт дээр зургууд хажуу тийш гулсаж солигдоно.</Hint>
       </div>
@@ -753,6 +798,7 @@ export function CreateProjectClient() {
   const topRef = useRef<HTMLDivElement>(null);
 
   const [projectImages, setProjectImages] = useState<SelectedProjectImage[]>([]);
+  const [projectImagesUploading, setProjectImagesUploading] = useState(false);
 
   function handleProjectImagesChange(images: SelectedProjectImage[]) {
     setProjectImages(images);
@@ -796,6 +842,9 @@ export function CreateProjectClient() {
     if (step === 3 && projectImages.length === 0) {
       errs.coverImages = "1-3 зураг оруулна уу";
     }
+    if (step === 3 && projectImagesUploading) {
+      errs.coverImages = "Зураг upload хийж байна. Түр хүлээнэ үү.";
+    }
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -811,26 +860,13 @@ export function CreateProjectClient() {
 
     setSubmitting(true);
 
-    let uploadedImages: string[];
-    try {
-      uploadedImages = await Promise.all(projectImages.map(async (image) => {
-        const fd = new FormData();
-        fd.append("file", image.file);
-        const uploadRes = await fetch("/upload-api", { method: "POST", body: fd });
-        if (!uploadRes.ok) {
-          const payload = await uploadRes.json().catch(() => null) as { error?: string } | null;
-          throw new Error(payload?.error ?? "Upload failed");
-        }
-        const json = await uploadRes.json() as { url: string };
-        return json.url;
-      }));
-    } catch (err) {
-      console.warn("[upload] Upload failed:", err);
+    const uploadedImages = projectImages
+      .map((image) => image.url)
+      .filter((url): url is string => Boolean(url));
+
+    if (uploadedImages.length === 0) {
       setSubmitting(false);
-      const message = err instanceof Error && err.message !== "Upload failed"
-        ? err.message
-        : "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу.";
-      setErrors({ submit: message });
+      setErrors({ submit: "Зураг upload хийгдээгүй байна. Дахин зураг сонгоно уу." });
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -921,7 +957,9 @@ export function CreateProjectClient() {
                     <Step3
                       d={data} set={set} e={errors}
                       projectImages={projectImages}
+                      projectImagesUploading={projectImagesUploading}
                       onProjectImagesChange={handleProjectImagesChange}
+                      onProjectImagesUploadingChange={setProjectImagesUploading}
                     />
                   )}
                   {step === 4 && (
@@ -950,10 +988,10 @@ export function CreateProjectClient() {
                       )}
                     </div>
 
-                    <button type="button" onClick={handleNext} disabled={submitting}
+                    <button type="button" onClick={handleNext} disabled={submitting || projectImagesUploading}
                       className={cn(
                         buttonVariants({ variant: "primary", size: "md" }),
-                        submitting && "opacity-70 cursor-wait pointer-events-none"
+                        (submitting || projectImagesUploading) && "opacity-70 cursor-wait pointer-events-none"
                       )}>
                       {step < 4 ? (
                         <>
