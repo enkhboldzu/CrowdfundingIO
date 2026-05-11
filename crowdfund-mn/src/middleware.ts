@@ -21,6 +21,14 @@ const PUBLIC_PREFIXES = [
   "/api/categories/counts",
 ];
 
+function redirectToLogin(request: NextRequest, pathname: string) {
+  const url = new URL("/login", request.url);
+  url.searchParams.set("from", pathname);
+  const response = NextResponse.redirect(url);
+  response.cookies.delete(AUTH_COOKIE);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -36,9 +44,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
     const token = request.cookies.get(SESSION_COOKIE)?.value;
     if (!token) {
-      const url = new URL("/login", request.url);
-      url.searchParams.set("from", pathname);
-      return NextResponse.redirect(url);
+      return redirectToLogin(request, pathname);
     }
     try {
       const session = await verifyToken(token);
@@ -46,7 +52,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/", request.url));
       }
     } catch {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return redirectToLogin(request, pathname);
     }
     return NextResponse.next();
   }
@@ -57,11 +63,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Regular auth: presence of cfmn_auth cookie is sufficient.
-  if (!request.cookies.get(AUTH_COOKIE)?.value) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("from", pathname);
-    return NextResponse.redirect(url);
+  // Regular auth: verify the server session cookie, not only the UI cookie.
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) {
+    return redirectToLogin(request, pathname);
+  }
+
+  try {
+    await verifyToken(token);
+  } catch {
+    return redirectToLogin(request, pathname);
   }
 
   return NextResponse.next();

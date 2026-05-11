@@ -13,6 +13,10 @@ export interface AuthUser {
 const ROLE_COOKIE   = "cfmn_auth";
 const USER_LS_KEY   = "cfmn_user";     // localStorage key for user data
 
+type SessionResponse =
+  | { authenticated: false }
+  | { authenticated: true; role: UserRole; user: AuthUser };
+
 /* ── Cookie helpers ─────────────────────────────────────────────────── */
 
 function readAuthCookie(): UserRole | null {
@@ -75,17 +79,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  // Hydrate auth state from cookie + localStorage on first client render
-  useEffect(() => {
-    const r = readAuthCookie();
-    if (r) {
-      const stored = loadStoredUser();
-      setIsLoggedIn(true);
-      setRole(r);
-      if (stored) setUser(stored);
-    }
-    setIsLoading(false);
+  const clearClientAuth = useCallback(() => {
+    clearAuthCookie();
+    clearStoredUser();
+    setIsLoggedIn(false);
+    setRole(null);
+    setUser(null);
   }, []);
+
+  // Hydrate auth state from the server session so UI auth cannot drift from API auth.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrate() {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = await res.json().catch(() => null) as SessionResponse | null;
+
+        if (cancelled) return;
+
+        if (res.ok && data?.authenticated) {
+          writeAuthCookie(data.role);
+          saveStoredUser(data.user);
+          setIsLoggedIn(true);
+          setRole(data.role);
+          setUser(data.user);
+        } else {
+          clearClientAuth();
+        }
+      } catch {
+        if (!cancelled) {
+          const r = readAuthCookie();
+          const stored = loadStoredUser();
+          setIsLoggedIn(Boolean(r));
+          setRole(r);
+          setUser(stored);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    hydrate();
+    return () => { cancelled = true; };
+  }, [clearClientAuth]);
 
   const login = useCallback((r: UserRole = "user", userData?: AuthUser) => {
     writeAuthCookie(r);
@@ -98,12 +135,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    clearAuthCookie();
-    clearStoredUser();
-    setIsLoggedIn(false);
-    setRole(null);
-    setUser(null);
-  }, []);
+    clearClientAuth();
+  }, [clearClientAuth]);
 
   return (
     <AuthContext.Provider value={{ isLoading, isLoggedIn, role, user, login, logout }}>
