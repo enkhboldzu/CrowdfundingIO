@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(
-  process.env.SESSION_SECRET ?? "change-this-to-a-random-32-char-secret"
+  process.env.SESSION_SECRET ??
+    process.env.JWT_SECRET ??
+    "change-this-to-a-random-32-char-secret"
 );
 
 export interface SessionPayload {

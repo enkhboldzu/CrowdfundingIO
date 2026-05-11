@@ -12,6 +12,7 @@ import {
   MAX_IMAGE_UPLOAD_BYTES,
   MAX_IMAGE_UPLOAD_MB,
 } from "@/lib/upload";
+import { uploadErrorMessage } from "@/lib/upload-client";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -302,8 +303,7 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
         try {
           const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
           if (!uploadRes.ok) {
-            const payload = await uploadRes.json().catch(() => null) as { error?: string } | null;
-            throw new Error(payload?.error ?? "Upload failed");
+            throw new Error(await uploadErrorMessage(uploadRes));
           }
 
           const json = await uploadRes.json() as { url: string };

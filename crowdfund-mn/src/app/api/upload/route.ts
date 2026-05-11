@@ -9,6 +9,22 @@ import {
   MAX_IMAGE_UPLOAD_MB,
 } from "@/lib/upload";
 
+function storageErrorMessage(err: unknown) {
+  const code = typeof err === "object" && err && "code" in err
+    ? String((err as NodeJS.ErrnoException).code)
+    : "";
+
+  if (code === "EACCES" || code === "EPERM" || code === "EROFS") {
+    return "Server дээр зураг хадгалах эрх алга. public/uploads folder-ийн permission шалгана уу.";
+  }
+
+  if (code === "ENOSPC") {
+    return "Server-ийн disk дүүрсэн байна.";
+  }
+
+  return "Upload failed";
+}
+
 export async function POST(req: NextRequest) {
   // Must be a logged-in user (any role)
   const session = await getSession(req);
@@ -57,7 +73,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: `/uploads/${safeName}` });
   } catch (err) {
     console.error("[POST /api/upload]", err);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: storageErrorMessage(err) }, { status: 500 });
   }
 }
 

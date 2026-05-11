@@ -1,4 +1,4 @@
-name: Deploy API
+name: Deploy App
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
       - "**.md"
       - ".gitignore"
       - "mdFiles/**"
-      - "crowdfund-mn/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,5 +36,8 @@ jobs:
         run: |
           sleep 3
           curl -sf http://127.0.0.1:4000/health \
-            && echo "✓ Server is up" \
-            || (echo "✗ Health check failed" && exit 1)
+            && echo "API server is up" \
+            || (echo "API health check failed" && exit 1)
+          curl -sf http://127.0.0.1:3000/login \
+            && echo "Next app is up" \
+            || (echo "Next health check failed" && exit 1)

@@ -24,6 +24,7 @@ import {
   MAX_IMAGE_UPLOAD_BYTES,
   MAX_IMAGE_UPLOAD_MB,
 } from "@/lib/upload";
+import { uploadErrorMessage } from "@/lib/upload-client";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -588,8 +589,7 @@ function SettingsTab({
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       if (!res.ok) {
-        const payload = await res.json().catch(() => null) as { error?: string } | null;
-        throw new Error(payload?.error ?? "Upload failed");
+        throw new Error(await uploadErrorMessage(res));
       }
       const { url } = await res.json() as { url: string };
       setAvatarUrl(url);
