@@ -18,6 +18,12 @@ import { fundingPercent } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types";
 import { updateProfile } from "@/lib/actions/user";
+import {
+  ACCEPTED_IMAGE_INPUT,
+  ACCEPTED_IMAGE_TYPE_SET,
+  MAX_IMAGE_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_MB,
+} from "@/lib/upload";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -560,22 +566,38 @@ function SettingsTab({
   async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
+
+    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
+      showToast("Зөвхөн PNG, JPG, WEBP зураг оруулна уу.", "error");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showToast(`Зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`, "error");
+      return;
+    }
 
     // Show blob preview immediately
     if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
     setAvatarPreview(URL.createObjectURL(file));
     setAvatarUploading(true);
-    e.target.value = "";
 
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Upload failed");
+      }
       const { url } = await res.json() as { url: string };
       setAvatarUrl(url);
-    } catch {
-      showToast("Зураг хуулахад алдаа гарлаа.", "error");
+    } catch (err) {
+      const message = err instanceof Error && err.message !== "Upload failed"
+        ? err.message
+        : "Зураг хуулахад алдаа гарлаа.";
+      showToast(message, "error");
       setAvatarPreview(user.avatar ?? "");
       setAvatarUrl(user.avatar ?? null);
     } finally {
@@ -663,7 +685,7 @@ function SettingsTab({
             <input
               ref={avatarInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept={ACCEPTED_IMAGE_INPUT}
               className="hidden"
               onChange={handleAvatarSelect}
             />
@@ -690,7 +712,7 @@ function SettingsTab({
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-400">PNG, JPG, WEBP · Дээд тал нь 5 MB</p>
+            <p className="text-xs text-slate-400">PNG, JPG, WEBP · Дээд тал нь {MAX_IMAGE_UPLOAD_MB} MB</p>
           </div>
         </div>
       </SettingsCard>

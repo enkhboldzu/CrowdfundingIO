@@ -6,6 +6,12 @@ import { Footer }           from "@/components/landing/Footer";
 import { buttonVariants }   from "@/lib/button-variants";
 import { cn }               from "@/lib/utils";
 import { createProject }    from "@/lib/actions/projects";
+import {
+  ACCEPTED_IMAGE_INPUT,
+  ACCEPTED_IMAGE_TYPE_SET,
+  MAX_IMAGE_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_MB,
+} from "@/lib/upload";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -256,11 +262,28 @@ interface ImageUploadProps {
 
 function ImageUpload({ images, error, onChange }: ImageUploadProps) {
   const ref = useRef<HTMLInputElement>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const remaining = MAX_PROJECT_IMAGES - images.length;
-    const selected = Array.from(e.target.files ?? [])
-      .filter((file) => file.type.startsWith("image/"))
+    const files = Array.from(e.target.files ?? []);
+    let nextError: string | null = null;
+
+    const validFiles = files.filter((file) => {
+      if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
+        nextError ??= "Зөвхөн PNG, JPG, WEBP зураг оруулна уу.";
+        return false;
+      }
+
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        nextError ??= `Нэг зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`;
+        return false;
+      }
+
+      return true;
+    });
+
+    const selected = validFiles
       .slice(0, remaining)
       .map((file) => ({
         id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
@@ -268,6 +291,7 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
         preview: URL.createObjectURL(file),
       }));
 
+    setLocalError(nextError);
     if (selected.length > 0) onChange([...images, ...selected]);
     e.target.value = "";
   }
@@ -278,6 +302,8 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
     onChange(images.filter((image) => image.id !== id));
   }
 
+  const displayError = localError ?? error;
+
   return (
     <>
       <input
@@ -285,7 +311,7 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
         id="coverImages"
         type="file"
         multiple
-        accept="image/png,image/jpeg,image/webp"
+        accept={ACCEPTED_IMAGE_INPUT}
         className="hidden"
         onChange={handleFileSelect}
       />
@@ -367,11 +393,11 @@ function ImageUpload({ images, error, onChange }: ImageUploadProps) {
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-600">1-3 зураг оруулахын тулд дарна уу</p>
-            <p className="text-xs text-slate-400">PNG, JPG, WEBP · нэг зураг 5 MB хүртэл</p>
+            <p className="text-xs text-slate-400">PNG, JPG, WEBP · нэг зураг {MAX_IMAGE_UPLOAD_MB} MB хүртэл</p>
           </div>
         </button>
       )}
-      <ErrMsg msg={error} />
+      <ErrMsg msg={displayError} />
     </>
   );
 }
@@ -792,7 +818,8 @@ export function CreateProjectClient() {
         fd.append("file", image.file);
         const uploadRes = await fetch("/upload-api", { method: "POST", body: fd });
         if (!uploadRes.ok) {
-          throw new Error(await uploadRes.text());
+          const payload = await uploadRes.json().catch(() => null) as { error?: string } | null;
+          throw new Error(payload?.error ?? "Upload failed");
         }
         const json = await uploadRes.json() as { url: string };
         return json.url;
@@ -800,7 +827,10 @@ export function CreateProjectClient() {
     } catch (err) {
       console.warn("[upload] Upload failed:", err);
       setSubmitting(false);
-      setErrors({ submit: "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу." });
+      const message = err instanceof Error && err.message !== "Upload failed"
+        ? err.message
+        : "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу.";
+      setErrors({ submit: message });
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }

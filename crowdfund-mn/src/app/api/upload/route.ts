@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getSession } from "@/lib/api-auth";
-
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+import {
+  ACCEPTED_IMAGE_TYPE_SET,
+  IMAGE_EXTENSION_BY_TYPE,
+  MAX_IMAGE_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_MB,
+} from "@/lib/upload";
 
 export async function POST(req: NextRequest) {
   // Must be a logged-in user (any role)
@@ -25,16 +28,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (!ALLOWED_TYPES.has(file.type)) {
+  if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
     return NextResponse.json(
       { error: "Зөвхөн PNG, JPG, WEBP файл зөвшөөрнө" },
       { status: 400 }
     );
   }
 
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
     return NextResponse.json(
-      { error: "Файлын хэмжээ 5 MB-аас хэтрэхгүй байх ёстой" },
+      { error: `Файлын хэмжээ ${MAX_IMAGE_UPLOAD_MB} MB-аас хэтрэхгүй байх ёстой` },
       { status: 400 }
     );
   }
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Generate a collision-resistant filename
-    const ext      = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const ext      = IMAGE_EXTENSION_BY_TYPE[file.type] ?? "jpg";
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
 
     const uploadDir = path.join(process.cwd(), "public", "uploads");
