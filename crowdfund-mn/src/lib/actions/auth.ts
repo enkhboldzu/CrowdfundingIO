@@ -69,13 +69,24 @@ export async function registerUser(data: {
 
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name: data.name.trim(),
         email: emailField ? identifier.toLowerCase() : null,
         phone: emailField ? null : identifier,
         passwordHash,
       },
+    });
+
+    const token = await createToken({ userId: user.id, role: "user", name: user.name });
+
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: COOKIE_MAX_AGE,
+      path: "/",
     });
 
     return { success: true };
