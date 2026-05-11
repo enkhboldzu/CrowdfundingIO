@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/actions/auth";
-
-/* ── Slug generator ────────────────────────────────────────────────── */
 
 function makeSlug(title: string): string {
   const base = title
@@ -29,7 +28,25 @@ function toStoredImages(images?: string[]): string[] {
   ).slice(0, 3);
 }
 
-/* ── Create Project ────────────────────────────────────────────────── */
+function createProjectErrorMessage(err: unknown) {
+  console.error("[createProject]", err);
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === "P2003") {
+      return "Нэвтрэлтийн хэрэглэгч database дээр олдсонгүй. Гараад дахин нэвтэрнэ үү.";
+    }
+
+    if (err.code === "P2002") {
+      return "Ижил мэдээлэлтэй төсөл бүртгэгдсэн байна. Гарчгаа бага зэрэг өөрчлөөд дахин оролдоно уу.";
+    }
+
+    if (err.code === "P2022") {
+      return "Database schema хуучин байна. Server дээр Prisma generate/db push эсвэл migrate ажиллуулна уу.";
+    }
+  }
+
+  return "Төсөл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.";
+}
 
 export async function createProject(data: {
   title: string;
@@ -60,28 +77,28 @@ export async function createProject(data: {
 
     const project = await prisma.project.create({
       data: {
-        title:           data.title,
+        title:           data.title.trim(),
         slug:            makeSlug(data.title),
-        description:     data.blurb,
-        story:           data.story,
+        description:     data.blurb.trim(),
+        story:           data.story.trim(),
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
         goal:            data.goal,
-        location:        data.location,
+        location:        data.location.trim(),
         bankName:        data.bankName,
-        bankAccount:     data.bankAccount,
-        bankAccountName: data.bankAccountName,
+        bankAccount:     data.bankAccount.replace(/\s/g, ""),
+        bankAccountName: data.bankAccountName.trim(),
         endsAt,
-        // Always PENDING — admin must approve before the project goes live
-        status:      "PENDING",
-        isVerified:  false,
-        creatorId:   session.userId,
+        status:          "PENDING",
+        isVerified:      false,
+        tags:            [],
+        creatorId:       session.userId,
         rewards: {
           create: data.rewards.map((r) => ({
-            title:             r.title,
+            title:             r.title.trim(),
             amount:            r.amount,
-            description:       r.description,
+            description:       r.description.trim(),
             estimatedDelivery: deliveryMonth,
             isLimited:         false,
           })),
@@ -90,17 +107,13 @@ export async function createProject(data: {
       select: { slug: true },
     });
 
-    // Only revalidate the creator's profile — explore/home stay unchanged
-    // because the project isn't public until admin approves it.
     revalidatePath("/profile");
 
     return { success: true, slug: project.slug };
-  } catch {
-    return { success: false, error: "Төсөл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу." };
+  } catch (err) {
+    return { success: false, error: createProjectErrorMessage(err) };
   }
 }
-
-/* ── Get Projects by Category ──────────────────────────────────────── */
 
 export async function getProjectsByCategory(
   category: string,
@@ -119,8 +132,6 @@ export async function getProjectsByCategory(
     return { success: false, error: "Мэдээлэл авахад алдаа гарлаа." };
   }
 }
-
-/* ── Shared formatter ──────────────────────────────────────────────── */
 
 function formatProject(p: {
   id: string;
