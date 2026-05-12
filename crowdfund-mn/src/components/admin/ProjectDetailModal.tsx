@@ -5,7 +5,7 @@ import {
   X, Loader2, AlertTriangle, CheckCircle, XCircle,
   User, Mail, Phone, CalendarDays, FolderKanban,
   MapPin, Tag, Banknote, Building2, CreditCard,
-  Award, BookOpen, Clock, Users, RefreshCw,
+  Award, BookOpen, Clock, FileText, ExternalLink, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ interface ProjectDetail {
   story:           string;
   category:        string;
   coverImage:      string | null;
+  documents:       string[];
   goal:            number;
   raised:          number;
   backers:         number;
@@ -70,6 +71,16 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = 
   REJECTED:  { label: "Татгалзагдсан",   bg: "bg-red-100",     text: "text-red-700"     },
   FUNDED:    { label: "Санхүүжсэн",      bg: "bg-blue-100",    text: "text-blue-700"    },
 };
+
+function documentName(src: string, index: number) {
+  try {
+    const url = new URL(src, "https://crowdfund.local");
+    const filename = url.pathname.split("/").filter(Boolean).pop();
+    return filename ? decodeURIComponent(filename) : `document-${index + 1}`;
+  } catch {
+    return `document-${index + 1}`;
+  }
+}
 
 /* ── Section header helper ──────────────────────────────────────── */
 function Section({ icon: Icon, title, children }: {
@@ -383,13 +394,39 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
                 </Section>
 
                 {/* Documents section */}
-                <Section icon={Users} title="Баримт бичиг">
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center">
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Баримт бичиг хавсаргах модуль одоогоор тохируулагдаагүй байна.
-                      Бүтээгчтэй шууд холбогдон нотолгоо авна уу.
-                    </p>
-                  </div>
+                <Section icon={FileText} title="Баримт бичиг">
+                  {detail.documents.length > 0 ? (
+                    <div className="space-y-2">
+                      {detail.documents.map((document, index) => (
+                        <a
+                          key={`${document}-${index}`}
+                          href={document}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                            <FileText className="h-4 w-4" strokeWidth={2} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-bold text-slate-900">
+                              Баримт {index + 1}
+                            </span>
+                            <span className="block truncate text-xs text-slate-400">
+                              {documentName(document, index)}
+                            </span>
+                          </span>
+                          <ExternalLink className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center">
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Баримт бичиг хавсаргаагүй байна.
+                      </p>
+                    </div>
+                  )}
                 </Section>
 
               </div>

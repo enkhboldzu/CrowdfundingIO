@@ -11,6 +11,9 @@ const CONTENT_TYPES: Record<string, string> = {
   jpeg: "image/jpeg",
   png:  "image/png",
   webp: "image/webp",
+  pdf:  "application/pdf",
+  doc:  "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
 export const dynamic = "force-dynamic";
@@ -35,7 +38,7 @@ export async function GET(_req: Request, { params }: Params) {
   const contentType = CONTENT_TYPES[ext];
 
   if (!contentType) {
-    return NextResponse.json({ error: "Unsupported image type" }, { status: 415 });
+    return NextResponse.json({ error: "Unsupported upload type" }, { status: 415 });
   }
 
   try {
@@ -45,9 +48,10 @@ export async function GET(_req: Request, { params }: Params) {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {
-    return NextResponse.json({ error: "Image not found" }, { status: 404 });
+    return NextResponse.json({ error: "Upload not found" }, { status: 404 });
   }
 }

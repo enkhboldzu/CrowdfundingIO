@@ -5,10 +5,14 @@ import Link from "next/link";
 import { Footer }           from "@/components/landing/Footer";
 import { buttonVariants }   from "@/lib/button-variants";
 import { cn }               from "@/lib/utils";
-import { createProject }    from "@/lib/actions/projects";
+import { createProject, updateOwnProject } from "@/lib/actions/projects";
 import {
+  ACCEPTED_DOCUMENT_INPUT,
+  ACCEPTED_DOCUMENT_TYPE_SET,
   ACCEPTED_IMAGE_INPUT,
   ACCEPTED_IMAGE_TYPE_SET,
+  MAX_DOCUMENT_UPLOAD_BYTES,
+  MAX_DOCUMENT_UPLOAD_MB,
   MAX_IMAGE_UPLOAD_BYTES,
   MAX_IMAGE_UPLOAD_MB,
 } from "@/lib/upload";
@@ -27,6 +31,37 @@ interface SelectedProjectImage {
   id:      string;
   preview: string;
   url:     string;
+}
+
+interface SelectedProjectDocument {
+  id:   string;
+  name: string;
+  size: number;
+  type: string;
+  url:  string;
+}
+
+export interface EditableProjectSeed {
+  id:              string;
+  slug:            string;
+  title:           string;
+  blurb:           string;
+  category:        string;
+  location:        string;
+  goal:            number;
+  duration:        number;
+  bankName:        string;
+  bankAccount:     string;
+  bankAccountName: string;
+  story:           string;
+  images:          string[];
+  documents:       string[];
+  rewards:         Array<{
+    id:          string;
+    title:       string;
+    amount:      number;
+    description: string;
+  }>;
 }
 
 interface FormValues {
@@ -48,6 +83,7 @@ type StringKey = keyof Omit<FormValues, "rewards">;
 type ErrMap    = Record<string, string>;
 
 const MAX_PROJECT_IMAGES = 3;
+const MAX_PROJECT_DOCUMENTS = 5;
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
@@ -101,6 +137,60 @@ const EMPTY: FormValues = {
   story: "", coverImageName: "",
   rewards: [{ id: "r1", title: "", amount: "", description: "" }],
 };
+
+function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
+  if (!seed) return EMPTY;
+
+  return {
+    title:           seed.title,
+    blurb:           seed.blurb,
+    category:        seed.category,
+    location:        seed.location,
+    goal:            String(seed.goal),
+    duration:        String(seed.duration),
+    bankName:        seed.bankName,
+    bankAccount:     seed.bankAccount,
+    bankAccountName: seed.bankAccountName,
+    story:           seed.story,
+    coverImageName:  "",
+    rewards:         seed.rewards.length > 0
+      ? seed.rewards.map((reward) => ({
+          id:          reward.id,
+          title:       reward.title,
+          amount:      String(reward.amount),
+          description: reward.description,
+        }))
+      : EMPTY.rewards,
+  };
+}
+
+function imagesFromSeed(seed?: EditableProjectSeed): SelectedProjectImage[] {
+  return (seed?.images ?? []).map((url, index) => ({
+    id: `existing-image-${index}-${url}`,
+    preview: url,
+    url,
+  }));
+}
+
+function fileNameFromUrl(src: string, index: number): string {
+  try {
+    const url = new URL(src, "https://crowdfund.local");
+    const filename = url.pathname.split("/").filter(Boolean).pop();
+    return filename ? decodeURIComponent(filename) : `document-${index + 1}`;
+  } catch {
+    return `document-${index + 1}`;
+  }
+}
+
+function documentsFromSeed(seed?: EditableProjectSeed): SelectedProjectDocument[] {
+  return (seed?.documents ?? []).map((url, index) => ({
+    id:   `existing-document-${index}-${url}`,
+    name: fileNameFromUrl(url, index),
+    size: 0,
+    type: "",
+    url,
+  }));
+}
 
 /* ── Validation ─────────────────────────────────────────────────────────── */
 
@@ -441,6 +531,203 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
   );
 }
 
+interface DocumentUploadProps {
+  documents: SelectedProjectDocument[];
+  error?: string;
+  uploading: boolean;
+  onChange: (documents: SelectedProjectDocument[]) => void;
+  onUploadingChange: (uploading: boolean) => void;
+}
+
+function formatFileSize(size: number): string {
+  if (size <= 0) return "Хадгалсан файл";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function DocumentUpload({
+  documents,
+  error,
+  uploading,
+  onChange,
+  onUploadingChange,
+}: DocumentUploadProps) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const remaining = MAX_PROJECT_DOCUMENTS - documents.length;
+    const files = Array.from(e.target.files ?? []);
+    let nextError: string | null = null;
+
+    const validFiles = files.filter((file) => {
+      if (!ACCEPTED_DOCUMENT_TYPE_SET.has(file.type)) {
+        nextError ??= "PDF, DOC, DOCX, PNG, JPG, WEBP баримт оруулна уу.";
+        return false;
+      }
+
+      if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+        nextError ??= `Нэг файл ${MAX_DOCUMENT_UPLOAD_MB} MB-аас их байна.`;
+        return false;
+      }
+
+      return true;
+    });
+
+    setLocalError(nextError);
+    e.target.value = "";
+
+    const filesToUpload = validFiles.slice(0, remaining);
+    if (filesToUpload.length === 0) return;
+
+    onUploadingChange(true);
+
+    try {
+      const uploaded = await Promise.all(filesToUpload.map(async (file) => {
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const uploadRes = await fetch("/api/upload/document", { method: "POST", body: fd });
+        if (!uploadRes.ok) {
+          throw new Error(await uploadErrorMessage(uploadRes));
+        }
+
+        const json = await uploadRes.json() as {
+          url: string;
+          name?: string;
+          size?: number;
+          type?: string;
+        };
+
+        return {
+          id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+          name: json.name ?? file.name,
+          size: json.size ?? file.size,
+          type: json.type ?? file.type,
+          url: json.url,
+        };
+      }));
+
+      onChange([...documents, ...uploaded]);
+    } catch (err) {
+      const message = err instanceof Error && err.message !== "Upload failed"
+        ? err.message
+        : "Баримт upload хийхэд алдаа гарлаа. Дахин оролдоно уу.";
+      setLocalError(message);
+    } finally {
+      onUploadingChange(false);
+    }
+  }
+
+  function handleRemove(id: string) {
+    onChange(documents.filter((document) => document.id !== id));
+  }
+
+  const displayError = localError ?? error;
+
+  return (
+    <>
+      <input
+        ref={ref}
+        id="projectDocuments"
+        type="file"
+        multiple
+        accept={ACCEPTED_DOCUMENT_INPUT}
+        disabled={uploading}
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {uploading && (
+        <p className="mb-2 text-xs font-semibold text-blue-600">Баримт хуулж байна...</p>
+      )}
+
+      {documents.length > 0 ? (
+        <div className={cn(
+          "rounded-2xl border bg-slate-50 p-3 space-y-3",
+          displayError ? "border-red-300" : "border-slate-200"
+        )}>
+          <div className="space-y-2">
+            {documents.map((document, index) => (
+              <div
+                key={document.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2v6h6" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-800">
+                    {index + 1}. {document.name}
+                  </p>
+                  <p className="text-xs text-slate-400">{formatFileSize(document.size)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(document.id)}
+                  className="shrink-0 text-xs font-semibold text-red-500 hover:text-red-700"
+                >
+                  Устгах
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+            <span className="text-xs font-semibold text-slate-500">
+              {documents.length} / {MAX_PROJECT_DOCUMENTS} баримт хавсаргасан
+            </span>
+            {documents.length < MAX_PROJECT_DOCUMENTS && (
+              <button
+                type="button"
+                onClick={() => ref.current?.click()}
+                disabled={uploading}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 disabled:opacity-60"
+              >
+                Баримт нэмэх
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          disabled={uploading}
+          className={cn(
+            "w-full rounded-2xl border-2 border-dashed px-4 py-5 text-left transition-colors",
+            displayError
+              ? "border-red-300 bg-red-50/60"
+              : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"
+          )}
+        >
+          <span className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 10-5.656-5.656l-6.586 6.586a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            </span>
+            <span>
+              <span className="block text-sm font-bold text-slate-800">Баримт бичиг хавсаргах</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+                PDF, DOC, DOCX эсвэл зураг хэлбэрийн нотолгоо оруулна. Нэг файл {MAX_DOCUMENT_UPLOAD_MB} MB хүртэл.
+              </span>
+            </span>
+          </span>
+        </button>
+      )}
+
+      <ErrMsg msg={displayError ?? undefined} />
+    </>
+  );
+}
+
 /* ── Progress stepper ───────────────────────────────────────────────────── */
 
 function Stepper({ current }: { current: number }) {
@@ -612,6 +899,7 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
 function Step3({
   d, set, e,
   projectImages, projectImagesUploading, onProjectImagesChange, onProjectImagesUploadingChange,
+  projectDocuments, projectDocumentsUploading, onProjectDocumentsChange, onProjectDocumentsUploadingChange,
 }: {
   d: FormValues;
   set: (k: StringKey, v: string) => void;
@@ -620,6 +908,10 @@ function Step3({
   projectImagesUploading: boolean;
   onProjectImagesChange: (images: SelectedProjectImage[]) => void;
   onProjectImagesUploadingChange: (uploading: boolean) => void;
+  projectDocuments: SelectedProjectDocument[];
+  projectDocumentsUploading: boolean;
+  onProjectDocumentsChange: (documents: SelectedProjectDocument[]) => void;
+  onProjectDocumentsUploadingChange: (uploading: boolean) => void;
 }) {
   const charCount = d.story.length;
   const charOk    = charCount >= 100;
@@ -653,6 +945,18 @@ function Step3({
           onUploadingChange={onProjectImagesUploadingChange}
         />
         <Hint>1-3 бодит зураг оруулна. Эхний зураг нүүрэнд гарч, карт дээр зургууд хажуу тийш гулсаж солигдоно.</Hint>
+      </div>
+
+      <div>
+        <Label htmlFor="projectDocuments">Баримт бичиг</Label>
+        <DocumentUpload
+          documents={projectDocuments}
+          error={e.documents}
+          uploading={projectDocumentsUploading}
+          onChange={onProjectDocumentsChange}
+          onUploadingChange={onProjectDocumentsUploadingChange}
+        />
+        <Hint>Админ шалгах үед гэрчилгээ, зөвшөөрөл, танилцуулга зэрэг нотолгоог эндээс үзнэ.</Hint>
       </div>
     </div>
   );
@@ -736,7 +1040,7 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
 
 /* ── Success screen ─────────────────────────────────────────────────────── */
 
-function SuccessScreen({ title }: { title: string }) {
+function SuccessScreen({ title, editing }: { title: string; editing: boolean }) {
   return (
     <div className="text-center py-10 px-4 max-w-lg mx-auto">
       {/* Pending icon — clock, not checkmark */}
@@ -747,11 +1051,12 @@ function SuccessScreen({ title }: { title: string }) {
       </div>
 
       <h2 className="font-display font-bold text-2xl text-slate-900 mb-3">
-        Төсөл амжилттай илгээгдлээ!
+        {editing ? "Төсөл шинэчлэгдэж дахин илгээгдлээ!" : "Төсөл амжилттай илгээгдлээ!"}
       </h2>
 
       <p className="text-slate-600 text-sm leading-relaxed mb-1">
-        <span className="font-semibold">&ldquo;{title}&rdquo;</span> төсөл хянуулахаар илгээгдлээ.
+        <span className="font-semibold">&ldquo;{title}&rdquo;</span>{" "}
+        {editing ? "төсөл дахин хянуулахаар илгээгдлээ." : "төсөл хянуулахаар илгээгдлээ."}
       </p>
 
       {/* 24-48h review notice */}
@@ -787,16 +1092,19 @@ function SuccessScreen({ title }: { title: string }) {
 
 /* ── Main export ────────────────────────────────────────────────────────── */
 
-export function CreateProjectClient() {
+export function CreateProjectClient({ initialProject }: { initialProject?: EditableProjectSeed }) {
+  const editing = Boolean(initialProject);
   const [step,        setStep]        = useState(1);
-  const [data,        setData]        = useState<FormValues>(EMPTY);
+  const [data,        setData]        = useState<FormValues>(() => formValuesFromSeed(initialProject));
   const [errors,      setErrors]      = useState<ErrMap>({});
   const [submitted,  setSubmitted]  = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
-  const [projectImages, setProjectImages] = useState<SelectedProjectImage[]>([]);
+  const [projectImages, setProjectImages] = useState<SelectedProjectImage[]>(() => imagesFromSeed(initialProject));
   const [projectImagesUploading, setProjectImagesUploading] = useState(false);
+  const [projectDocuments, setProjectDocuments] = useState<SelectedProjectDocument[]>(() => documentsFromSeed(initialProject));
+  const [projectDocumentsUploading, setProjectDocumentsUploading] = useState(false);
 
   function handleProjectImagesChange(images: SelectedProjectImage[]) {
     setProjectImages(images);
@@ -804,6 +1112,17 @@ export function CreateProjectClient() {
       setErrors((e) => {
         const n = { ...e };
         delete n.coverImages;
+        return n;
+      });
+    }
+  }
+
+  function handleProjectDocumentsChange(documents: SelectedProjectDocument[]) {
+    setProjectDocuments(documents);
+    if (errors.documents) {
+      setErrors((e) => {
+        const n = { ...e };
+        delete n.documents;
         return n;
       });
     }
@@ -843,6 +1162,9 @@ export function CreateProjectClient() {
     if (step === 3 && projectImagesUploading) {
       errs.coverImages = "Зураг upload хийж байна. Түр хүлээнэ үү.";
     }
+    if (step === 3 && projectDocumentsUploading) {
+      errs.documents = "Баримт upload хийж байна. Түр хүлээнэ үү.";
+    }
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -861,6 +1183,9 @@ export function CreateProjectClient() {
     const uploadedImages = projectImages
       .map((image) => image.url)
       .filter((url): url is string => Boolean(url));
+    const uploadedDocuments = projectDocuments
+      .map((document) => document.url)
+      .filter((url): url is string => Boolean(url));
 
     if (uploadedImages.length === 0) {
       setSubmitting(false);
@@ -869,7 +1194,7 @@ export function CreateProjectClient() {
       return;
     }
 
-    const result = await createProject({
+    const payload = {
       title:           data.title,
       blurb:           data.blurb,
       category:        data.category,
@@ -882,12 +1207,17 @@ export function CreateProjectClient() {
       story:           data.story,
       coverImage:      uploadedImages[0],
       galleryImages:   uploadedImages,
+      documents:       uploadedDocuments,
       rewards:         data.rewards.map(r => ({
         title:       r.title,
         amount:      Number(r.amount),
         description: r.description,
       })),
-    });
+    };
+
+    const result = editing && initialProject
+      ? await updateOwnProject({ projectId: initialProject.id, ...payload })
+      : await createProject(payload);
     setSubmitting(false);
 
     if (result.success) {
@@ -913,13 +1243,15 @@ export function CreateProjectClient() {
         <div className="gradient-brand-hero py-10 sm:py-14">
           <div className="container-page text-center">
             <span className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-              🚀 Шинэ Төсөл
+              {editing ? "Төсөл засах" : "🚀 Шинэ Төсөл"}
             </span>
             <h1 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2">
-              Краудфандинг Кампани Эхлүүлэх
+              {editing ? "Төслөө засварлах" : "Краудфандинг Кампани Эхлүүлэх"}
             </h1>
             <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
-              Дөрвөн алхамт хялбар бүртгэлийн дамжуулалтаар өөрийн төслийг нийтэлж дэмжигчид олоорой.
+              {editing
+                ? "Мэдээллээ шинэчлээд төслөө дахин хянуулахаар илгээнэ."
+                : "Дөрвөн алхамт хялбар бүртгэлийн дамжуулалтаар өөрийн төслийг нийтэлж дэмжигчид олоорой."}
             </p>
           </div>
         </div>
@@ -930,7 +1262,7 @@ export function CreateProjectClient() {
 
             {submitted ? (
               <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 animate-fade-up">
-                <SuccessScreen title={data.title} />
+                <SuccessScreen title={data.title} editing={editing} />
               </div>
             ) : (
               <>
@@ -958,6 +1290,10 @@ export function CreateProjectClient() {
                       projectImagesUploading={projectImagesUploading}
                       onProjectImagesChange={handleProjectImagesChange}
                       onProjectImagesUploadingChange={setProjectImagesUploading}
+                      projectDocuments={projectDocuments}
+                      projectDocumentsUploading={projectDocumentsUploading}
+                      onProjectDocumentsChange={handleProjectDocumentsChange}
+                      onProjectDocumentsUploadingChange={setProjectDocumentsUploading}
                     />
                   )}
                   {step === 4 && (
@@ -986,10 +1322,10 @@ export function CreateProjectClient() {
                       )}
                     </div>
 
-                    <button type="button" onClick={handleNext} disabled={submitting || projectImagesUploading}
+                    <button type="button" onClick={handleNext} disabled={submitting || projectImagesUploading || projectDocumentsUploading}
                       className={cn(
                         buttonVariants({ variant: "primary", size: "md" }),
-                        (submitting || projectImagesUploading) && "opacity-70 cursor-wait pointer-events-none"
+                        (submitting || projectImagesUploading || projectDocumentsUploading) && "opacity-70 cursor-wait pointer-events-none"
                       )}>
                       {step < 4 ? (
                         <>
@@ -1007,11 +1343,11 @@ export function CreateProjectClient() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3V4a8 8 0 00-8 8h4z" />
                               </svg>
-                              Нийтэлж байна...
+                              {editing ? "Хадгалж байна..." : "Нийтэлж байна..."}
                             </>
                           ) : (
                             <>
-                              Төслийг илгээх
+                              {editing ? "Өөрчлөлт хадгалах" : "Төслийг илгээх"}
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                   d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

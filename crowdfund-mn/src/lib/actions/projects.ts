@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/actions/auth";
 import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
+import { normalizeDocumentList } from "@/lib/document-src";
 
 function makeSlug(title: string): string {
   const base = title
@@ -25,6 +26,10 @@ function toStoredImages(images?: string[]): string[] {
   return normalizeImageList(images).slice(0, 3);
 }
 
+function toStoredDocuments(documents?: string[]): string[] {
+  return normalizeDocumentList(documents).slice(0, 5);
+}
+
 function createProjectErrorMessage(err: unknown) {
   console.error("[createProject]", err);
 
@@ -42,7 +47,7 @@ function createProjectErrorMessage(err: unknown) {
     }
   }
 
-  return "Төсөл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.";
+  return "Төсөл хадгалахад алдаа гарлаа. Дахин оролдоно уу.";
 }
 
 export async function createProject(data: {
@@ -58,6 +63,7 @@ export async function createProject(data: {
   story: string;
   coverImage?: string;
   galleryImages?: string[];
+  documents?: string[];
   rewards: Array<{ title: string; amount: number; description: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
@@ -71,6 +77,7 @@ export async function createProject(data: {
     const deliveryMonth = endsAt.toISOString().slice(0, 7);
     const galleryImages = toStoredImages(data.galleryImages);
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
+    const documents = toStoredDocuments(data.documents);
 
     const project = await prisma.project.create({
       data: {
@@ -81,6 +88,7 @@ export async function createProject(data: {
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
+        documents,
         goal:            data.goal,
         location:        data.location.trim(),
         bankName:        data.bankName,
@@ -105,6 +113,101 @@ export async function createProject(data: {
     });
 
     revalidatePath("/profile");
+
+    return { success: true, slug: project.slug };
+  } catch (err) {
+    return { success: false, error: createProjectErrorMessage(err) };
+  }
+}
+
+export async function updateOwnProject(data: {
+  projectId: string;
+  title: string;
+  blurb: string;
+  category: string;
+  location: string;
+  goal: number;
+  duration: number;
+  bankName: string;
+  bankAccount: string;
+  bankAccountName: string;
+  story: string;
+  coverImage?: string;
+  galleryImages?: string[];
+  documents?: string[];
+  rewards: Array<{ title: string; amount: number; description: string }>;
+}): Promise<{ success: boolean; error?: string; slug?: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, error: "Нэвтрэх шаардлагатай." };
+  }
+
+  try {
+    const existing = await prisma.project.findUnique({
+      where: { id: data.projectId },
+      select: {
+        id: true,
+        slug: true,
+        creatorId: true,
+        status: true,
+        isDeleted: true,
+      },
+    });
+
+    if (!existing || existing.isDeleted || existing.creatorId !== session.userId) {
+      return { success: false, error: "Төсөл олдсонгүй." };
+    }
+
+    if (existing.status !== "PENDING" && existing.status !== "REJECTED") {
+      return {
+        success: false,
+        error: "Зөвхөн хянагдаж буй эсвэл татгалзсан төслийг засварлаж болно.",
+      };
+    }
+
+    const endsAt = new Date();
+    endsAt.setDate(endsAt.getDate() + data.duration);
+    const deliveryMonth = endsAt.toISOString().slice(0, 7);
+    const galleryImages = toStoredImages(data.galleryImages);
+    const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
+    const documents = toStoredDocuments(data.documents);
+
+    const project = await prisma.project.update({
+      where: { id: existing.id },
+      data: {
+        title:           data.title.trim(),
+        description:     data.blurb.trim(),
+        story:           data.story.trim(),
+        category:        data.category,
+        coverImage,
+        galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
+        documents,
+        goal:            data.goal,
+        location:        data.location.trim(),
+        bankName:        data.bankName,
+        bankAccount:     data.bankAccount.replace(/\s/g, ""),
+        bankAccountName: data.bankAccountName.trim(),
+        endsAt,
+        status:          "PENDING",
+        publishedAt:     null,
+        rejectionReason: null,
+        isVerified:      false,
+        rewards: {
+          deleteMany: {},
+          create: data.rewards.map((r) => ({
+            title:             r.title.trim(),
+            amount:            r.amount,
+            description:       r.description.trim(),
+            estimatedDelivery: deliveryMonth,
+            isLimited:         false,
+          })),
+        },
+      },
+      select: { slug: true },
+    });
+
+    revalidatePath("/profile");
+    revalidatePath("/admin/projects");
 
     return { success: true, slug: project.slug };
   } catch (err) {

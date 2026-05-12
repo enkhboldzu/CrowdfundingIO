@@ -68,6 +68,7 @@ model Project {
   category        String
   coverImage      String?
   galleryImages   String[]      @default([])
+  documents       String[]      @default([])
   goal            Int
   raised          Int           @default(0)
   backers         Int           @default(0)

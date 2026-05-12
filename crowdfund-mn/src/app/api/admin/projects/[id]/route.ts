@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
+import { normalizeDocumentList } from "@/lib/document-src";
 
 interface Params { params: { id: string } }
 
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         ...project,
         coverImage: normalizeImageSrc(project.coverImage),
         galleryImages: normalizeImageList(project.galleryImages).slice(0, 3),
+        documents: normalizeDocumentList(project.documents).slice(0, 5),
       },
     });
   } catch (err) {

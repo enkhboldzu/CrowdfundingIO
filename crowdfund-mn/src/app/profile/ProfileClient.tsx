@@ -433,6 +433,7 @@ function CreatedProjectCard({ project }: { project: Project }) {
   const cfg        = CREATED_STATUS_CONFIG[statusKey] ?? CREATED_STATUS_CONFIG.ACTIVE;
   const StatusIcon = cfg.icon;
   const isPublic   = statusKey === "ACTIVE" || statusKey === "FUNDED";
+  const canEdit    = statusKey === "PENDING" || statusKey === "REJECTED";
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
@@ -484,12 +485,22 @@ function CreatedProjectCard({ project }: { project: Project }) {
                   <Eye className="w-4 h-4" strokeWidth={2} />
                 </div>
               )}
-              <button
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-blue-800 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-all"
-                title="Засах"
-              >
-                <Pencil className="w-4 h-4" strokeWidth={2} />
-              </button>
+              {canEdit ? (
+                <Link
+                  href={`/projects/${project.slug}/edit`}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-blue-800 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-all"
+                  title="Засах"
+                >
+                  <Pencil className="w-4 h-4" strokeWidth={2} />
+                </Link>
+              ) : (
+                <div
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 border border-slate-100 cursor-not-allowed"
+                  title="Зөвхөн хянагдаж буй эсвэл татгалзсан төслийг засварлана"
+                >
+                  <Pencil className="w-4 h-4" strokeWidth={2} />
+                </div>
+              )}
             </div>
           </div>
 
