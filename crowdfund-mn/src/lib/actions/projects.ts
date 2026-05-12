@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/actions/auth";
+import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
 
 function makeSlug(title: string): string {
   const base = title
@@ -17,15 +18,11 @@ function makeSlug(title: string): string {
 }
 
 function toStoredImage(image?: string): string | null {
-  if (!image) return null;
-  return /^(https?:\/\/|\/)/.test(image) ? image : null;
+  return normalizeImageSrc(image);
 }
 
 function toStoredImages(images?: string[]): string[] {
-  if (!images?.length) return [];
-  return Array.from(
-    new Set(images.map(toStoredImage).filter((image): image is string => Boolean(image)))
-  ).slice(0, 3);
+  return normalizeImageList(images).slice(0, 3);
 }
 
 function createProjectErrorMessage(err: unknown) {
@@ -162,8 +159,8 @@ function formatProject(p: {
     slug: p.slug,
     description: p.description,
     category: p.category,
-    coverImage: p.coverImage ?? "",
-    galleryImages: p.galleryImages ?? [],
+    coverImage: normalizeImageSrc(p.coverImage) ?? "",
+    galleryImages: normalizeImageList(p.galleryImages),
     goal: p.goal,
     raised: p.raised,
     backers: p.backers,
@@ -175,7 +172,7 @@ function formatProject(p: {
     creator: {
       id: p.creator.id,
       name: p.creator.name,
-      avatar: p.creator.avatar ?? `https://i.pravatar.cc/48?u=${p.creator.id}`,
+      avatar: normalizeImageSrc(p.creator.avatar) ?? `https://i.pravatar.cc/48?u=${p.creator.id}`,
       isVerified: p.creator.isVerified,
       projectCount: 0,
     },

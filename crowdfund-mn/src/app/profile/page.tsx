@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/actions/auth";
 import { prisma } from "@/lib/prisma";
 import { toProject } from "@/lib/db/transform";
+import { normalizeImageSrc } from "@/lib/image-src";
 import { ProfileClient } from "./ProfileClient";
 
 export const metadata: Metadata = {
@@ -60,7 +61,7 @@ export default async function ProfilePage({ searchParams }: Props) {
         name:       user.name,
         email:      user.email,
         phone:      user.phone,
-        avatar:     user.avatar,
+        avatar:     normalizeImageSrc(user.avatar),
         isVerified: user.isVerified,
         createdAt:  user.createdAt.toISOString(),
       }}

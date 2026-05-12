@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
 
 interface Params { params: { id: string } }
 
@@ -31,7 +32,13 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ project });
+    return NextResponse.json({
+      project: {
+        ...project,
+        coverImage: normalizeImageSrc(project.coverImage),
+        galleryImages: normalizeImageList(project.galleryImages).slice(0, 3),
+      },
+    });
   } catch (err) {
     console.error("[/api/admin/projects/[id] GET]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

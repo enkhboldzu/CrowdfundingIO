@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { getSession } from "./auth";
+import { normalizeImageSrc } from "@/lib/image-src";
 
 export async function updateProfile(data: {
   name?: string;
@@ -21,7 +22,8 @@ export async function updateProfile(data: {
     }
 
     if (data.avatar) {
-      updates.avatar = data.avatar;
+      const avatar = normalizeImageSrc(data.avatar);
+      if (avatar) updates.avatar = avatar;
     }
 
     if (data.newPassword) {

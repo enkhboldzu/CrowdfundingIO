@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getSession } from "@/lib/api-auth";
+import { uploadedImageUrl } from "@/lib/image-src";
 import {
   ACCEPTED_IMAGE_TYPE_SET,
   IMAGE_EXTENSION_BY_TYPE,
@@ -69,8 +70,9 @@ export async function POST(req: NextRequest) {
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, safeName), buffer);
 
-    // Return the public URL path (served by Next.js static file handler)
-    return NextResponse.json({ url: `/uploads/${safeName}` });
+    // Serve dynamic uploads through an API route so nginx /uploads aliases
+    // cannot point the browser at a different folder.
+    return NextResponse.json({ url: uploadedImageUrl(safeName) });
   } catch (err) {
     console.error("[POST /api/upload]", err);
     return NextResponse.json({ error: storageErrorMessage(err) }, { status: 500 });

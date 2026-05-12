@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProjectBySlug } from "@/lib/db/queries";
 import { toProject, toRewardTier, toFundingUpdate } from "@/lib/db/transform";
+import { normalizeImageSrc } from "@/lib/image-src";
 import { ProjectDetailClient } from "./ProjectDetailClient";
 
 interface Props {
@@ -16,8 +17,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title:       `${p.title} — Crowdfund.mn`,
     description: p.description,
-    openGraph:   { images: p.coverImage ? [p.coverImage] : [] },
+    openGraph:   { images: imageArray(normalizeImageSrc(p.coverImage)) },
   };
+}
+
+function imageArray(src: string | null): string[] {
+  return src ? [src] : [];
 }
 
 export default async function ProjectDetailPage({ params }: Props) {

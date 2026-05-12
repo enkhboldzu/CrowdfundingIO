@@ -12,19 +12,14 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { fundingPercent, daysLeftLabel } from "@/lib/utils";
 import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
-
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80";
+import { DEFAULT_PROJECT_COVER, imageSrcOrFallback, normalizeImageSrc } from "@/lib/image-src";
 
 function validImageSrc(src: string | null | undefined): string | null {
-  const value = src?.trim();
-  if (!value) return null;
-  if (value.startsWith("/") || value.startsWith("http://") || value.startsWith("https://")) return value;
-  return null;
+  return normalizeImageSrc(src);
 }
 
 function normalizeSrc(src: string | null | undefined): string {
-  return validImageSrc(src) ?? FALLBACK_IMAGE;
+  return imageSrcOrFallback(src);
 }
 
 function projectImages(project: Project): string[] {
@@ -36,7 +31,7 @@ function projectImages(project: Project): string[] {
     .filter((src): src is string => Boolean(src));
 
   const unique = Array.from(new Set(images));
-  return unique.length > 0 ? unique : [FALLBACK_IMAGE];
+  return unique.length > 0 ? unique : [DEFAULT_PROJECT_COVER];
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -70,8 +65,8 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
   const [slideDirection, setSlideDirection] = useState(1);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const [avatarSrc, setAvatarSrc] = useState(() => normalizeSrc(project.creator.avatar));
-  const currentImage = images[imageIndex % images.length] ?? FALLBACK_IMAGE;
-  const displayImage = failedImages.includes(currentImage) ? FALLBACK_IMAGE : currentImage;
+  const currentImage = images[imageIndex % images.length] ?? DEFAULT_PROJECT_COVER;
+  const displayImage = failedImages.includes(currentImage) ? DEFAULT_PROJECT_COVER : currentImage;
 
   function showImage(nextIndex: number, direction: number, event: MouseEvent) {
     event.preventDefault();
@@ -182,7 +177,7 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
         {/* Creator */}
         <div className="flex items-center gap-2 mb-3">
           <div className="relative w-6 h-6 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-            <Image src={avatarSrc} alt={project.creator.name} fill className="object-cover" onError={() => setAvatarSrc(FALLBACK_IMAGE)} />
+            <Image src={avatarSrc} alt={project.creator.name} fill className="object-cover" onError={() => setAvatarSrc(DEFAULT_PROJECT_COVER)} />
           </div>
           <span className="text-xs text-slate-500 font-medium truncate">{project.creator.name}</span>
           {project.creator.isVerified && (

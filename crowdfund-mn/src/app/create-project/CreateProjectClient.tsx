@@ -296,7 +296,6 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
 
     try {
       const uploaded = await Promise.all(filesToUpload.map(async (file) => {
-        const preview = URL.createObjectURL(file);
         const fd = new FormData();
         fd.append("file", file);
 
@@ -309,11 +308,10 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
           const json = await uploadRes.json() as { url: string };
           return {
             id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-            preview,
+            preview: json.url,
             url: json.url,
           };
         } catch (err) {
-          URL.revokeObjectURL(preview);
           throw err;
         }
       }));

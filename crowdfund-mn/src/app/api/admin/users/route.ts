@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { normalizeImageSrc } from "@/lib/image-src";
 
 export async function GET(req: NextRequest) {
   if (!(await requireAdmin(req))) {
@@ -44,7 +45,15 @@ export async function GET(req: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
-    return NextResponse.json({ users, total, page, pageSize });
+    return NextResponse.json({
+      users: users.map(user => ({
+        ...user,
+        avatar: normalizeImageSrc(user.avatar),
+      })),
+      total,
+      page,
+      pageSize,
+    });
   } catch (err) {
     console.error("[/api/admin/users]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

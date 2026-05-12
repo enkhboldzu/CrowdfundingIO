@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { normalizeImageSrc } from "@/lib/image-src";
 
 const VALID_STATUSES = ["PENDING", "ACTIVE", "FUNDED", "FAILED", "CANCELLED", "REJECTED"] as const;
 type Status = typeof VALID_STATUSES[number];
@@ -52,7 +53,15 @@ export async function GET(req: NextRequest) {
       prisma.project.count({ where }),
     ]);
 
-    return NextResponse.json({ projects, total, page, pageSize });
+    return NextResponse.json({
+      projects: projects.map(project => ({
+        ...project,
+        coverImage: normalizeImageSrc(project.coverImage),
+      })),
+      total,
+      page,
+      pageSize,
+    });
   } catch (err) {
     console.error("[/api/admin/projects]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

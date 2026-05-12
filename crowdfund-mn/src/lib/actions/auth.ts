@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createToken, verifyToken } from "@/lib/session";
+import { normalizeImageSrc } from "@/lib/image-src";
 
 const SESSION_COOKIE = "cfmn_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24; // 24 hours
@@ -153,7 +154,13 @@ export async function loginUser(data: {
       path: "/",
     });
 
-    return { success: true, role: dbRole, name: user.name, email: user.email, avatar: user.avatar };
+    return {
+      success: true,
+      role: dbRole,
+      name: user.name,
+      email: user.email,
+      avatar: normalizeImageSrc(user.avatar),
+    };
   } catch {
     return { success: false, error: "Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу." };
   }

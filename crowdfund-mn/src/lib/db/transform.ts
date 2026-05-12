@@ -1,4 +1,9 @@
 import type { Project, RewardTier, FundingUpdate, ProjectStatus } from "@/types";
+import {
+  imageSrcOrFallback,
+  normalizeImageList,
+  normalizeImageSrc,
+} from "@/lib/image-src";
 
 interface DBUser {
   id: string;
@@ -51,26 +56,6 @@ interface DBFundingUpdate {
   projectId: string;
 }
 
-const DEFAULT_COVER =
-  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80";
-
-function sanitizeImage(src: string | null | undefined): string {
-  if (!src) return DEFAULT_COVER;
-  if (/^(https?:\/\/|\/)/.test(src)) return src;
-  return DEFAULT_COVER;
-}
-
-function sanitizeGallery(images: string[] | null | undefined): string[] {
-  if (!images?.length) return [];
-  return Array.from(
-    new Set(
-      images
-        .map((src) => src.trim())
-        .filter((src) => /^(https?:\/\/|\/)/.test(src))
-    )
-  ).slice(0, 3);
-}
-
 export function toProject(p: DBProject): Project {
   const daysLeft = Math.max(
     0,
@@ -83,8 +68,8 @@ export function toProject(p: DBProject): Project {
     slug:            p.slug,
     description:     p.description,
     category:        p.category as Project["category"],
-    coverImage:      sanitizeImage(p.coverImage),
-    galleryImages:   sanitizeGallery(p.galleryImages),
+    coverImage:      imageSrcOrFallback(p.coverImage),
+    galleryImages:   normalizeImageList(p.galleryImages).slice(0, 3),
     goal:            p.goal,
     raised:          p.raised,
     backers:         p.backers,
@@ -103,9 +88,8 @@ export function toProject(p: DBProject): Project {
     creator: {
       id:           p.creator.id,
       name:         p.creator.name,
-      avatar:       sanitizeImage(p.creator.avatar) !== DEFAULT_COVER
-                      ? sanitizeImage(p.creator.avatar)
-                      : `https://i.pravatar.cc/48?u=${p.creator.id}`,
+      avatar:       normalizeImageSrc(p.creator.avatar)
+                      ?? `https://i.pravatar.cc/48?u=${p.creator.id}`,
       isVerified:   p.creator.isVerified,
       projectCount: 0,
     },

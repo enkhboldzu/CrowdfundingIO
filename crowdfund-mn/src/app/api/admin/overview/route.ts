@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { normalizeImageSrc } from "@/lib/image-src";
 
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req);
@@ -86,7 +87,10 @@ export async function GET(req: NextRequest) {
       totalRaised:    Number(raisedAgg._sum.raised  ?? 0),
       totalBackers:   Number(raisedAgg._sum.backers ?? 0),
     },
-    recentProjects: recentProjects ?? [],
+    recentProjects: (recentProjects ?? []).map(project => ({
+      ...project,
+      coverImage: normalizeImageSrc(project.coverImage),
+    })),
     activity:       activity       ?? [],
   });
   } catch (err) {
