@@ -16,6 +16,14 @@ function isPhone(val: string) {
   return /^[\d\s+()-]{6,}$/.test(val.trim());
 }
 
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  cancelled: "Social нэвтрэлт цуцлагдлаа.",
+  config:    "Google нэвтрэлт server дээр тохируулагдаагүй байна.",
+  failed:    "Social нэвтрэлт амжилтгүй боллоо. Дахин оролдоно уу.",
+  provider:  "Social provider буруу байна.",
+  state:     "Social нэвтрэлтийн хугацаа дууссан байна. Дахин оролдоно уу.",
+};
+
 /* ─── sub-components ─── */
 function Logo() {
   return (
@@ -70,7 +78,10 @@ function LoginContent() {
   const [showPw,     setShowPw]     = useState(false);
   const [remember,   setRemember]   = useState(false);
   const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState("");
+  const [error,      setError]      = useState(() => {
+    const oauthError = searchParams.get("oauth_error");
+    return oauthError ? OAUTH_ERROR_MESSAGES[oauthError] ?? OAUTH_ERROR_MESSAGES.failed : "";
+  });
 
   const inputPhone = isPhone(identifier);
   const inputEmail = identifier.includes("@");
@@ -108,9 +119,13 @@ function LoginContent() {
     router.push(from && from.startsWith("/") ? from : defaultDest);
   }
 
-  function handleSocial(provider: string) {
-    // Social OAuth — wired up when OAuth provider is configured
-    void provider;
+  function handleSocial(provider: "google") {
+    const params = new URLSearchParams();
+    const from = searchParams.get("from");
+    if (from?.startsWith("/")) params.set("from", from);
+    const query = params.toString();
+
+    window.location.href = `/api/auth/oauth/${provider}${query ? `?${query}` : ""}`;
   }
 
   return (
@@ -296,19 +311,6 @@ function LoginContent() {
                     Google-ээр нэвтрэх
                   </button>
 
-                  {/* Facebook */}
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleSocial("facebook")}
-                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-blue-50 text-slate-700 text-sm font-semibold transition-all duration-200 hover:border-blue-200 hover:shadow-sm disabled:opacity-60"
-                  >
-                    {/* Facebook "f" icon */}
-                    <svg className="w-4 h-4 flex-shrink-0 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    Facebook-ээр нэвтрэх
-                  </button>
                 </div>
               </>
             )}
