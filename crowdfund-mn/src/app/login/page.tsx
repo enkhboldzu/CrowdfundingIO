@@ -19,6 +19,10 @@ function isPhone(val: string) {
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   cancelled: "Social нэвтрэлт цуцлагдлаа.",
   config:    "Google нэвтрэлт server дээр тохируулагдаагүй байна.",
+  token:     "Google token шалгалт амжилтгүй боллоо. Client secret болон callback URL-аа шалгана уу.",
+  profile:   "Google profile мэдээлэл авахад алдаа гарлаа.",
+  email:     "Google бүртгэлээс баталгаажсан email ирсэнгүй.",
+  account:   "Google хэрэглэгчийг системд хадгалах үед алдаа гарлаа.",
   failed:    "Social нэвтрэлт амжилтгүй боллоо. Дахин оролдоно уу.",
   provider:  "Social provider буруу байна.",
   state:     "Social нэвтрэлтийн хугацаа дууссан байна. Дахин оролдоно уу.",

@@ -29,6 +29,12 @@ interface OAuthProfile {
 const SESSION_COOKIE = "cfmn_session";
 const AUTH_COOKIE = "cfmn_auth";
 const COOKIE_MAX_AGE = 60 * 60 * 24;
+const OAUTH_ERROR_CODES = new Set([
+  "token",
+  "profile",
+  "email",
+  "account",
+]);
 
 export async function GET(req: NextRequest, { params }: Params) {
   if (!isOAuthProvider(params.provider)) {
@@ -75,7 +81,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     return res;
   } catch (err) {
     console.error("[oauth callback]", err instanceof Error ? err.message : err);
-    return redirectWithOAuthError(req, "failed");
+    const code = err instanceof Error && OAUTH_ERROR_CODES.has(err.message)
+      ? err.message
+      : "failed";
+    return redirectWithOAuthError(req, code);
   }
 }
 
@@ -106,15 +115,23 @@ async function fetchGoogleProfile(req: NextRequest, code: string): Promise<OAuth
     }),
   });
 
-  if (!tokenRes.ok) throw new Error("Google token exchange failed");
+  if (!tokenRes.ok) {
+    const body = await tokenRes.text().catch(() => "");
+    console.error("[oauth/google/token]", tokenRes.status, body || "(empty body)");
+    throw new Error("token");
+  }
   const tokenJson = await tokenRes.json() as { access_token?: string };
-  if (!tokenJson.access_token) throw new Error("Google access token missing");
+  if (!tokenJson.access_token) throw new Error("token");
 
   const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
     headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   });
 
-  if (!profileRes.ok) throw new Error("Google profile fetch failed");
+  if (!profileRes.ok) {
+    const body = await profileRes.text().catch(() => "");
+    console.error("[oauth/google/profile]", profileRes.status, body || "(empty body)");
+    throw new Error("profile");
+  }
   const profile = await profileRes.json() as {
     email?: string;
     email_verified?: boolean;
@@ -123,7 +140,7 @@ async function fetchGoogleProfile(req: NextRequest, code: string): Promise<OAuth
   };
 
   if (!profile.email || profile.email_verified === false) {
-    throw new Error("Google email is missing or unverified");
+    throw new Error("email");
   }
 
   return {
@@ -134,27 +151,32 @@ async function fetchGoogleProfile(req: NextRequest, code: string): Promise<OAuth
 }
 
 async function findOrCreateOAuthUser(profile: OAuthProfile) {
-  const existing = await prisma.user.findUnique({ where: { email: profile.email } });
+  try {
+    const existing = await prisma.user.findUnique({ where: { email: profile.email } });
 
-  if (existing) {
-    return prisma.user.update({
-      where: { id: existing.id },
+    if (existing) {
+      return prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          avatar:     profile.avatar ?? existing.avatar,
+          isVerified: true,
+        },
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
+
+    return prisma.user.create({
       data: {
-        avatar:     profile.avatar ?? existing.avatar,
+        name: profile.name,
+        email: profile.email,
+        passwordHash,
+        avatar: profile.avatar,
         isVerified: true,
       },
     });
+  } catch (err) {
+    console.error("[oauth/google/account]", err);
+    throw new Error("account");
   }
-
-  const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
-
-  return prisma.user.create({
-    data: {
-      name: profile.name,
-      email: profile.email,
-      passwordHash,
-      avatar: profile.avatar,
-      isVerified: true,
-    },
-  });
 }
