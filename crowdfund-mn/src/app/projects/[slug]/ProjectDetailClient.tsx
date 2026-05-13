@@ -516,7 +516,24 @@ function SupportModal({
                 </div>
               )}
 
-              {invoice.shortUrl && (
+              {invoice.urls.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-bold text-slate-800">QPay апп сонгох</p>
+                  <div className="max-h-44 overflow-y-auto pr-1 grid grid-cols-2 gap-2">
+                    {invoice.urls.map((url) => (
+                      <a
+                        key={`${url.name}-${url.link}`}
+                        href={url.link}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
+                      >
+                        {url.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {invoice.urls.length === 0 && invoice.shortUrl && (
                 <a
                   href={invoice.shortUrl}
                   target="_blank"
@@ -527,25 +544,8 @@ function SupportModal({
                 </a>
               )}
 
-              {invoice.urls.length > 0 && (
-                <div>
-                  <p className="mb-2 text-sm font-bold text-slate-800">Банкны апп</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {invoice.urls.slice(0, 8).map((url) => (
-                      <a
-                        key={`${url.name}-${url.link}`}
-                        href={url.link}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
-                      >
-                        {url.name}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <p className="text-center text-xs font-medium text-slate-500">
-                QR уншуулж төлөөд доорх товчоор шалгана уу. Төлөгдвөл төсөлд мөнгө автоматаар нэмэгдэнэ.
+                QR уншуулж эсвэл дээрээс апп сонгоод төлнө үү. Төлөгдвөл төсөлд мөнгө автоматаар нэмэгдэнэ.
               </p>
             </div>
           ) : (
