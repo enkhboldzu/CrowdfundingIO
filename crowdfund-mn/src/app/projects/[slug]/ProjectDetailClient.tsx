@@ -459,6 +459,10 @@ function SupportModal({
     });
   }
 
+  function openPaymentLink(link: string) {
+    window.open(link, "_self");
+  }
+
   return (
     <div
       className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-slate-950/55 px-3 py-4 backdrop-blur-sm"
@@ -521,13 +525,14 @@ function SupportModal({
                   <p className="mb-2 text-sm font-bold text-slate-800">QPay апп сонгох</p>
                   <div className="max-h-44 overflow-y-auto pr-1 grid grid-cols-2 gap-2">
                     {invoice.urls.map((url) => (
-                      <a
+                      <button
                         key={`${url.name}-${url.link}`}
-                        href={url.link}
+                        type="button"
+                        onClick={() => openPaymentLink(url.link)}
                         className="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
                       >
                         {url.name}
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </div>
