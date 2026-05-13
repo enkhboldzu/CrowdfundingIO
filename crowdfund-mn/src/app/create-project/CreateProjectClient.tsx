@@ -54,6 +54,10 @@ export interface EditableProjectSeed {
   bankAccount:     string;
   bankAccountName: string;
   story:           string;
+  purpose:         string;
+  fundingUsage:    string;
+  teamInfo:        string;
+  risks:           string;
   images:          string[];
   documents:       string[];
   rewards:         Array<{
@@ -75,6 +79,10 @@ interface FormValues {
   bankAccount:     string;
   bankAccountName: string;
   story:           string;
+  purpose:         string;
+  fundingUsage:    string;
+  teamInfo:        string;
+  risks:           string;
   coverImageName:  string;
   rewards:         RewardTier[];
 }
@@ -136,7 +144,7 @@ const STEPS = [
 const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
-  story: "", coverImageName: "",
+  story: "", purpose: "", fundingUsage: "", teamInfo: "", risks: "", coverImageName: "",
   rewards: [{ id: "r1", title: "", amount: "", description: "" }],
 };
 
@@ -154,6 +162,10 @@ function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
     bankAccount:     seed.bankAccount,
     bankAccountName: seed.bankAccountName,
     story:           seed.story,
+    purpose:         seed.purpose,
+    fundingUsage:    seed.fundingUsage,
+    teamInfo:        seed.teamInfo,
+    risks:           seed.risks,
     coverImageName:  "",
     rewards:         seed.rewards.length > 0
       ? seed.rewards.map((reward) => ({
@@ -223,6 +235,14 @@ function validate(step: number, d: FormValues): ErrMap {
   if (step === 3) {
     if (!d.story.trim())                                    e.story = "Дэлгэрэнгүй тайлбар заавал бөглөх шаардлагатай";
     else if (d.story.trim().length < 100)                   e.story = "Тайлбар хэтэрхий богино (хамгийн багадаа 100 тэмдэгт)";
+    if (!d.purpose.trim())                                  e.purpose = "Төслийн зорилго заавал бөглөнө үү";
+    else if (d.purpose.trim().length < 20)                  e.purpose = "Зорилгоо арай дэлгэрэнгүй бичнэ үү";
+    if (!d.fundingUsage.trim())                             e.fundingUsage = "Хөрөнгийг хэрхэн ашиглахаа бичнэ үү";
+    else if (d.fundingUsage.trim().length < 20)             e.fundingUsage = "Хөрөнгийн ашиглалтаа арай дэлгэрэнгүй бичнэ үү";
+    if (!d.teamInfo.trim())                                 e.teamInfo = "Багийн тухай мэдээлэл заавал бөглөнө үү";
+    else if (d.teamInfo.trim().length < 20)                 e.teamInfo = "Багийн мэдээллээ арай дэлгэрэнгүй бичнэ үү";
+    if (!d.risks.trim())                                    e.risks = "Эрсдэл, сорилтоо бичнэ үү";
+    else if (d.risks.trim().length < 20)                    e.risks = "Эрсдэлийн хэсгийг арай дэлгэрэнгүй бичнэ үү";
   }
 
   if (step === 4) {
@@ -1010,6 +1030,58 @@ function Step3({
       </div>
 
       <div>
+        <Label htmlFor="purpose" required>Төслийн зорилго</Label>
+        <FTextarea
+          id="purpose"
+          value={d.purpose}
+          onChange={v => set("purpose", v)}
+          placeholder="Энэ төсөл ямар асуудлыг шийдэх вэ? Ямар үр дүнд хүрэх вэ?"
+          error={e.purpose}
+          rows={4}
+        />
+        <ErrMsg msg={e.purpose} />
+      </div>
+
+      <div>
+        <Label htmlFor="fundingUsage" required>Хөрөнгийн ашиглалт</Label>
+        <FTextarea
+          id="fundingUsage"
+          value={d.fundingUsage}
+          onChange={v => set("fundingUsage", v)}
+          placeholder="Цугларсан мөнгийг юунд зарцуулах вэ? Жишээ: үйлдвэрлэл, маркетинг, баг, түрээс..."
+          error={e.fundingUsage}
+          rows={4}
+        />
+        <ErrMsg msg={e.fundingUsage} />
+      </div>
+
+      <div>
+        <Label htmlFor="teamInfo" required>Багийн тухай</Label>
+        <FTextarea
+          id="teamInfo"
+          value={d.teamInfo}
+          onChange={v => set("teamInfo", v)}
+          placeholder="Та нар хэн бэ? Туршлага, үүрэг, өмнөх хийсэн ажлаа товч бичнэ үү."
+          error={e.teamInfo}
+          rows={4}
+        />
+        <ErrMsg msg={e.teamInfo} />
+      </div>
+
+      <div>
+        <Label htmlFor="risks" required>Эрсдэлүүд болон сорилтууд</Label>
+        <FTextarea
+          id="risks"
+          value={d.risks}
+          onChange={v => set("risks", v)}
+          placeholder="Ямар эрсдэл гарч болох вэ? Тэрийг яаж даван туулах вэ?"
+          error={e.risks}
+          rows={4}
+        />
+        <ErrMsg msg={e.risks} />
+      </div>
+
+      <div>
         <Label htmlFor="coverImages" required>Төслийн зураг</Label>
         <ImageUpload
           images={projectImages}
@@ -1279,6 +1351,10 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
       bankAccount:     data.bankAccount,
       bankAccountName: data.bankAccountName,
       story:           data.story,
+      purpose:         data.purpose,
+      fundingUsage:    data.fundingUsage,
+      teamInfo:        data.teamInfo,
+      risks:           data.risks,
       coverImage:      uploadedImages[0],
       galleryImages:   uploadedImages,
       documents:       uploadedDocuments,

@@ -68,6 +68,10 @@ export default async function EditProjectPage({ params }: Props) {
     bankAccount:     project.bankAccount,
     bankAccountName: project.bankAccountName,
     story:           project.story,
+    purpose:         project.purpose ?? "",
+    fundingUsage:    project.fundingUsage ?? "",
+    teamInfo:        project.teamInfo ?? "",
+    risks:           project.risks ?? "",
     images:          images.length > 0 ? images : coverImage ? [coverImage] : [],
     documents:       normalizeDocumentList(project.documents).slice(0, 5),
     rewards:         project.rewards.map((reward) => ({

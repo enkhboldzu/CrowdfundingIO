@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/actions/auth";
+import { projectCreatorInclude } from "@/lib/db/queries";
 import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
 import { normalizeDocumentList } from "@/lib/document-src";
 
@@ -63,6 +64,10 @@ export async function createProject(data: {
   bankAccount: string;
   bankAccountName: string;
   story: string;
+  purpose: string;
+  fundingUsage: string;
+  teamInfo: string;
+  risks: string;
   coverImage?: string;
   galleryImages?: string[];
   documents?: string[];
@@ -87,6 +92,10 @@ export async function createProject(data: {
         slug:            makeSlug(data.title),
         description:     data.blurb.trim(),
         story:           data.story.trim(),
+        purpose:         data.purpose.trim(),
+        fundingUsage:    data.fundingUsage.trim(),
+        teamInfo:        data.teamInfo.trim(),
+        risks:           data.risks.trim(),
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
@@ -134,6 +143,10 @@ export async function updateOwnProject(data: {
   bankAccount: string;
   bankAccountName: string;
   story: string;
+  purpose: string;
+  fundingUsage: string;
+  teamInfo: string;
+  risks: string;
   coverImage?: string;
   galleryImages?: string[];
   documents?: string[];
@@ -180,6 +193,10 @@ export async function updateOwnProject(data: {
         title:           data.title.trim(),
         description:     data.blurb.trim(),
         story:           data.story.trim(),
+        purpose:         data.purpose.trim(),
+        fundingUsage:    data.fundingUsage.trim(),
+        teamInfo:        data.teamInfo.trim(),
+        risks:           data.risks.trim(),
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
@@ -229,7 +246,7 @@ export async function getProjectsByCategory(
   try {
     const rows = await prisma.project.findMany({
       where: { category, status: "ACTIVE" },
-      include: { creator: true },
+      include: { creator: { include: projectCreatorInclude } },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
@@ -256,7 +273,13 @@ function formatProject(p: {
   isTrending: boolean;
   isFeatured: boolean;
   tags: string[];
-  creator: { id: string; name: string; avatar: string | null; isVerified: boolean };
+  creator: {
+    id: string;
+    name: string;
+    avatar: string | null;
+    isVerified: boolean;
+    _count?: { projects: number };
+  };
 }) {
   const daysLeft = Math.max(
     0,
@@ -284,7 +307,7 @@ function formatProject(p: {
       name: p.creator.name,
       avatar: normalizeImageSrc(p.creator.avatar) ?? `https://i.pravatar.cc/48?u=${p.creator.id}`,
       isVerified: p.creator.isVerified,
-      projectCount: 0,
+      projectCount: p.creator._count?.projects ?? 0,
     },
   };
 }

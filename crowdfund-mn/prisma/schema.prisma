@@ -65,6 +65,10 @@ model Project {
   slug            String          @unique
   description     String
   story           String          @db.Text
+  purpose         String?         @db.Text
+  fundingUsage    String?         @db.Text
+  teamInfo        String?         @db.Text
+  risks           String?         @db.Text
   category        String
   coverImage      String?
   galleryImages   String[]        @default([])

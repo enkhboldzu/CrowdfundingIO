@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/actions/auth";
 import { prisma } from "@/lib/prisma";
+import { projectCreatorInclude } from "@/lib/db/queries";
 import { toProject } from "@/lib/db/transform";
 import { normalizeImageSrc } from "@/lib/image-src";
 import { ProfileClient } from "./ProfileClient";
@@ -44,11 +45,11 @@ export default async function ProfilePage({ searchParams }: Props) {
       where:    { userId: session.userId, status: "COMPLETED" },
       orderBy:  { createdAt: "desc" },
       take:     20,
-      include:  { project: { include: { creator: true } } },
+      include:  { project: { include: { creator: { include: projectCreatorInclude } } } },
     }),
     prisma.project.findMany({
       where:   { creatorId: session.userId },
-      include: { creator: true },
+      include: { creator: { include: projectCreatorInclude } },
       orderBy: { createdAt: "desc" },
     }),
   ]);

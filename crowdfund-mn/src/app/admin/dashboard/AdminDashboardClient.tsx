@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  ShieldCheck, Clock, Users, TrendingUp,
+  ShieldCheck, Clock, Users,
   CheckCircle, XCircle, Loader2, Search, ChevronLeft, ChevronRight,
   Trash2, Pencil, Star, Flame, BadgeCheck, X, Save,
   FolderKanban, Banknote, UserPlus, FilePlus, ArrowRight, RefreshCw,
-  AlertTriangle,
+  AlertTriangle, Mail, Phone, CalendarDays, Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMNT } from "@/lib/formatters";
@@ -44,7 +44,7 @@ interface RecentProject {
 }
 
 interface ActivityItem {
-  type:   "user_signup" | "project_pending";
+  type:   "user_signup" | "project_pending" | "donation_completed";
   id:     string;
   label:  string;
   detail: string;
@@ -93,6 +93,17 @@ interface AdminUser {
   avatar:     string | null;
   isVerified: boolean;
   createdAt:  string;
+  donationTotal: number;
+  recentDonations: {
+    id: string;
+    amount: number;
+    paymentMethod: string;
+    qpayPaymentId: string | null;
+    createdAt: string;
+    paidAt: string | null;
+    project: { id: string; title: string; slug: string };
+    rewardTier: { title: string } | null;
+  }[];
   _count: { projects: number; donations: number };
 }
 
@@ -361,16 +372,21 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
     <div className="space-y-1">
       {items.map((item, i) => {
         const isSignup = item.type === "user_signup";
+        const isDonation = item.type === "donation_completed";
+        const Icon = isSignup ? UserPlus : isDonation ? Banknote : FilePlus;
         return (
           <div key={`${item.id}-${i}`} className="flex items-start gap-3 py-2.5 border-b border-slate-50 last:border-0">
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-              isSignup ? "bg-violet-100" : "bg-amber-100"
+              isSignup ? "bg-violet-100" : isDonation ? "bg-emerald-100" : "bg-amber-100"
             )}>
-              {isSignup
-                ? <UserPlus  className="w-3.5 h-3.5 text-violet-600" strokeWidth={2} />
-                : <FilePlus  className="w-3.5 h-3.5 text-amber-600"  strokeWidth={2} />
-              }
+              <Icon
+                className={cn(
+                  "w-3.5 h-3.5",
+                  isSignup ? "text-violet-600" : isDonation ? "text-emerald-600" : "text-amber-600"
+                )}
+                strokeWidth={2}
+              />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-900 truncate">{item.label}</p>
@@ -524,8 +540,13 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
   const { show }                      = useToast();
   const { decrementPending }          = useAdminStats();
   const debounceRef                   = useRef<ReturnType<typeof setTimeout>>();
+  const searchRef                     = useRef(q);
 
-  const fetchProjects = useCallback(async (p = 1, search = q) => {
+  useEffect(() => {
+    searchRef.current = q;
+  }, [q]);
+
+  const fetchProjects = useCallback(async (p = 1, search = "") => {
     setLoading(true);
     setFetchError(null);
     let httpStatus: number | null = null;
@@ -551,9 +572,12 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
-  useEffect(() => { fetchProjects(1); }, [statusFilter]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchProjects(1, searchRef.current); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchProjects]);
 
   function handleSearch(val: string) {
     setQ(val);
@@ -576,7 +600,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
       decrementPending();   // ← real-time sync across sidebar + header
     } catch {
       show("Алдаа гарлаа. Дахин оролдоно уу.", "error");
-      fetchProjects(page);
+      fetchProjects(page, q);
     } finally {
       setActionId(null); setRejectId(null); setReason("");
     }
@@ -593,7 +617,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
       setTotal(t => t - 1);
     } catch {
       show("Устгахад алдаа гарлаа", "error");
-      fetchProjects(page);
+      fetchProjects(page, q);
     } finally {
       setActionId(null);
     }
@@ -666,7 +690,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
             </a>
           ) : (
             <button
-              onClick={() => fetchProjects(page)}
+              onClick={() => fetchProjects(page, q)}
               className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
             >
               <RefreshCw className="w-4 h-4" strokeWidth={2} />
@@ -817,7 +841,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-6">
           <button
-            onClick={() => { setPage(p => p - 1); fetchProjects(page - 1); }}
+            onClick={() => { setPage(p => p - 1); fetchProjects(page - 1, q); }}
             disabled={page <= 1}
             className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 transition-colors"
           >
@@ -825,7 +849,7 @@ function ProjectsTab({ statusFilter }: { statusFilter: "pending" | "all" }) {
           </button>
           <span className="text-sm text-slate-600 font-medium">{page} / {totalPages}</span>
           <button
-            onClick={() => { setPage(p => p + 1); fetchProjects(page + 1); }}
+            onClick={() => { setPage(p => p + 1); fetchProjects(page + 1, q); }}
             disabled={page >= totalPages}
             className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 transition-colors"
           >
@@ -850,8 +874,13 @@ function UsersTab() {
   const [actionId, setActionId] = useState<string | null>(null);
   const { show }                = useToast();
   const debounceRef             = useRef<ReturnType<typeof setTimeout>>();
+  const searchRef               = useRef(q);
 
-  const fetchUsers = useCallback(async (p = 1, search = q) => {
+  useEffect(() => {
+    searchRef.current = q;
+  }, [q]);
+
+  const fetchUsers = useCallback(async (p = 1, search = "") => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), ...(search ? { q: search } : {}) });
@@ -869,9 +898,12 @@ function UsersTab() {
     } finally {
       setLoading(false);
     }
-  }, [q, show]);
+  }, [show]);
 
-  useEffect(() => { fetchUsers(1); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchUsers(1, searchRef.current); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchUsers]);
 
   function handleSearch(val: string) {
     setQ(val);
@@ -920,11 +952,20 @@ function UsersTab() {
   }
 
   const totalPages = Math.ceil(total / 30);
+  const visibleDonationTotal = users.reduce((sum, user) => sum + user.donationTotal, 0);
+  const visibleDonationCount = users.reduce((sum, user) => sum + user._count.donations, 0);
+  const visibleVerifiedCount = users.filter(user => user.isVerified).length;
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1 max-w-sm">
+      <div className="mb-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <h2 className="text-lg font-black text-slate-900">Хэрэглэгчийн мэдээлэл</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Холбоо барих мэдээлэл, үүсгэсэн төсөл, бодитоор дэмжсэн мөнгөн дүнг нэг дор харуулна.
+          </p>
+        </div>
+        <div className="relative w-full lg:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
@@ -934,89 +975,170 @@ function UsersTab() {
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
-        <span className="text-sm text-slate-400">{total} хэрэглэгч</span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Нийт хэрэглэгч</p>
+          <p className="mt-1 text-2xl font-black text-slate-900">{total.toLocaleString("mn-MN")}</p>
+          <p className="mt-1 text-xs text-slate-500">{visibleVerifiedCount} баталгаажсан хэрэглэгч харагдаж байна</p>
+        </div>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Баталгаажсан дэмжлэг</p>
+          <p className="mt-1 text-2xl font-black text-blue-700">{visibleDonationCount.toLocaleString("mn-MN")}</p>
+          <p className="mt-1 text-xs text-slate-500">Энэ хуудсанд байгаа хэрэглэгчдийн тоо</p>
+        </div>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Дэмжсэн нийт дүн</p>
+          <p className="mt-1 text-2xl font-black text-emerald-700">{formatMNT(visibleDonationTotal)}</p>
+          <p className="mt-1 text-xs text-slate-500">Зөвхөн төлбөр нь баталгаажсан дэмжлэг</p>
+        </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-blue-700" />
         </div>
+      ) : users.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+          <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" strokeWidth={1.5} />
+          <p className="font-bold text-slate-800">Хэрэглэгч олдсонгүй</p>
+          <p className="mt-1 text-sm text-slate-500">Хайх үгээ өөрчлөөд дахин шалгана уу.</p>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {users.map(u => (
-            <div
-              key={u.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center gap-4"
-            >
-              {/* Avatar */}
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-                {u.avatar
-                  ? <img src={u.avatar} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-sm">
-                      {u.name.charAt(0).toUpperCase()}
-                    </div>
-                }
-              </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {users.map(u => {
+            const joinedAt = new Date(u.createdAt).toLocaleDateString("mn-MN");
+            return (
+              <div key={u.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-200">
+                    {u.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={u.avatar} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-base font-black text-slate-500">
+                        {u.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-slate-900 text-sm">{u.name}</span>
-                  {u.role === "ADMIN" && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-900 text-white rounded-md">ADMIN</span>
-                  )}
-                  {u.isVerified && (
-                    <span title="Баталгаажсан"><BadgeCheck className="w-3.5 h-3.5 text-blue-600" /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-base font-black text-slate-900">{u.name}</p>
+                      {u.role === "ADMIN" && (
+                        <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white">ADMIN</span>
+                      )}
+                      {u.isVerified && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                          <BadgeCheck className="h-3 w-3" />
+                          Баталгаажсан
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 grid gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                        <span className="break-all">{u.email ?? "Имэйл бүртгээгүй"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                        <span>{u.phone ?? "Утас бүртгээгүй"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                        <span>Бүртгүүлсэн: {joinedAt}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+                  <div className="border-r border-slate-200 px-3 py-3 text-center">
+                    <p className="text-lg font-black text-slate-900">{u._count.projects}</p>
+                    <p className="text-[11px] font-medium text-slate-500">Төсөл</p>
+                  </div>
+                  <div className="border-r border-slate-200 px-3 py-3 text-center">
+                    <p className="text-lg font-black text-blue-700">{u._count.donations}</p>
+                    <p className="text-[11px] font-medium text-slate-500">Дэмжлэг</p>
+                  </div>
+                  <div className="px-3 py-3 text-center">
+                    <p className="truncate text-lg font-black text-emerald-700">{formatMNT(u.donationTotal)}</p>
+                    <p className="text-[11px] font-medium text-slate-500">Дүн</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-slate-100 bg-white">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                      <Gift className="h-3.5 w-3.5 text-blue-600" />
+                      Сүүлийн дэмжлэг
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-400">баталгаажсан</span>
+                  </div>
+                  {u.recentDonations.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      {u.recentDonations.map(donation => (
+                        <div key={donation.id} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2.5">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold text-slate-800">{donation.project.title}</p>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                              {new Date(donation.paidAt ?? donation.createdAt).toLocaleDateString("mn-MN")}
+                              {donation.rewardTier ? ` · ${donation.rewardTier.title}` : ""}
+                              {donation.qpayPaymentId ? ` · ${donation.qpayPaymentId}` : ""}
+                            </p>
+                          </div>
+                          <p className="text-sm font-black text-blue-700">{formatMNT(donation.amount)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="px-3 py-4 text-center text-xs text-slate-400">Баталгаажсан дэмжлэг байхгүй</p>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 truncate">{u.email ?? u.phone ?? "—"}</p>
-                <p className="text-xs text-slate-400">
-                  {u._count.projects} төсөл · {u._count.donations} хандив · {new Date(u.createdAt).toLocaleDateString("mn-MN")}
-                </p>
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => toggleVerify(u)}
-                  disabled={actionId === u.id}
-                  title={u.isVerified ? "Баталгаажуулалт цуцлах" : "Баталгаажуулах"}
-                  className={cn(
-                    "flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50",
-                    u.isVerified
-                      ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  )}
-                >
-                  {actionId === u.id
-                    ? <Loader2 className="w-3 h-3 animate-spin" />
-                    : <BadgeCheck className="w-3 h-3" />
-                  }
-                  {u.isVerified ? "Баталгаажсан" : "Баталгаажуулах"}
-                </button>
-                <button
-                  onClick={() => toggleRole(u)}
-                  disabled={actionId === u.id}
-                  className={cn(
-                    "flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50",
-                    u.role === "ADMIN"
-                      ? "bg-slate-900 text-white hover:bg-slate-700"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  )}
-                >
-                  {actionId === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
-                  {u.role === "ADMIN" ? "Хасах" : "Админ болгох"}
-                </button>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    onClick={() => toggleVerify(u)}
+                    disabled={actionId === u.id}
+                    title={u.isVerified ? "Баталгаажуулалт цуцлах" : "Баталгаажуулах"}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50",
+                      u.isVerified
+                        ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    )}
+                  >
+                    {actionId === u.id
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <BadgeCheck className="h-3.5 w-3.5" />
+                    }
+                    {u.isVerified ? "Баталгаажсан" : "Баталгаажуулах"}
+                  </button>
+                  <button
+                    onClick={() => toggleRole(u)}
+                    disabled={actionId === u.id}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50",
+                      u.role === "ADMIN"
+                        ? "bg-slate-900 text-white hover:bg-slate-700"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    )}
+                  >
+                    {actionId === u.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                    {u.role === "ADMIN" ? "Админаас хасах" : "Админ болгох"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-6">
           <button
-            onClick={() => { setPage(p => p - 1); fetchUsers(page - 1); }}
+            onClick={() => { setPage(p => p - 1); fetchUsers(page - 1, q); }}
             disabled={page <= 1}
             className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 transition-colors"
           >
@@ -1024,7 +1146,7 @@ function UsersTab() {
           </button>
           <span className="text-sm text-slate-600 font-medium">{page} / {totalPages}</span>
           <button
-            onClick={() => { setPage(p => p + 1); fetchUsers(page + 1); }}
+            onClick={() => { setPage(p => p + 1); fetchUsers(page + 1, q); }}
             disabled={page >= totalPages}
             className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-30 transition-colors"
           >
@@ -1086,7 +1208,9 @@ export function AdminDashboardClient() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "overview") loadOverview();
+    if (activeTab !== "overview") return;
+    const timer = window.setTimeout(() => { void loadOverview(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [activeTab, loadOverview]);
 
   return (

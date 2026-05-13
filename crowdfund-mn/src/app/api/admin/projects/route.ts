@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         include: {
           creator: { select: { id: true, name: true, email: true, phone: true, isVerified: true } },
           rewards: { select: { id: true, title: true, amount: true } },
-          _count:  { select: { donations: true } },
+          _count:  { select: { donations: { where: { status: "COMPLETED" } } } },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,

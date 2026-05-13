@@ -21,6 +21,11 @@ export interface Project {
   title: string;
   slug: string;
   description: string;
+  story?: string | null;
+  purpose?: string | null;
+  fundingUsage?: string | null;
+  teamInfo?: string | null;
+  risks?: string | null;
   category: Category;
   coverImage: string;
   galleryImages?: string[];

@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
+export const projectCreatorInclude = {
+  _count: { select: { projects: true } },
+} as const;
+
 /* ── Category project counts (for server components) ───────────────── */
 
 export async function getProjectCountsByCategory(): Promise<Record<string, number>> {
@@ -27,14 +31,14 @@ export async function getLandingProjects(limit = 20) {
       // All approved (ACTIVE) projects, newest first.
       prisma.project.findMany({
         where: { status: "ACTIVE", isDeleted: false },
-        include: { creator: true },
+        include: { creator: { include: projectCreatorInclude } },
         orderBy: { createdAt: "desc" },
         take: limit,
       }),
       // Admin-picked featured project.
       prisma.project.findMany({
         where: { status: "ACTIVE", isDeleted: false, isFeatured: true },
-        include: { creator: true },
+        include: { creator: { include: projectCreatorInclude } },
         orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
         take: 1,
       }),
@@ -45,7 +49,7 @@ export async function getLandingProjects(limit = 20) {
           isDeleted: false,
           isTrending: true,
         },
-        include: { creator: true },
+        include: { creator: { include: projectCreatorInclude } },
         orderBy: [{ updatedAt: "desc" }, { raised: "desc" }, { createdAt: "desc" }],
         take: 6,
       }),
@@ -56,7 +60,7 @@ export async function getLandingProjects(limit = 20) {
           isDeleted: false,
           isVerified: true,
         },
-        include: { creator: true },
+        include: { creator: { include: projectCreatorInclude } },
         orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
         take: 6,
       }),
@@ -81,7 +85,7 @@ export async function getTrendingProjects(limit = 6) {
   try {
     return await prisma.project.findMany({
       where: { status: "ACTIVE", isTrending: true, isDeleted: false },
-      include: { creator: true },
+      include: { creator: { include: projectCreatorInclude } },
       orderBy: { raised: "desc" },
       take: limit,
     });
@@ -97,7 +101,7 @@ export async function getProjectBySlug(slug: string) {
     return await prisma.project.findUnique({
       where: { slug },
       include: {
-        creator: true,
+        creator: { include: projectCreatorInclude },
         rewards: { orderBy: { amount: "asc" } },
         updates: { orderBy: { createdAt: "desc" } },
       },
@@ -121,7 +125,7 @@ export async function getProjects(options?: {
         isDeleted: false,
         ...(options?.category ? { category: options.category } : {}),
       },
-      include: { creator: true },
+      include: { creator: { include: projectCreatorInclude } },
       orderBy: { createdAt: "desc" },
       take: options?.limit ?? 20,
       skip: options?.offset ?? 0,

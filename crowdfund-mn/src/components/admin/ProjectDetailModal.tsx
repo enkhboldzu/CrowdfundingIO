@@ -50,6 +50,10 @@ interface ProjectDetail {
   slug:            string;
   description:     string;
   story:           string;
+  purpose:         string | null;
+  fundingUsage:    string | null;
+  teamInfo:        string | null;
+  risks:           string | null;
   category:        string;
   coverImage:      string | null;
   documents:       string[];
@@ -128,6 +132,19 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex items-start gap-3">
       <span className="text-xs text-slate-400 w-28 flex-shrink-0 pt-0.5">{label}</span>
       <span className="text-sm font-semibold text-slate-900 flex-1 break-all">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function DetailTextCard({ title, content }: { title: string; content: string | null }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+      <p className="text-xs font-bold text-slate-800 mb-1.5">{title}</p>
+      {content?.trim() ? (
+        <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap line-clamp-5">{content}</p>
+      ) : (
+        <p className="text-xs italic text-slate-400">Мэдээлэл байхгүй</p>
+      )}
     </div>
   );
 }
@@ -276,6 +293,15 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
                 <Section icon={BookOpen} title="Бүтэн түүх / Хэрхэн зарцуулах">
                   <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto pr-2 border border-slate-100 rounded-xl p-4 bg-slate-50">
                     {detail.story || <span className="italic text-slate-400">Мэдээлэл байхгүй</span>}
+                  </div>
+                </Section>
+
+                <Section icon={FileText} title="Дэлгэрэнгүй хэсгүүд">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DetailTextCard title="Төслийн зорилго" content={detail.purpose} />
+                    <DetailTextCard title="Хөрөнгийн ашиглалт" content={detail.fundingUsage} />
+                    <DetailTextCard title="Багийн тухай" content={detail.teamInfo} />
+                    <DetailTextCard title="Эрсдэлүүд болон сорилтууд" content={detail.risks} />
                   </div>
                 </Section>
 

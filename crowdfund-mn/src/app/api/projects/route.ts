@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { projectCreatorInclude } from "@/lib/db/queries";
 import { toProject } from "@/lib/db/transform";
 
 export async function GET(req: NextRequest) {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     const [projects, total, agg] = await Promise.all([
       prisma.project.findMany({
         where,
-        include: { creator: true },
+        include: { creator: { include: projectCreatorInclude } },
         orderBy,
         take: 60,
       }),

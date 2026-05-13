@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     recentProjects,
     recentUsers,
     recentPendingProjects,
+    recentDonations,
   ] = await Promise.all([
     prisma.project.count({ where: { isDeleted: false } }),
     prisma.project.count({ where: { status: "PENDING",  isDeleted: false } }),
@@ -55,6 +56,19 @@ export async function GET(req: NextRequest) {
       take: 4,
       select: { id: true, title: true, createdAt: true },
     }),
+    prisma.donation.findMany({
+      where: { status: "COMPLETED" },
+      orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+      take: 6,
+      select: {
+        id: true,
+        amount: true,
+        paidAt: true,
+        createdAt: true,
+        user: { select: { name: true, email: true, phone: true } },
+        project: { select: { title: true } },
+      },
+    }),
   ]);
 
   // Merge and sort activity items by date, take top 8
@@ -72,6 +86,13 @@ export async function GET(req: NextRequest) {
       label:   p.title,
       detail:  "Шинэ төсөл илгээгдлээ — батлах шаардлагатай",
       time:    p.createdAt.toISOString(),
+    })),
+    ...recentDonations.map(d => ({
+      type:    "donation_completed" as const,
+      id:      d.id,
+      label:   d.user?.name ?? d.user?.email ?? d.user?.phone ?? "Зочин дэмжигч",
+      detail:  `${d.project.title} · ${d.amount.toLocaleString("mn-MN")}₮ дэмжив`,
+      time:    (d.paidAt ?? d.createdAt).toISOString(),
     })),
   ]
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())

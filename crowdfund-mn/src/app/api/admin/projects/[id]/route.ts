@@ -94,6 +94,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     title?:       string;
     description?: string;
     story?:       string;
+    purpose?:     string;
+    fundingUsage?: string;
+    teamInfo?:    string;
+    risks?:       string;
     goal?:        number;
     endsAt?:      string;
     category?:    string;
@@ -152,6 +156,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.title       !== undefined) editData.title       = body.title;
   if (body.description !== undefined) editData.description = body.description;
   if (body.story       !== undefined) editData.story       = body.story;
+  if (body.purpose     !== undefined) editData.purpose     = body.purpose;
+  if (body.fundingUsage !== undefined) editData.fundingUsage = body.fundingUsage;
+  if (body.teamInfo    !== undefined) editData.teamInfo    = body.teamInfo;
+  if (body.risks       !== undefined) editData.risks       = body.risks;
   if (body.goal        !== undefined) editData.goal        = Number(body.goal);
   if (body.endsAt      !== undefined) editData.endsAt      = new Date(body.endsAt);
   if (body.category    !== undefined) editData.category    = body.category;

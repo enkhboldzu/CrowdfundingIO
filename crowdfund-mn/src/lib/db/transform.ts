@@ -10,6 +10,7 @@ interface DBUser {
   name: string;
   avatar: string | null;
   isVerified: boolean;
+  _count?: { projects: number };
 }
 
 interface DBProject {
@@ -17,6 +18,11 @@ interface DBProject {
   title: string;
   slug: string;
   description: string;
+  story?: string | null;
+  purpose?: string | null;
+  fundingUsage?: string | null;
+  teamInfo?: string | null;
+  risks?: string | null;
   category: string;
   coverImage: string | null;
   galleryImages?: string[];
@@ -67,6 +73,11 @@ export function toProject(p: DBProject): Project {
     title:           p.title,
     slug:            p.slug,
     description:     p.description,
+    story:           p.story ?? null,
+    purpose:         p.purpose ?? null,
+    fundingUsage:    p.fundingUsage ?? null,
+    teamInfo:        p.teamInfo ?? null,
+    risks:           p.risks ?? null,
     category:        p.category as Project["category"],
     coverImage:      imageSrcOrFallback(p.coverImage),
     galleryImages:   normalizeImageList(p.galleryImages).slice(0, 3),
@@ -91,7 +102,7 @@ export function toProject(p: DBProject): Project {
       avatar:       normalizeImageSrc(p.creator.avatar)
                       ?? `https://i.pravatar.cc/48?u=${p.creator.id}`,
       isVerified:   p.creator.isVerified,
-      projectCount: 0,
+      projectCount: p.creator._count?.projects ?? 0,
     },
   };
 }

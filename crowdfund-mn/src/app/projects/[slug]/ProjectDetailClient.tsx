@@ -683,55 +683,26 @@ function AboutTab({ project }: { project: Project }) {
 
       <div className="h-px bg-slate-100" />
 
-      <div>
-        <h3 className="font-display font-bold text-slate-900 text-lg mb-3">Төслийн зорилго</h3>
-        <p className="text-slate-600 text-sm leading-relaxed">
-          Энэ төсөл нь Монгол улсын{" "}
-          {CATEGORY_LABELS[project.category] ?? "технологийн"} салбарт шинэ хуудас нээх зорилготой.
-          Бид дижитал инновацийн тусламжтайгаар монголчуудын өдөр тутмын амьдралыг дэмжих,
-          боломжийг нэмэгдүүлэхийг зорьж байна. Краудфандингийн тусламжтайгаар нийгмийн өргөн
-          дэмжлэгийг авч энэхүү зорилгоо хэрэгжүүлнэ.
-        </p>
-      </div>
+      <ProjectTextSection title="Төслийн тухай" content={project.story} />
+      <ProjectTextSection title="Төслийн зорилго" content={project.purpose} />
+      <ProjectTextSection title="Хөрөнгийн ашиглалт" content={project.fundingUsage} />
+      <ProjectTextSection title="Багийн тухай" content={project.teamInfo} />
+      <ProjectTextSection title="Эрсдэлүүд болон сорилтууд" content={project.risks} />
+    </div>
+  );
+}
 
-      <div>
-        <h3 className="font-display font-bold text-slate-900 text-lg mb-3">Хөрөнгийн ашиглалт</h3>
-        <div className="space-y-2.5">
-          {[
-            { pct: "60%", label: "Хөгжүүлэлт болон техникийн зардал" },
-            { pct: "20%", label: "Маркетинг болон хэрэглэгч татах" },
-            { pct: "20%", label: "Ажиллах хүчний болон удирдлагын зардал" },
-          ].map(item => (
-            <div key={item.pct} className="flex items-center gap-3 text-sm text-slate-600">
-              <span className="font-bold text-blue-800 w-10 flex-shrink-0">{item.pct}</span>
-              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-200 rounded-full"
-                  style={{ width: item.pct }}
-                />
-              </div>
-              <span className="flex-1">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+function ProjectTextSection({ title, content }: { title: string; content?: string | null }) {
+  const text = content?.trim();
 
-      <div>
-        <h3 className="font-display font-bold text-slate-900 text-lg mb-3">Багийн тухай</h3>
-        <p className="text-slate-600 text-sm leading-relaxed">
-          Манай баг 5+ жилийн туршлагатай мэргэжилтнүүдээс бүрдэнэ. Технологи, бизнес,
-          дизайн чиглэлээр мэргэшсэн хүмүүс хамтран ажиллаж байна. Бид өмнө нь хэд хэдэн
-          амжилттай төслийг хэрэгжүүлж байсан туршлагатай.
-        </p>
-      </div>
-
-      <div>
-        <h3 className="font-display font-bold text-slate-900 text-lg mb-3">Эрсдэлүүд болон сорилтууд</h3>
-        <p className="text-slate-600 text-sm leading-relaxed">
-          Бид болзошгүй эрсдэлүүдийг тодорхойлж, тэдгээрийг даван туулах стратегиа боловсруулсан.
-          Хөгжүүлэлтийн хугацаа уртасвал бид дэмжигчидтэйгээ нээлттэй харилцан ажиллах болно.
-        </p>
-      </div>
+  return (
+    <div>
+      <h3 className="font-display font-bold text-slate-900 text-lg mb-3">{title}</h3>
+      {text ? (
+        <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
+      ) : (
+        <p className="text-slate-400 text-sm italic">Мэдээлэл оруулаагүй байна.</p>
+      )}
     </div>
   );
 }

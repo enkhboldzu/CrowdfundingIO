@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { projectCreatorInclude } from "@/lib/db/queries";
 import { toProject, toRewardTier, toFundingUpdate } from "@/lib/db/transform";
 
 export async function GET(
@@ -10,7 +11,7 @@ export async function GET(
     const p = await prisma.project.findUnique({
       where: { slug: params.slug, isDeleted: false },
       include: {
-        creator: true,
+        creator: { include: projectCreatorInclude },
         rewards: { orderBy: { amount: "asc" } },
         updates: { orderBy: { createdAt: "desc" } },
       },
