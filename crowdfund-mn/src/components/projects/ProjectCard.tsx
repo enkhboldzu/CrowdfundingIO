@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge }       from "@/components/ui/Badge";
@@ -60,13 +60,26 @@ interface ProjectCardProps {
 export function ProjectCard({ project, featured = false, className }: ProjectCardProps) {
   const percent  = fundingPercent(project.raised, project.goal);
   const router   = useRouter();
-  const images    = useMemo(() => projectImages(project), [project.coverImage, project.galleryImages]);
+  const shouldReduceMotion = useReducedMotion();
+  const images    = useMemo(() => projectImages(project), [project]);
   const [imageIndex, setImageIndex] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const [avatarSrc, setAvatarSrc] = useState(() => normalizeSrc(project.creator.avatar));
   const currentImage = images[imageIndex % images.length] ?? DEFAULT_PROJECT_COVER;
   const displayImage = failedImages.includes(currentImage) ? DEFAULT_PROJECT_COVER : currentImage;
+
+  useEffect(() => {
+    if (images.length <= 1 || isCarouselPaused || shouldReduceMotion) return;
+
+    const interval = window.setInterval(() => {
+      setSlideDirection(1);
+      setImageIndex((currentIndex) => (currentIndex + 1) % images.length);
+    }, 4000);
+
+    return () => window.clearInterval(interval);
+  }, [images.length, isCarouselPaused, shouldReduceMotion]);
 
   function showImage(nextIndex: number, direction: number, event: MouseEvent) {
     event.preventDefault();
@@ -102,7 +115,13 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
       />
 
       {/* Cover image */}
-      <div className={cn("relative z-0 overflow-hidden bg-slate-100", featured ? "sm:w-[45%] h-48 sm:h-auto" : "h-48")}>
+      <div
+        className={cn("relative z-0 overflow-hidden bg-slate-100", featured ? "sm:w-[45%] h-48 sm:h-auto" : "h-48")}
+        onMouseEnter={() => setIsCarouselPaused(true)}
+        onMouseLeave={() => setIsCarouselPaused(false)}
+        onFocus={() => setIsCarouselPaused(true)}
+        onBlur={() => setIsCarouselPaused(false)}
+      >
         <AnimatePresence mode="popLayout" custom={slideDirection}>
           <motion.div
             key={`${displayImage}-${imageIndex}`}
