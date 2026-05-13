@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import { Footer }       from "@/components/landing/Footer";
@@ -11,7 +11,10 @@ import { formatMNT } from "@/lib/formatters";
 import { cn }           from "@/lib/utils";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useToast }     from "@/context/ToastContext";
-import { supportProject } from "@/lib/actions/donations";
+import {
+  checkQpayDonationPayment,
+  createQpayDonationInvoice,
+} from "@/lib/actions/donations";
 import type { Project, RewardTier, FundingUpdate } from "@/types";
 
 type Tab = "about" | "updates" | "rewards";
@@ -19,8 +22,9 @@ type SupportSelection = {
   rewardTierId: string | null;
   amount: number;
 };
-type SupportProjectResult = Awaited<ReturnType<typeof supportProject>>;
-type SupportProjectSuccess = Extract<SupportProjectResult, { success: true }>;
+type SupportPaymentResult = Awaited<ReturnType<typeof checkQpayDonationPayment>>;
+type SupportPaymentSuccess = Extract<SupportPaymentResult, { success: true; paid: true }>;
+type QpayInvoiceResult = Extract<Awaited<ReturnType<typeof createQpayDonationInvoice>>, { success: true }>;
 
 const CATEGORY_LABELS: Record<string, string> = {
   technology:  "Технологи",
@@ -63,7 +67,7 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
     });
   }
 
-  function handleSupportCompleted(result: SupportProjectSuccess) {
+  function handleSupportCompleted(result: SupportPaymentSuccess) {
     setLiveProject((current) => ({
       ...current,
       raised: result.project.raised,
@@ -357,11 +361,14 @@ function SupportModal({
   initialAmount: number;
   initialRewardTierId: string | null;
   onClose: () => void;
-  onCompleted: (result: SupportProjectSuccess) => void;
+  onCompleted: (result: SupportPaymentSuccess) => void;
 }) {
   const [amount, setAmount] = useState(String(initialAmount));
   const [selectedRewardTierId, setSelectedRewardTierId] = useState(initialRewardTierId);
+  const [invoice, setInvoice] = useState<QpayInvoiceResult | null>(null);
   const [error, setError] = useState("");
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const selectedTier = useMemo(
@@ -387,6 +394,39 @@ function SupportModal({
     setError("");
   }
 
+  const checkPayment = useCallback(async (donationId: string, silent = false) => {
+    if (!silent) {
+      setIsCheckingPayment(true);
+      setPaymentMessage("");
+    }
+
+    const result = await checkQpayDonationPayment(donationId);
+
+    if (!silent) setIsCheckingPayment(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    if (!result.paid) {
+      if (!silent) setPaymentMessage(result.message ?? "Төлбөр хараахан баталгаажаагүй байна.");
+      return;
+    }
+
+    onCompleted(result);
+  }, [onCompleted]);
+
+  useEffect(() => {
+    if (!invoice) return;
+
+    const timer = window.setInterval(() => {
+      void checkPayment(invoice.donationId, true);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [checkPayment, invoice]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -402,10 +442,9 @@ function SupportModal({
 
     startTransition(() => {
       void (async () => {
-        const result = await supportProject({
+        const result = await createQpayDonationInvoice({
           projectId: project.id,
           amount: parsedAmount,
-          paymentMethod: "QPAY",
           rewardTierId: selectedRewardTierId,
         });
 
@@ -414,7 +453,8 @@ function SupportModal({
           return;
         }
 
-        onCompleted(result);
+        setInvoice(result);
+        setPaymentMessage("QPay-р төлсний дараа төлбөр автоматаар шалгагдана.");
       })();
     });
   }
@@ -452,6 +492,64 @@ function SupportModal({
         </div>
 
         <div className="space-y-5 px-5 py-5">
+          {invoice ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">QPay нэхэмжлэх</p>
+                <p className="mt-1 text-2xl font-bold text-blue-950">{formatMNT(invoice.amount)}</p>
+              </div>
+
+              {invoice.qrImage ? (
+                <div className="flex justify-center">
+                  <Image
+                    src={invoice.qrImage.startsWith("data:") ? invoice.qrImage : `data:image/png;base64,${invoice.qrImage}`}
+                    alt="QPay QR"
+                    width={224}
+                    height={224}
+                    unoptimized
+                    className="h-56 w-56 rounded-2xl border border-slate-200 bg-white object-contain p-3"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 break-all">
+                  {invoice.qrText}
+                </div>
+              )}
+
+              {invoice.shortUrl && (
+                <a
+                  href={invoice.shortUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex w-full items-center justify-center rounded-xl bg-blue-800 px-4 py-3 text-sm font-bold text-white shadow-cta hover:bg-blue-900"
+                >
+                  QPay апп нээх
+                </a>
+              )}
+
+              {invoice.urls.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-bold text-slate-800">Банкны апп</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {invoice.urls.slice(0, 8).map((url) => (
+                      <a
+                        key={`${url.name}-${url.link}`}
+                        href={url.link}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
+                      >
+                        {url.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-center text-xs font-medium text-slate-500">
+                QR уншуулж төлөөд доорх товчоор шалгана уу. Төлөгдвөл төсөлд мөнгө автоматаар нэмэгдэнэ.
+              </p>
+            </div>
+          ) : (
+            <>
           {tiers.length > 0 && (
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-800">Урамшуулал</label>
@@ -538,6 +636,14 @@ function SupportModal({
             </div>
             <p className="mt-2 text-xs font-medium text-slate-400">Одоогоор зөвхөн QPay төлбөр дэмжигдэнэ.</p>
           </div>
+            </>
+          )}
+
+          {paymentMessage && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+              {paymentMessage}
+            </div>
+          )}
 
           {error && (
             <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
@@ -548,11 +654,14 @@ function SupportModal({
 
         <div className="border-t border-slate-100 px-5 py-4">
           <button
-            type="submit"
-            disabled={isPending}
+            type={invoice ? "button" : "submit"}
+            onClick={invoice ? () => void checkPayment(invoice.donationId) : undefined}
+            disabled={isPending || isCheckingPayment}
             className="w-full rounded-xl bg-blue-800 py-3.5 text-base font-bold text-white shadow-cta transition-colors hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {isPending ? "Бүртгэж байна..." : `${formatMNT(parsedAmount || minimumAmount)} дэмжих`}
+            {invoice
+              ? isCheckingPayment ? "Төлбөр шалгаж байна..." : "Төлбөр шалгах"
+              : isPending ? "Нэхэмжлэх үүсгэж байна..." : `${formatMNT(parsedAmount || minimumAmount)} дэмжих`}
           </button>
         </div>
       </form>

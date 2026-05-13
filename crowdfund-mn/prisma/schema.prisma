@@ -60,35 +60,35 @@ model User {
 }
 
 model Project {
-  id              String        @id @default(cuid())
+  id              String          @id @default(cuid())
   title           String
-  slug            String        @unique
+  slug            String          @unique
   description     String
-  story           String        @db.Text
+  story           String          @db.Text
   category        String
   coverImage      String?
-  galleryImages   String[]      @default([])
-  documents       String[]      @default([])
+  galleryImages   String[]        @default([])
+  documents       String[]        @default([])
   goal            Int
-  raised          Int           @default(0)
-  backers         Int           @default(0)
+  raised          Int             @default(0)
+  backers         Int             @default(0)
   location        String
   bankName        String
   bankAccount     String
   bankAccountName String
   endsAt          DateTime
-  status          ProjectStatus @default(PENDING)
+  status          ProjectStatus   @default(PENDING)
   publishedAt     DateTime?
   rejectionReason String?
-  isDeleted       Boolean       @default(false)
-  isVerified      Boolean       @default(false)
-  isTrending      Boolean       @default(false)
-  isFeatured      Boolean       @default(false)
+  isDeleted       Boolean         @default(false)
+  isVerified      Boolean         @default(false)
+  isTrending      Boolean         @default(false)
+  isFeatured      Boolean         @default(false)
   tags            String[]
   creatorId       String
-  creator         User          @relation(fields: [creatorId], references: [id])
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  creator         User            @relation(fields: [creatorId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   rewards         RewardTier[]
   updates         FundingUpdate[]
   donations       Donation[]
@@ -113,13 +113,23 @@ model Donation {
   amount        Int
   paymentMethod PaymentMethod  @default(CARD)
   status        DonationStatus @default(PENDING)
+  qpayInvoiceId String?        @unique
+  qpayPaymentId String?
+  qpayQrText    String?        @db.Text
+  qpayQrImage   String?        @db.Text
+  qpayShortUrl  String?
+  qpayUrls      Json?
   userId        String?
   user          User?          @relation(fields: [userId], references: [id])
   projectId     String
   project       Project        @relation(fields: [projectId], references: [id])
   rewardTierId  String?
   rewardTier    RewardTier?    @relation(fields: [rewardTierId], references: [id])
+  paidAt        DateTime?
   createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status])
 }
 
 model Notification {

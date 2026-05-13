@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 type ProfileTab = "backed" | "projects" | "settings";
+type TransformProjectInput = Parameters<typeof toProject>[0];
 const VALID_TABS: ProfileTab[] = ["backed", "projects", "settings"];
 
 interface Props {
@@ -35,12 +36,12 @@ export default async function ProfilePage({ searchParams }: Props) {
       },
     }),
     prisma.donation.aggregate({
-      where: { userId: session.userId },
+      where: { userId: session.userId, status: "COMPLETED" },
       _sum:   { amount: true },
       _count: { id: true },
     }),
     prisma.donation.findMany({
-      where:    { userId: session.userId },
+      where:    { userId: session.userId, status: "COMPLETED" },
       orderBy:  { createdAt: "desc" },
       take:     20,
       include:  { project: { include: { creator: true } } },
@@ -69,15 +70,13 @@ export default async function ProfilePage({ searchParams }: Props) {
         totalAmount: donationAgg._sum.amount ?? 0,
         count:       donationAgg._count.id,
       }}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       backedDonations={backedRaw.map(d => ({
         id:        d.id,
         amount:    d.amount,
         createdAt: d.createdAt.toISOString(),
-        project:   toProject(d.project as any),
+        project:   toProject(d.project as TransformProjectInput),
       }))}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createdProjects={createdRaw.map(p => toProject(p as any))}
+      createdProjects={createdRaw.map(p => toProject(p as TransformProjectInput))}
       initialTab={initialTab}
     />
   );

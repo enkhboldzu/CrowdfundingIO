@@ -23,6 +23,27 @@ interface RewardTier {
   backerCount:       number;
 }
 
+interface DonationDetail {
+  id:            string;
+  amount:        number;
+  paymentMethod: string;
+  status:        string;
+  createdAt:     string;
+  paidAt:        string | null;
+  qpayPaymentId: string | null;
+  user: {
+    id:    string;
+    name:  string;
+    email: string | null;
+    phone: string | null;
+  } | null;
+  rewardTier: {
+    id:     string;
+    title:  string;
+    amount: number;
+  } | null;
+}
+
 interface ProjectDetail {
   id:              string;
   title:           string;
@@ -56,6 +77,7 @@ interface ProjectDetail {
     _count:     { projects: number };
   };
   rewards: RewardTier[];
+  donations: DonationDetail[];
   _count:  { donations: number };
 }
 
@@ -108,6 +130,20 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-sm font-semibold text-slate-900 flex-1 break-all">{value ?? "—"}</span>
     </div>
   );
+}
+
+function donationDate(donation: DonationDetail) {
+  return new Date(donation.paidAt ?? donation.createdAt).toLocaleString("mn-MN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function donorLabel(donation: DonationDetail) {
+  return donation.user?.name ?? "Зочин дэмжигч";
 }
 
 /* ── Main modal ──────────────────────────────────────────────────── */
@@ -372,6 +408,71 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
                       </div>
                     )}
                   </div>
+                </Section>
+
+                <Section icon={CreditCard} title="Дэмжсэн хүмүүс">
+                  {detail.donations.length > 0 ? (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700 font-semibold">
+                        Нийт {detail._count.donations} баталгаажсан дэмжлэг ·{" "}
+                        {formatMNT(detail.donations.reduce((sum, donation) => sum + donation.amount, 0))}
+                      </div>
+                      {detail.donations.map((donation) => (
+                        <div key={donation.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-slate-900 truncate">
+                                {donorLabel(donation)}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {donationDate(donation)}
+                              </p>
+                            </div>
+                            <span className="shrink-0 text-sm font-black text-blue-700">
+                              {formatMNT(donation.amount)}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 space-y-1 text-xs text-slate-500">
+                            {donation.user?.phone && (
+                              <div className="flex items-center gap-1.5">
+                                <Phone className="h-3 w-3 text-slate-400" />
+                                <span>{donation.user.phone}</span>
+                              </div>
+                            )}
+                            {donation.user?.email && (
+                              <div className="flex items-center gap-1.5">
+                                <Mail className="h-3 w-3 text-slate-400" />
+                                <span className="truncate">{donation.user.email}</span>
+                              </div>
+                            )}
+                            {donation.rewardTier && (
+                              <div className="flex items-center gap-1.5">
+                                <Award className="h-3 w-3 text-slate-400" />
+                                <span className="truncate">{donation.rewardTier.title}</span>
+                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">
+                                {donation.paymentMethod}
+                              </span>
+                              {donation.qpayPaymentId && (
+                                <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">
+                                  {donation.qpayPaymentId}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center">
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Одоогоор төлбөр нь баталгаажсан дэмжлэг алга.
+                      </p>
+                    </div>
+                  )}
                 </Section>
 
                 {/* Project meta */}

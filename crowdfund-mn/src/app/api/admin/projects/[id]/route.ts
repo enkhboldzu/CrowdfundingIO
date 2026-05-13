@@ -25,7 +25,40 @@ export async function GET(req: NextRequest, { params }: Params) {
           },
         },
         rewards: { orderBy: { amount: "asc" } },
-        _count:  { select: { donations: true } },
+        donations: {
+          where: { status: "COMPLETED" },
+          orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+          take: 100,
+          select: {
+            id: true,
+            amount: true,
+            paymentMethod: true,
+            status: true,
+            createdAt: true,
+            paidAt: true,
+            qpayPaymentId: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            rewardTier: {
+              select: {
+                id: true,
+                title: true,
+                amount: true,
+              },
+            },
+          },
+        },
+        _count:  {
+          select: {
+            donations: { where: { status: "COMPLETED" } },
+          },
+        },
       },
     });
 
