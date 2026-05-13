@@ -64,7 +64,10 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
   }, []);
 
   // Load on mount and poll every 60 s while open
-  useEffect(() => { fetchNotifs(); }, [fetchNotifs]);
+  useEffect(() => {
+    const id = window.setTimeout(() => { void fetchNotifs(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [fetchNotifs]);
   useEffect(() => {
     if (!open) return;
     const id = setInterval(fetchNotifs, 60_000);
@@ -133,8 +136,8 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
       {open && (
         <div
           className={cn(
-            "absolute right-0 top-[calc(100%+12px)] z-[60]",
-            "w-[360px] sm:w-[400px]",
+            "fixed inset-x-3 top-20 z-[70] w-auto max-h-[calc(100vh-6rem)]",
+            "sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+12px)] sm:z-[60] sm:w-[400px] sm:max-h-none",
             "bg-white rounded-2xl border border-slate-100",
             "shadow-xl shadow-slate-200/60",
             "animate-fade-up overflow-hidden"
@@ -143,7 +146,7 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
           aria-label="Мэдэгдлүүд"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-4 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <h2 className="font-display font-bold text-slate-900 text-base">Мэдэгдэл</h2>
               {unreadCount > 0 && (
@@ -152,11 +155,11 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 min-w-0">
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <Check className="w-3 h-3" strokeWidth={2.5} />
                   Бүгдийг уншсан болгох
@@ -173,7 +176,7 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
           </div>
 
           {/* List */}
-          <div className="max-h-[360px] overflow-y-auto overscroll-contain divide-y divide-slate-50">
+          <div className="max-h-[calc(100vh-14rem)] sm:max-h-[360px] overflow-y-auto overscroll-contain divide-y divide-slate-50">
             {notifs.length === 0 ? (
               <div className="py-14 text-center">
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">

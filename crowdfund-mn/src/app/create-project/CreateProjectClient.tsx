@@ -84,6 +84,7 @@ type ErrMap    = Record<string, string>;
 
 const MAX_PROJECT_IMAGES = 3;
 const MAX_PROJECT_DOCUMENTS = 5;
+const MIN_PROJECT_GOAL = 10;
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
@@ -208,8 +209,8 @@ function validate(step: number, d: FormValues): ErrMap {
 
   if (step === 2) {
     if (!d.goal)                                            e.goal            = "Санхүүжилтийн зорилго заавал бөглөх шаардлагатай";
-    else if (isNaN(Number(d.goal)) || Number(d.goal) < 500_000)
-                                                            e.goal            = "Хамгийн бага зорилго ₮500,000 байна";
+    else if (isNaN(Number(d.goal)) || Number(d.goal) < MIN_PROJECT_GOAL)
+                                                            e.goal            = "Хамгийн бага зорилго ₮10 байна";
     if (!d.duration)                                        e.duration        = "Хугацаа сонгоно уу";
     if (!d.bankName)                                        e.bankName        = "Банк сонгоно уу";
     if (!d.bankAccount.trim())                              e.bankAccount     = "Дансны дугаар заавал бөглөх шаардлагатай";
@@ -844,9 +845,9 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
       <div>
         <Label htmlFor="goal" required>Санхүүжилтийн зорилго</Label>
         <FInput id="goal" type="number" value={d.goal} onChange={v => set("goal", v)}
-          placeholder="500000" error={e.goal} prefix="₮" />
+          placeholder="10" error={e.goal} prefix="₮" />
         <ErrMsg msg={e.goal} />
-        {!e.goal && <Hint>Хамгийн бага зорилго ₮500,000. Бодитой тоо тавихад амжилтын магадлал нэмэгдэнэ.</Hint>}
+        {!e.goal && <Hint>Хамгийн бага зорилго ₮10. Бодитой тоо тавихад амжилтын магадлал нэмэгдэнэ.</Hint>}
       </div>
 
       <div>
