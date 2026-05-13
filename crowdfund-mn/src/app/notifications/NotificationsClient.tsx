@@ -167,10 +167,10 @@ export function NotificationsClient({ initialNotifications }: { initialNotificat
               <Bell className="w-6 h-6 text-slate-400" />
             </div>
             <p className="font-display font-bold text-slate-800 mb-1">
-              Мэдэгдэл байхгүй байна
+              Одоогоор мэдэгдэл алга
             </p>
             <p className="text-sm text-slate-400">
-              Шинэ мэдэгдэл ирэхээр энд харагдана.
+              Төсөл батлагдах, татгалзах, эсвэл дэмжлэг бүртгэгдэх үед энд мэдэгдэнэ.
             </p>
           </div>
         ) : (

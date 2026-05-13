@@ -10,7 +10,7 @@ const CATEGORIES = [
     id: "technology",
     label: "Технологи",
     emoji: "💻",
-    description: "AI, апп, хардвар, цахим шийдэл",
+    description: "AI, апп, төхөөрөмж, цахим шийдэл",
     color: "from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 hover:shadow-blue-100",
     textColor: "text-blue-800",
     ring: "ring-blue-300",
@@ -19,7 +19,7 @@ const CATEGORIES = [
     id: "food",
     label: "Хоол & Ундаа",
     emoji: "🍜",
-    description: "Кафе, хоол, ундаа, нутгийн амт",
+    description: "Кафе, брэнд, нутгийн амт",
     color: "from-cyan-50 to-cyan-100 border-cyan-200 hover:border-cyan-400 hover:shadow-cyan-100",
     textColor: "text-cyan-800",
     ring: "ring-cyan-300",
@@ -28,7 +28,7 @@ const CATEGORIES = [
     id: "arts",
     label: "Урлаг",
     emoji: "🎨",
-    description: "Уран зураг, хөгжим, кино, дизайн",
+    description: "Кино, хөгжим, дизайн, бүтээл",
     color: "from-pink-50 to-pink-100 border-pink-200 hover:border-pink-400 hover:shadow-pink-100",
     textColor: "text-pink-800",
     ring: "ring-pink-300",
@@ -37,7 +37,7 @@ const CATEGORIES = [
     id: "environment",
     label: "Нийгмийн Нөлөө",
     emoji: "🌍",
-    description: "Байгаль, нийгэм, хүмүүнлэг",
+    description: "Байгаль, нийгэм, сайн үйл",
     color: "from-green-50 to-green-100 border-green-200 hover:border-green-400 hover:shadow-green-100",
     textColor: "text-green-800",
     ring: "ring-green-300",
@@ -46,7 +46,7 @@ const CATEGORIES = [
     id: "education",
     label: "Боловсрол",
     emoji: "📚",
-    description: "Сургалт, ном, курс, судалгаа",
+    description: "Сургалт, ном, мэдлэг, судалгаа",
     color: "from-amber-50 to-amber-100 border-amber-200 hover:border-amber-400 hover:shadow-amber-100",
     textColor: "text-amber-800",
     ring: "ring-amber-300",
@@ -55,7 +55,7 @@ const CATEGORIES = [
     id: "health",
     label: "Эрүүл Мэнд",
     emoji: "❤️",
-    description: "Эмнэлэг, эм, сувилгаа, спорт",
+    description: "Эрүүл амьдрал, эмчилгээ, спорт",
     color: "from-red-50 to-red-100 border-red-200 hover:border-red-400 hover:shadow-red-100",
     textColor: "text-red-800",
     ring: "ring-red-300",
@@ -116,9 +116,9 @@ export function Categories({ counts }: { counts?: Record<string, number> }) {
           <p className="text-blue-700 font-semibold text-sm uppercase tracking-widest mb-2">
             Ангилал
           </p>
-          <h2 className="section-heading mb-3">Ямар чиглэлд дэмжих вэ?</h2>
+          <h2 className="section-heading mb-3">Ямар санааг дэмжих вэ?</h2>
           <p className="text-slate-500 text-base max-w-xl mx-auto">
-            Технологиос урлаг хүртэл — таны сонирхолтой чиглэлийн төслүүдийг олоорой.
+            Сонирхолтой чиглэлээ сонгоод өөрт ойр санагдах төслөө хурдан олоорой.
           </p>
         </motion.div>
 
@@ -191,7 +191,7 @@ export function Categories({ counts }: { counts?: Record<string, number> }) {
             href="/explore"
             className="inline-flex items-center gap-2 text-blue-700 font-semibold text-sm hover:text-blue-900 transition-colors group"
           >
-            Бүх ангиллын төслүүдийг харах
+            Бүх ангиллыг үзэх
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </div>

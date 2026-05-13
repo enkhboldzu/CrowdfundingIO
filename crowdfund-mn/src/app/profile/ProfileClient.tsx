@@ -304,11 +304,11 @@ function BackedTab({ donations }: { donations: BackedDonation[] }) {
     return (
       <EmptyState
         icon={<Heart className="w-6 h-6 text-slate-400" />}
-        title="Дэмжсэн төсөл байхгүй"
-        description="Та одоогоор ямар ч төслийг дэмжээгүй байна. Сонирхолтой төслүүдийг үзнэ үү."
+        title="Таны дэмжсэн төсөл энд харагдана"
+        description="Та төсөл дэмжмэгц төлсөн дүн, огноо, төслийн явцыг энэ хэсгээс хянах боломжтой."
         action={
           <Link href="/explore" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-            Төслүүд харах
+            Дэмжих төсөл хайх
           </Link>
         }
       />
@@ -407,8 +407,8 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
       {projects.length === 0 ? (
         <EmptyState
           icon={<FolderOpen className="w-6 h-6 text-slate-400" />}
-          title="Үүсгэсэн төсөл байхгүй"
-          description="Та одоогоор төсөл нийтлээгүй байна. Өөрийн санааг хэрэгжүүлж эхлэх үү?"
+          title="Таны эхлүүлсэн төсөл энд харагдана"
+          description="Санаагаа танилцуулж илгээсний дараа хянагдах төлөв, нийтлэгдсэн эсэх, дэмжлэгийн явцаа эндээс харна."
           action={
             <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
               Төсөл эхлэх

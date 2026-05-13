@@ -141,13 +141,13 @@ function ExploreContent() {
           <div className="container-page relative z-10">
             <div className="max-w-2xl">
               <p className="text-blue-300 font-semibold text-sm uppercase tracking-widest mb-3">
-                Төгс төслөө олоорой
+                Дэмжих төслөө олоорой
               </p>
               <h1 className="font-display font-bold text-4xl sm:text-5xl text-white mb-3 tracking-tight leading-tight">
-                Дараагийн шилдэг<br />санааг дэмж
+                Итгэж болох санааг<br />сонгоод дэмж
               </h1>
               <p className="text-white/60 text-base sm:text-lg mb-8 max-w-lg">
-                Монголын залуу бүтээгчид, нийгмийн хөдөлгөөн, шинэлэг стартапуудыг нэг дороос олоорой.
+                Бүтээгчийн зорилго, төсөв, явцыг харьцуулж үзээд танд хамгийн үнэ цэнтэй санагдсан төслөө дэмжээрэй.
               </p>
 
               {/* Search */}
@@ -159,7 +159,7 @@ function ExploreContent() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Төсөл, ангилал, түлхүүр үг хайх..."
+                  placeholder="Жишээ: кино, AI, боловсрол, хувцас..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   className="w-full pl-12 pr-12 py-4 rounded-2xl bg-white/95 backdrop-blur-sm text-slate-900 placeholder-slate-400 text-base font-medium shadow-2xl focus:outline-none focus:ring-2 focus:ring-white/60 transition-shadow"
@@ -284,16 +284,16 @@ function ExploreContent() {
             {!loading && filtered.length === 0 && (
               <div className="text-center py-24">
                 <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mx-auto mb-5 text-2xl">🔍</div>
-                <h3 className="font-display font-bold text-slate-800 text-xl mb-2">Төсөл олдсонгүй</h3>
+                <h3 className="font-display font-bold text-slate-800 text-xl mb-2">Тохирох төсөл олдсонгүй</h3>
                 <p className="text-slate-400 text-sm max-w-xs mx-auto mb-6 leading-relaxed">
                   {query
-                    ? `"${query}" гэсэн хайлтад тохирох төсөл байхгүй.`
-                    : `"${activeLabel}" ангиллаас одоогоор идэвхтэй төсөл байхгүй байна.`
-                  } Шүүлтүүрээ өөрчилж үзнэ үү.
+                    ? `"${query}" гэсэн үгтэй төсөл одоогоор алга.`
+                    : `"${activeLabel}" ангилалд идэвхтэй төсөл хараахан алга.`
+                  } Хайлтаа богиносгох эсвэл шүүлтүүрээ цэвэрлээд дахин үзээрэй.
                 </p>
                 <button onClick={handleClearAll}
                   className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                  Бүх төслүүд харах
+                  Шүүлтүүр цэвэрлэх
                 </button>
               </div>
             )}

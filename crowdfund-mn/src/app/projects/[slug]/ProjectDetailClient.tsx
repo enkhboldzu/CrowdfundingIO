@@ -328,7 +328,7 @@ function FundingCard({ project, percent, onSupport }: { project: Project; percen
         onClick={onSupport}
         className="w-full bg-blue-800 hover:bg-blue-900 active:bg-blue-950 text-white font-bold text-base py-3.5 rounded-xl transition-colors shadow-cta flex items-center justify-center gap-2"
       >
-        Дэмжих
+        Энэ төслийг дэмжих
         <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
         </svg>
@@ -341,7 +341,7 @@ function FundingCard({ project, percent, onSupport }: { project: Project; percen
 
       {project.daysLeft <= 7 && (
         <p className="mt-3 text-center text-xs text-red-500 font-semibold">
-          ⚠️ {daysLeftLabel(project.daysLeft)} — яарна уу!
+          {daysLeftLabel(project.daysLeft)}. Дэмжих хугацаа ойртож байна.
         </p>
       )}
     </div>
@@ -410,7 +410,7 @@ function SupportModal({
     }
 
     if (!result.paid) {
-      if (!silent) setPaymentMessage(result.message ?? "Төлбөр хараахан баталгаажаагүй байна.");
+      if (!silent) setPaymentMessage(result.message ?? "Төлбөр хараахан баталгаажаагүй байна. QPay апп дээр төлбөрөө баталгаажуулсан эсэхээ шалгана уу.");
       return;
     }
 
@@ -454,7 +454,7 @@ function SupportModal({
         }
 
         setInvoice(result);
-        setPaymentMessage("QPay-р төлсний дараа төлбөр автоматаар шалгагдана.");
+        setPaymentMessage("QPay дээр төлбөрөө баталгаажуулмагц энэ дэмжлэг төслийн дүнд автоматаар нэмэгдэнэ.");
       })();
     });
   }
@@ -478,7 +478,7 @@ function SupportModal({
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Төсөл дэмжих</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Аюулгүй QPay төлбөр</p>
             <h2 id="support-modal-title" className="mt-1 font-display text-xl font-bold text-slate-950">
               {project.title}
             </h2>
@@ -499,7 +499,7 @@ function SupportModal({
           {invoice ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">QPay нэхэмжлэх</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Төлөх дүн</p>
                 <p className="mt-1 text-2xl font-bold text-blue-950">{formatMNT(invoice.amount)}</p>
               </div>
 
@@ -522,7 +522,7 @@ function SupportModal({
 
               {invoice.urls.length > 0 && (
                 <div>
-                  <p className="mb-2 text-sm font-bold text-slate-800">QPay апп сонгох</p>
+                  <p className="mb-2 text-sm font-bold text-slate-800">Төлөх апп аа сонгоно уу</p>
                   <div className="max-h-44 overflow-y-auto pr-1 grid grid-cols-2 gap-2">
                     {invoice.urls.map((url) => (
                       <button
@@ -545,19 +545,19 @@ function SupportModal({
                   rel="noreferrer"
                   className="flex w-full items-center justify-center rounded-xl bg-blue-800 px-4 py-3 text-sm font-bold text-white shadow-cta hover:bg-blue-900"
                 >
-                  QPay апп нээх
+                  QPay-р төлөх
                 </a>
               )}
 
               <p className="text-center text-xs font-medium text-slate-500">
-                QR уншуулж эсвэл дээрээс апп сонгоод төлнө үү. Төлөгдвөл төсөлд мөнгө автоматаар нэмэгдэнэ.
+                QR уншуулж эсвэл апп сонгоод төлнө үү. Төлбөр баталгаажмагц дэмжлэг шууд бүртгэгдэнэ.
               </p>
             </div>
           ) : (
             <>
           {tiers.length > 0 && (
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-800">Урамшуулал</label>
+              <label className="mb-2 block text-sm font-bold text-slate-800">Дэмжлэгийн сонголт</label>
               <div className="space-y-2">
                 <button
                   type="button"
@@ -569,7 +569,7 @@ function SupportModal({
                       : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
                   )}
                 >
-                  <span className="font-semibold">Зөвхөн дэмжих</span>
+                  <span className="font-semibold">Зөвхөн мөнгөн дэмжлэг өгөх</span>
                 </button>
                 {tiers.map((tier) => {
                   const isSoldOut = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 0;
@@ -639,7 +639,7 @@ function SupportModal({
             <div className="rounded-xl border border-blue-700 bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm">
               QPay
             </div>
-            <p className="mt-2 text-xs font-medium text-slate-400">Одоогоор зөвхөн QPay төлбөр дэмжигдэнэ.</p>
+            <p className="mt-2 text-xs font-medium text-slate-400">Төлбөр баталгаажсаны дараа л дэмжлэгийн дүнд нэмэгдэнэ.</p>
           </div>
             </>
           )}
@@ -665,7 +665,7 @@ function SupportModal({
             className="w-full rounded-xl bg-blue-800 py-3.5 text-base font-bold text-white shadow-cta transition-colors hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {invoice
-              ? isCheckingPayment ? "Төлбөр шалгаж байна..." : "Төлбөр шалгах"
+              ? isCheckingPayment ? "Төлбөр шалгаж байна..." : "Би төлсөн, шалгах"
               : isPending ? "Нэхэмжлэх үүсгэж байна..." : `${formatMNT(parsedAmount || minimumAmount)} дэмжих`}
           </button>
         </div>
@@ -701,7 +701,7 @@ function ProjectTextSection({ title, content }: { title: string; content?: strin
       {text ? (
         <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
       ) : (
-        <p className="text-slate-400 text-sm italic">Мэдээлэл оруулаагүй байна.</p>
+        <p className="text-slate-400 text-sm italic">Бүтээгч энэ хэсгийг хараахан бөглөөгүй байна.</p>
       )}
     </div>
   );
@@ -714,8 +714,8 @@ function UpdatesTab({ updates }: { updates: FundingUpdate[] }) {
         <div className="w-14 h-14 bg-white border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
           📭
         </div>
-        <p className="font-semibold text-slate-700 mb-1">Шинэчлэлт байхгүй</p>
-        <p className="text-slate-400 text-sm">Бүтээгч шинэчлэлт нийтлэхэд энд харагдана.</p>
+        <p className="font-semibold text-slate-700 mb-1">Шинэчлэлт хараахан ороогүй</p>
+        <p className="text-slate-400 text-sm">Төсөл урагшлах үед бүтээгчийн мэдээ, тайлан энд нэмэгдэнэ.</p>
       </div>
     );
   }
@@ -744,8 +744,8 @@ function RewardsTab({ tiers, onSelectTier }: { tiers: RewardTier[]; onSelectTier
         <div className="w-14 h-14 bg-white border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
           🎁
         </div>
-        <p className="font-semibold text-slate-700 mb-1">Шагналын түвшин байхгүй</p>
-        <p className="text-slate-400 text-sm">Бүтээгч шагналын түвшин нэмэхэд энд харагдана.</p>
+        <p className="font-semibold text-slate-700 mb-1">Урамшуулал нэмээгүй байна</p>
+        <p className="text-slate-400 text-sm">Та урамшуулалгүйгээр мөнгөн дэмжлэг өгөх боломжтой.</p>
       </div>
     );
   }

@@ -135,9 +135,9 @@ const BANKS = [
 ];
 
 const STEPS = [
-  { num: 1, label: "Үндсэн мэдээлэл" },
-  { num: 2, label: "Санхүүжилт" },
-  { num: 3, label: "Агуулга" },
+  { num: 1, label: "Танилцуулга" },
+  { num: 2, label: "Төсөв" },
+  { num: 3, label: "Түүх" },
   { num: 4, label: "Урамшуулал" },
 ];
 
@@ -899,17 +899,17 @@ function Step1({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
       <div>
         <Label htmlFor="title" required>Төслийн нэр</Label>
         <FInput id="title" value={d.title} onChange={v => set("title", v)}
-          placeholder="Жишээ нь: Монгол AI туслагч апп" error={e.title} />
+          placeholder="Жишээ: DreamFrame богино кино" error={e.title} />
         <ErrMsg msg={e.title} />
-        {!e.title && <Hint>Товч бөгөөд ойлгомжтой байх хэрэгтэй. Хамгийн ихдээ 60 тэмдэгт.</Hint>}
+        {!e.title && <Hint>Хүмүүс шууд ойлгохоор тодорхой нэр сонгоорой.</Hint>}
       </div>
 
       <div>
         <Label htmlFor="blurb" required>Товч тайлбар</Label>
         <FInput id="blurb" value={d.blurb} onChange={v => set("blurb", v)}
-          placeholder="1–2 өгүүлбэрт төслийн мөн чанарыг гаргаарай" error={e.blurb} />
+          placeholder="Нэг өгүүлбэрт: юуг, хэнд, яагаад бүтээж байна вэ?" error={e.blurb} />
         <ErrMsg msg={e.blurb} />
-        {!e.blurb && <Hint>Энэхүү тайлбар хайлтын үр дүн болон картын тайлбарт харагдана.</Hint>}
+        {!e.blurb && <Hint>Энэ өгүүлбэр карт дээр хамгийн түрүүнд уншигдана.</Hint>}
       </div>
 
       <div>
@@ -924,7 +924,7 @@ function Step1({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
         <FInput id="location" value={d.location} onChange={v => set("location", v)}
           placeholder="Жишээ нь: Улаанбаатар, Монгол" error={e.location} />
         <ErrMsg msg={e.location} />
-        {!e.location && <Hint>Хот болон улсын нэрийг оруулна уу.</Hint>}
+        {!e.location && <Hint>Төслийн баг хаанаас ажиллаж байгааг бичнэ үү.</Hint>}
       </div>
     </div>
   );
@@ -940,7 +940,7 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
         <FInput id="goal" type="number" value={d.goal} onChange={v => set("goal", v)}
           placeholder="10" error={e.goal} prefix="₮" />
         <ErrMsg msg={e.goal} />
-        {!e.goal && <Hint>Хамгийн бага зорилго ₮10. Бодитой тоо тавихад амжилтын магадлал нэмэгдэнэ.</Hint>}
+        {!e.goal && <Hint>Хэрэгжүүлэхэд үнэхээр хэрэгтэй дүнгээ тавь. Илүү бодитой байх тусам итгэл төрнө.</Hint>}
       </div>
 
       <div>
@@ -948,7 +948,7 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
         <FSelect id="duration" value={d.duration} onChange={v => set("duration", v)}
           options={DURATIONS} error={e.duration} />
         <ErrMsg msg={e.duration} />
-        {!e.duration && <Hint>30 хоног нь дундажаар хамгийн үр дүнтэй хугацаа байдаг.</Hint>}
+        {!e.duration && <Hint>Хэт урт хугацаа сонирхол сулруулдаг. 14-30 хоног ихэнх төсөлд тохиромжтой.</Hint>}
       </div>
 
       {/* Bank info card */}
@@ -979,9 +979,9 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
           <Label htmlFor="bankAccountName" required>Данс эзэмшигчийн нэр</Label>
           <FInput id="bankAccountName" value={d.bankAccountName}
             onChange={v => set("bankAccountName", v)}
-            placeholder="Та нарын нэр" error={e.bankAccountName} />
+            placeholder="Данс дээрх нэртэй яг адил бичнэ" error={e.bankAccountName} />
           <ErrMsg msg={e.bankAccountName} />
-          <Hint>Баталгаажуулалт ажлын 1–2 өдөрт дуусна.</Hint>
+          <Hint>Админ шалгахдаа энэ мэдээллийг тулгана.</Hint>
         </div>
       </div>
     </div>
@@ -1015,7 +1015,7 @@ function Step3({
       <div>
         <Label htmlFor="story" required>Төслийн тухай дэлгэрэнгүй</Label>
         <FTextarea id="story" value={d.story} onChange={v => set("story", v)}
-          placeholder="Яагаад энэ төсөл хэрэгтэй вэ? Хэнд зориулсан бэ? Хэрхэн хэрэгжүүлэх вэ? ..."
+          placeholder="Энэ санаа хаанаас эхэлсэн, хэнд хэрэгтэй, дэмжлэг авснаар юу өөрчлөгдөхийг бичээрэй."
           error={e.story} rows={9} />
         <div className="flex items-start justify-between mt-1.5">
           <ErrMsg msg={e.story} />
@@ -1026,7 +1026,7 @@ function Step3({
             {charCount} / 100+ тэмдэгт
           </span>
         </div>
-        {!e.story && <Hint>Дэлгэрэнгүй, итгэл үнэмшилтэй тайлбар нь илүү олон дэмжигч татдаг.</Hint>}
+        {!e.story && <Hint>Сайн түүх нь хүмүүсийг мөнгө өгөхөөс өмнө итгэх шалтгаантай болгодог.</Hint>}
       </div>
 
       <div>
@@ -1035,7 +1035,7 @@ function Step3({
           id="purpose"
           value={d.purpose}
           onChange={v => set("purpose", v)}
-          placeholder="Энэ төсөл ямар асуудлыг шийдэх вэ? Ямар үр дүнд хүрэх вэ?"
+          placeholder="Төслийн эцсийн үр дүн юу вэ? Дэмжигчид амжилтыг юугаар хэмжих вэ?"
           error={e.purpose}
           rows={4}
         />
@@ -1048,7 +1048,7 @@ function Step3({
           id="fundingUsage"
           value={d.fundingUsage}
           onChange={v => set("fundingUsage", v)}
-          placeholder="Цугларсан мөнгийг юунд зарцуулах вэ? Жишээ: үйлдвэрлэл, маркетинг, баг, түрээс..."
+          placeholder="Жишээ: 60% үйлдвэрлэл, 20% маркетинг, 20% баг ба үйл ажиллагаа."
           error={e.fundingUsage}
           rows={4}
         />
@@ -1061,7 +1061,7 @@ function Step3({
           id="teamInfo"
           value={d.teamInfo}
           onChange={v => set("teamInfo", v)}
-          placeholder="Та нар хэн бэ? Туршлага, үүрэг, өмнөх хийсэн ажлаа товч бичнэ үү."
+          placeholder="Багийн гишүүд, туршлага, энэ төслийг хийх чадвартай шалтгаанаа бичнэ үү."
           error={e.teamInfo}
           rows={4}
         />
@@ -1074,7 +1074,7 @@ function Step3({
           id="risks"
           value={d.risks}
           onChange={v => set("risks", v)}
-          placeholder="Ямар эрсдэл гарч болох вэ? Тэрийг яаж даван туулах вэ?"
+          placeholder="Хугацаа, нийлүүлэлт, зардал зэрэг эрсдэл гарвал ямар арга хэмжээ авах вэ?"
           error={e.risks}
           rows={4}
         />
@@ -1090,7 +1090,7 @@ function Step3({
           onChange={onProjectImagesChange}
           onUploadingChange={onProjectImagesUploadingChange}
         />
-        <Hint>1-3 бодит зураг оруулна. Эхний зураг нүүрэнд гарч, карт дээр зургууд хажуу тийш гулсаж солигдоно.</Hint>
+        <Hint>1-3 бодит зураг оруулна. Эхний зураг төсөл танилцуулах гол зураг болно.</Hint>
       </div>
 
       <div>
@@ -1102,7 +1102,7 @@ function Step3({
           onChange={onProjectDocumentsChange}
           onUploadingChange={onProjectDocumentsUploadingChange}
         />
-        <Hint>Админ шалгах үед гэрчилгээ, зөвшөөрөл, танилцуулга зэрэг нотолгоог эндээс үзнэ.</Hint>
+        <Hint>Гэрчилгээ, зөвшөөрөл, танилцуулга зэрэг итгэл нэмэх баримтаа хавсаргаж болно.</Hint>
       </div>
     </div>
   );
@@ -1120,9 +1120,9 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
   return (
     <div className="space-y-5">
       <p className="text-sm text-slate-500 leading-relaxed">
-        Дэмжигчдэд санал болгох урамшуулалын түвшин нэмнэ үү.{" "}
-        <span className="text-slate-600 font-medium">Жишээ нь:</span>{" "}
-        ₮10,000 → &ldquo;Баярын захидал&rdquo;, ₮50,000 → &ldquo;Урьдчилсан захиалга&rdquo;.
+        Хүмүүс зөвхөн мөнгө өгөхөөс гадна таны ажилд оролцож байгаа мэдрэмж авахыг хүсдэг.{" "}
+        <span className="text-slate-600 font-medium">Жишээ:</span>{" "}
+        10₮ → нэрээ талархлын жагсаалтад оруулах, 50₮ → урьдчилсан эрх авах.
       </p>
 
       <div className="space-y-4">
@@ -1145,9 +1145,9 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
             </div>
 
             <div>
-              <Label htmlFor={`rt${i}`} required>Урамшуулалын нэр</Label>
+              <Label htmlFor={`rt${i}`} required>Урамшууллын нэр</Label>
               <FInput id={`rt${i}`} value={r.title} onChange={v => setReward(i, "title", v)}
-                placeholder="Жишээ нь: Эрт дэмжигч" error={e[`rt${i}`]} />
+                placeholder="Жишээ: Эрт дэмжигч" error={e[`rt${i}`]} />
               <ErrMsg msg={e[`rt${i}`]} />
             </div>
 
@@ -1160,10 +1160,10 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
             </div>
 
             <div>
-              <Label htmlFor={`rd${i}`} required>Урамшуулалын тайлбар</Label>
+              <Label htmlFor={`rd${i}`} required>Урамшууллын тайлбар</Label>
               <FTextarea id={`rd${i}`} value={r.description}
                 onChange={v => setReward(i, "description", v)}
-                placeholder="Дэмжигч юу авах вэ? Хэзээ хүргэгдэх вэ?"
+                placeholder="Дэмжигч яг юу авах, хэзээ авахыг тодорхой бичнэ үү."
                 error={e[`rd${i}`]} rows={3} />
               <ErrMsg msg={e[`rd${i}`]} />
             </div>
@@ -1383,7 +1383,13 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const stepHeadings = ["Үндсэн мэдээлэл", "Санхүүжилт", "Агуулга", "Урамшуулал"];
+  const stepHeadings = ["Төслөө танилцуул", "Төсвөө тодорхойл", "Итгэл төрүүлэх түүхээ бич", "Дэмжигчдэд өгөх үнэ цэн"];
+  const stepDescriptions = [
+    "Хүмүүс хамгийн түрүүнд нэр, тайлбар, ангиллаар таны төслийг ойлгоно.",
+    "Зорилтот дүн, хугацаа, банкны мэдээлэл тодорхой байх тусам баталгаажуулалт хурдан явна.",
+    "Энд бичсэн мэдээлэл project detail дээр шууд харагдана.",
+    "Сайн урамшуулал нь дэмжигчид оролцож байгаа мэдрэмж өгдөг.",
+  ];
 
   return (
     <>
@@ -1396,12 +1402,12 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
               {editing ? "Төсөл засах" : "🚀 Шинэ Төсөл"}
             </span>
             <h1 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2">
-              {editing ? "Төслөө засварлах" : "Краудфандинг Кампани Эхлүүлэх"}
+              {editing ? "Төслөө илүү тодорхой болгох" : "Төслөө эхлүүлэх"}
             </h1>
             <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
               {editing
-                ? "Мэдээллээ шинэчлээд төслөө дахин хянуулахаар илгээнэ."
-                : "Дөрвөн алхамт хялбар бүртгэлийн дамжуулалтаар өөрийн төслийг нийтэлж дэмжигчид олоорой."}
+                ? "Зассан мэдээллээ илгээгээд админаар дахин хянуулна."
+                : "Таны санааг хүмүүс ойлгож, итгэж, дэмжихэд хэрэгтэй бүх мэдээллийг цэгцтэй авна."}
             </p>
           </div>
         </div>
@@ -1428,6 +1434,9 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
                     <h2 className="font-display font-bold text-xl text-slate-900">
                       {stepHeadings[step - 1]}
                     </h2>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                      {stepDescriptions[step - 1]}
+                    </p>
                   </div>
 
                   {/* Step content */}

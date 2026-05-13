@@ -116,7 +116,7 @@ export function Hero({ stats }: HeroProps) {
           <motion.div variants={fadeUp} className="inline-flex max-w-full items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 mb-6 sm:mb-8">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-white/90 text-xs sm:text-sm font-medium truncate">
-              Монголын #1 краудфандинг платформ
+              Санаагаа хүмүүст хүргэх итгэлтэй орон зай
             </span>
           </motion.div>
 
@@ -125,15 +125,15 @@ export function Hero({ stats }: HeroProps) {
             variants={fadeUp}
             className="font-display font-bold text-[2rem] sm:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.18] sm:leading-tight tracking-tight mb-5 sm:mb-6 text-balance"
           >
-            Таны санааг{" "}
+            Санаагаа{" "}
             <span className="relative inline-block">
-              <span className="relative z-10 text-blue-200">бодит байдал</span>
+              <span className="relative z-10 text-blue-200">хамтын дэмжлэгээр</span>
               <span
                 aria-hidden
                 className="absolute bottom-1 left-0 right-0 h-3 bg-blue-500/30 rounded"
               />
             </span>
-            {" "}болгох газар
+            {" "}бодит ажил болго
           </motion.h1>
 
           {/* Sub-headline */}
@@ -141,8 +141,8 @@ export function Hero({ stats }: HeroProps) {
             variants={fadeUp}
             className="text-white/75 text-base sm:text-xl leading-7 sm:leading-relaxed max-w-2xl mx-auto mb-8 sm:mb-10 text-balance"
           >
-            Монголын нийгэмд үнэ цэнтэй бүтээл туурвих, хамтын хөрөнгөөр
-            хэрэгжүүлэх шинэ арга зам. Итгэлцэл, ил тод байдал, хамтын ажиллагаа.
+            Төслөө тодорхой танилцуулж, дэмжигчдээсээ бодит санхүүжилт аваарай.
+            Дэмжих хүн бүр хаана, юунд хувь нэмэр оруулж байгаагаа ойлгомжтой харна.
           </motion.p>
 
           {/* CTA buttons */}
@@ -154,7 +154,7 @@ export function Hero({ stats }: HeroProps) {
               href="/explore"
               className={cn(buttonVariants({ size: "xl" }), "w-full sm:w-auto bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
             >
-              Төслүүд харах
+              Төсөл хайх
             </Link>
             <GuardedLink
               href="/create-project"
@@ -163,7 +163,7 @@ export function Hero({ stats }: HeroProps) {
                 "w-full sm:w-auto border-white text-white hover:bg-white hover:text-blue-800"
               )}
             >
-              Өөрийн төсөл эхлэх
+              Төсөл эхлэх
             </GuardedLink>
           </motion.div>
 

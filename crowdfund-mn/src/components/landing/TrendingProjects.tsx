@@ -67,17 +67,17 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
               <p className="text-blue-700 font-semibold text-sm uppercase tracking-widest mb-2">
                 Төслүүд
               </p>
-              <h2 className="section-heading">Онцлох төслүүд 🔥</h2>
+              <h2 className="section-heading">Дэмжихэд бэлэн төслүүд</h2>
             </div>
           </motion.div>
 
           <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
             <LayoutGrid className="w-12 h-12 text-slate-200" />
             <p className="text-slate-400 text-lg font-medium">
-              Одоогоор төсөл байхгүй байна
+              Одоогоор нийтлэгдсэн төсөл алга
             </p>
             <p className="text-slate-300 text-sm max-w-xs">
-              Удахгүй шинэ төслүүд нэмэгдэнэ. Дахин орж үзнэ үү.
+              Анхны төслүүд батлагдмагц энд харагдана. Та өөрийн санаагаа эхлүүлж болно.
             </p>
           </div>
         </div>
@@ -100,16 +100,16 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
           <div>
             <p className="inline-flex items-center gap-1.5 text-blue-700 font-semibold text-sm uppercase tracking-widest mb-2">
               <Flame className="w-4 h-4 text-orange-500" />
-              Trending
+              Олны анхааралд
             </p>
-            <h2 className="section-heading">Онцлох төслүүд 🔥</h2>
+            <h2 className="section-heading">Дэмжихэд бэлэн төслүүд</h2>
           </div>
 
           <Link
             href="/explore"
             className="hidden sm:inline-flex items-center gap-1.5 text-blue-700 font-semibold text-sm hover:text-blue-900 transition-colors duration-200 group"
           >
-            Бүгдийг харах
+            Бүх төслийг үзэх
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </motion.div>
@@ -140,7 +140,7 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
             href="/explore"
             className="inline-flex items-center gap-1.5 text-blue-700 font-semibold text-sm hover:text-blue-900 transition-colors duration-200 group"
           >
-            Бүгдийг харах
+            Бүх төслийг үзэх
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </div>
