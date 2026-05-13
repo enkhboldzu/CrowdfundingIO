@@ -12,6 +12,11 @@ interface ChatMessage {
   content: string;
 }
 
+interface ChatApiResponse {
+  message?: string;
+  error?: string;
+}
+
 const STORAGE_KEY = "crowdfund-ai-chat";
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -53,6 +58,22 @@ function loadStoredMessages() {
     return validMessages.length > 0 ? validMessages : [WELCOME_MESSAGE];
   } catch {
     return [WELCOME_MESSAGE];
+  }
+}
+
+async function readChatApiResponse(response: Response): Promise<ChatApiResponse> {
+  const raw = await response.text();
+
+  if (!raw.trim()) return {};
+
+  try {
+    return JSON.parse(raw) as ChatApiResponse;
+  } catch {
+    throw new Error(
+      response.ok
+        ? "AI route-аас буруу форматтай хариу ирлээ."
+        : "AI route JSON биш хариу буцаалаа. Dev server restart хийсэн эсэхээ шалгана уу."
+    );
   }
 }
 
@@ -122,7 +143,7 @@ export function ChatBotWidget() {
         }),
       });
 
-      const data = (await response.json()) as { message?: string; error?: string };
+      const data = await readChatApiResponse(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "AI туслагчтай холбогдоход алдаа гарлаа.");
