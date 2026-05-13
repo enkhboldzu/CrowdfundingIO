@@ -3,6 +3,7 @@ import { Inter, Montserrat } from "next/font/google";
 import { AuthProvider }    from "@/context/AuthContext";
 import { ToastProvider }   from "@/context/ToastContext";
 import { NavbarShell }     from "@/components/landing/NavbarShell";
+import { ChatBotShell }    from "@/components/chat/ChatBotShell";
 import { PageTransition }  from "@/components/ui/PageTransition";
 import "./globals.css";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
             */}
             <NavbarShell />
             <PageTransition>{children}</PageTransition>
+            <ChatBotShell />
           </ToastProvider>
         </AuthProvider>
       </body>
