@@ -8,6 +8,7 @@ import {
   Award, BookOpen, Clock, FileText, ExternalLink, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatMNT } from "@/lib/formatters";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -117,11 +118,25 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
   const [reason, setReason]       = useState("");
 
   useEffect(() => {
-    setLoadSt("loading");
-    fetch(`/admin-api/projects/${projectId}`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(d => { setDetail(d.project); setLoadSt("ok"); })
-      .catch(() => setLoadSt("error"));
+    let cancelled = false;
+    const id = window.setTimeout(() => {
+      setLoadSt("loading");
+      fetch(`/admin-api/projects/${projectId}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(d => {
+          if (cancelled) return;
+          setDetail(d.project);
+          setLoadSt("ok");
+        })
+        .catch(() => {
+          if (!cancelled) setLoadSt("error");
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(id);
+    };
   }, [projectId]);
 
   /* Close on Escape */
@@ -236,9 +251,7 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
                         <div key={r.id} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
                           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
                             <span className="text-white text-xs font-bold">
-                              {(r.amount / 1000) >= 1000
-                                ? `${(r.amount / 1_000_000).toFixed(0)}M`
-                                : `${(r.amount / 1000).toFixed(0)}K`}
+                              {formatMNT(r.amount)}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">

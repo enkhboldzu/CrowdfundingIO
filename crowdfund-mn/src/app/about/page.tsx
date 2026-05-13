@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Heart, Globe, Zap, Users, Target, TrendingUp } from "lucide-react";
+import { GuardedLink } from "@/components/ui/GuardedLink";
 
 export const metadata: Metadata = {
   title: "Бидний тухай — Crowdfund.mn",
@@ -7,10 +8,10 @@ export const metadata: Metadata = {
 };
 
 const STATS = [
-  { value: "500+",    label: "Амжилттай төсөл"     },
-  { value: "12,000+", label: "Идэвхтэй дэмжигч"    },
-  { value: "₮2.1Т+",  label: "Нийт босгосон"        },
-  { value: "98%",     label: "Хэрэглэгчийн сэтгэл ханамж" },
+  { value: "0", label: "Амжилттай төсөл" },
+  { value: "0", label: "Идэвхтэй дэмжигч" },
+  { value: "0", label: "Нийт босгосон" },
+  { value: "0", label: "Хэрэглэгчийн сэтгэл ханамж" },
 ];
 
 const VALUES = [
@@ -250,12 +251,12 @@ export default function AboutPage() {
             >
               Төслүүд харах
             </a>
-            <a
-              href="/signup"
+            <GuardedLink
+              href="/create-project"
               className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-sm px-6 py-3 rounded-xl transition-colors"
             >
-              Бүртгүүлэх
-            </a>
+              Төсөл эхлэх
+            </GuardedLink>
           </div>
         </div>
       </section>

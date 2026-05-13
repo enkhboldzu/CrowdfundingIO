@@ -6,6 +6,7 @@ import { Footer }       from "@/components/landing/Footer";
 import { Badge }        from "@/components/ui/Badge";
 import { ProgressBar }  from "@/components/ui/ProgressBar";
 import { fundingPercent, daysLeftLabel } from "@/lib/utils";
+import { formatMNT } from "@/lib/formatters";
 import { cn }           from "@/lib/utils";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useToast }     from "@/context/ToastContext";
@@ -240,11 +241,11 @@ function FundingCard({ project, percent }: { project: Project; percent: number }
       {/* Raised */}
       <div className="mb-1">
         <span className="font-display font-bold text-3xl text-slate-900">
-          ₮{(project.raised / 1_000_000).toFixed(1)}M
+          {formatMNT(project.raised)}
         </span>
       </div>
       <p className="text-slate-500 text-sm mb-4">
-        ₮{(project.goal / 1_000_000).toFixed(0)}M зорилтоос цугларсан
+        {formatMNT(project.goal)} зорилтоос цугларсан
       </p>
 
       {/* Progress */}

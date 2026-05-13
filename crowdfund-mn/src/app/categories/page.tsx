@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/landing/Footer";
+import { getProjectCountsByCategory } from "@/lib/db/queries";
+import { getPublicStats } from "@/lib/db/stats";
 
 export const metadata: Metadata = {
   title: "Ангилалууд — Crowdfund.mn",
   description:
-    "Технологи, урлаг, байгаль орчин, боловсрол болон бусад 12 ангиллын идэвхтэй краудфандинг төслүүдийг олоорой.",
+    "Технологи, урлаг, байгаль орчин, боловсрол болон бусад идэвхтэй краудфандинг төслүүдийг олоорой.",
 };
 
 const CATEGORIES = [
@@ -143,9 +145,24 @@ const CATEGORIES = [
   },
 ];
 
-const TOTAL_PROJECTS = CATEGORIES.reduce((s, c) => s + c.count, 0);
+export default async function CategoriesPage() {
+  const [projectCounts, publicStats] = await Promise.all([
+    getProjectCountsByCategory(),
+    getPublicStats(),
+  ]);
 
-export default function CategoriesPage() {
+  const categoriesWithCounts = CATEGORIES.map(category => ({
+    ...category,
+    count: projectCounts[category.slug] ?? 0,
+  }));
+  const maxCategoryCount = Math.max(0, ...categoriesWithCounts.map(category => category.count));
+  const categories = categoriesWithCounts.map(category => ({
+    ...category,
+    isPopular: maxCategoryCount > 0 && category.count === maxCategoryCount,
+  }));
+  const activeCategoryCount = categories.filter(category => category.count > 0).length;
+  const totalProjects = categories.reduce((sum, category) => sum + category.count, 0);
+
   return (
     <>
       <main>
@@ -175,8 +192,8 @@ export default function CategoriesPage() {
                 </h1>
                 <p className="text-white/60 text-base max-w-md leading-relaxed">
                   Монголын нийгэмд нөлөөлж буй{" "}
-                  <strong className="text-white">{CATEGORIES.length} ангиллын</strong>{" "}
-                  <strong className="text-white">{TOTAL_PROJECTS}+</strong>{" "}
+                  <strong className="text-white">{activeCategoryCount} ангиллын</strong>{" "}
+                  <strong className="text-white">{totalProjects}</strong>{" "}
                   идэвхтэй төслөөс сонгоно уу.
                 </p>
               </div>
@@ -184,9 +201,9 @@ export default function CategoriesPage() {
               {/* Right: stat pills */}
               <div className="flex flex-wrap gap-3 sm:flex-shrink-0">
                 {[
-                  { value: CATEGORIES.length,            label: "Ангилал" },
-                  { value: `${TOTAL_PROJECTS}+`,         label: "Идэвхтэй төсөл" },
-                  { value: "94%",                         label: "Амжилтын хувь" },
+                  { value: activeCategoryCount,           label: "Ангилал" },
+                  { value: totalProjects,                  label: "Идэвхтэй төсөл" },
+                  { value: `${publicStats.successRate}%`,  label: "Амжилтын хувь" },
                 ].map(stat => (
                   <div
                     key={stat.label}
@@ -213,7 +230,7 @@ export default function CategoriesPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-              {CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <Link
                   key={cat.slug}
                   href={`/explore?category=${cat.slug}`}
@@ -314,7 +331,7 @@ export default function CategoriesPage() {
                 </h2>
                 <p className="text-white/60 text-sm max-w-md mx-auto mb-6">
                   Бүх ангиллын нийт{" "}
-                  <strong className="text-white">{TOTAL_PROJECTS}+</strong> идэвхтэй
+                  <strong className="text-white">{totalProjects}</strong> идэвхтэй
                   төслийг нэг дороос хайж харна уу.
                 </p>
                 <Link

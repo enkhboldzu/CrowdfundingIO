@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Footer }      from "@/components/landing/Footer";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { cn }         from "@/lib/utils";
+import { formatMNT }  from "@/lib/formatters";
 import type { Project } from "@/types";
 
 const CATEGORIES = [
@@ -184,7 +185,7 @@ function ExploreContent() {
                 <div className="text-white/40 hidden sm:block">·</div>
                 <div className="text-white/70">
                   <strong className="text-white font-bold">
-                    ₮{(stats.raised / 1_000_000).toFixed(0)}M+
+                    {stats.raised > 0 ? `${formatMNT(stats.raised)}+` : "0₮"}
                   </strong> нийт санхүүжилт
                 </div>
                 <div className="text-white/40 hidden sm:block">·</div>

@@ -5,12 +5,12 @@
  */
 
 export function formatMNT(tugrug: number): string {
-  if (tugrug === 0) return "₮0";
+  if (tugrug === 0) return "0₮";
   const s = (n: number) => n.toFixed(1).replace(/\.0$/, "");
   if (tugrug >= 1_000_000_000) return `₮${s(tugrug / 1_000_000_000)}Т`;
   if (tugrug >= 1_000_000)     return `₮${s(tugrug / 1_000_000)}М`;
   if (tugrug >= 1_000)         return `₮${s(tugrug / 1_000)}К`;
-  return `₮${tugrug.toLocaleString()}`;
+  return `${tugrug.toLocaleString()}₮`;
 }
 
 export function formatCount(n: number): string {
