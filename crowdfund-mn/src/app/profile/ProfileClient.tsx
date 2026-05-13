@@ -433,7 +433,7 @@ function CreatedProjectCard({ project }: { project: Project }) {
   const cfg        = CREATED_STATUS_CONFIG[statusKey] ?? CREATED_STATUS_CONFIG.ACTIVE;
   const StatusIcon = cfg.icon;
   const isPublic   = statusKey === "ACTIVE" || statusKey === "FUNDED";
-  const canEdit    = statusKey === "PENDING" || statusKey === "REJECTED";
+  const canEdit    = statusKey === "PENDING" || statusKey === "REJECTED" || statusKey === "ACTIVE";
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
@@ -496,7 +496,7 @@ function CreatedProjectCard({ project }: { project: Project }) {
               ) : (
                 <div
                   className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 border border-slate-100 cursor-not-allowed"
-                  title="Зөвхөн хянагдаж буй эсвэл татгалзсан төслийг засварлана"
+                  title="Энэ төлөвтэй төслийг засварлах боломжгүй"
                 >
                   <Pencil className="w-4 h-4" strokeWidth={2} />
                 </div>

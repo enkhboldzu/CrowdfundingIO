@@ -11,7 +11,7 @@ import { toProject } from "@/lib/db/transform";
 import { getPublicStats } from "@/lib/db/stats";
 
 export default async function LandingPage() {
-  const [{ projects: rawProjects, trending: rawTrending }, counts, stats] = await Promise.all([
+  const [{ projects: rawProjects, featured: rawFeatured, trending: rawTrending }, counts, stats] = await Promise.all([
     getLandingProjects(20),
     getProjectCountsByCategory(),
     getPublicStats(),
@@ -20,13 +20,15 @@ export default async function LandingPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const projects = (rawProjects as any[]).map(toProject);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const featured = (rawFeatured as any[]).map(toProject);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const trending = (rawTrending as any[]).map(toProject);
 
   return (
     <>
       <main className="flex flex-col">
         <Hero stats={stats} />
-        <TrendingProjects projects={projects} trending={trending} />
+        <TrendingProjects projects={projects} featured={featured} trending={trending} />
         <Categories counts={counts} />
         <TrustSection />
         <HowItWorks />

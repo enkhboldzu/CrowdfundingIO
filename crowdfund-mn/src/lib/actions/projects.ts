@@ -30,6 +30,8 @@ function toStoredDocuments(documents?: string[]): string[] {
   return normalizeDocumentList(documents).slice(0, 5);
 }
 
+const OWNER_EDITABLE_STATUSES = new Set(["PENDING", "REJECTED", "ACTIVE"]);
+
 function createProjectErrorMessage(err: unknown) {
   console.error("[createProject]", err);
 
@@ -158,10 +160,10 @@ export async function updateOwnProject(data: {
       return { success: false, error: "Төсөл олдсонгүй." };
     }
 
-    if (existing.status !== "PENDING" && existing.status !== "REJECTED") {
+    if (!OWNER_EDITABLE_STATUSES.has(existing.status)) {
       return {
         success: false,
-        error: "Зөвхөн хянагдаж буй эсвэл татгалзсан төслийг засварлаж болно.",
+        error: "Зөвхөн хянагдаж буй, татгалзсан эсвэл нийтлэгдсэн төслийг засварлаж болно.",
       };
     }
 
@@ -208,6 +210,11 @@ export async function updateOwnProject(data: {
 
     revalidatePath("/profile");
     revalidatePath("/admin/projects");
+    revalidatePath("/admin/dashboard");
+    revalidatePath("/");
+    revalidatePath("/explore");
+    revalidatePath("/categories");
+    revalidatePath(`/projects/${existing.slug}`);
 
     return { success: true, slug: project.slug };
   } catch (err) {

@@ -16,13 +16,13 @@ const CATEGORIES = [
     ring: "ring-blue-300",
   },
   {
-    id: "startups",
-    label: "Стартап",
-    emoji: "🚀",
-    description: "Бизнесийн шинэ санаа, оролдлого",
-    color: "from-violet-50 to-violet-100 border-violet-200 hover:border-violet-400 hover:shadow-violet-100",
-    textColor: "text-violet-800",
-    ring: "ring-violet-300",
+    id: "food",
+    label: "Хоол & Ундаа",
+    emoji: "🍜",
+    description: "Кафе, хоол, ундаа, нутгийн амт",
+    color: "from-cyan-50 to-cyan-100 border-cyan-200 hover:border-cyan-400 hover:shadow-cyan-100",
+    textColor: "text-cyan-800",
+    ring: "ring-cyan-300",
   },
   {
     id: "arts",
@@ -64,7 +64,7 @@ const CATEGORIES = [
 
 const DISPLAY_FALLBACK: Record<string, number> = {
   technology:  142,
-  startups:    98,
+  food:         98,
   arts:        214,
   environment: 176,
   education:   89,

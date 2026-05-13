@@ -14,6 +14,7 @@ interface Props {
 }
 
 const VALID_DURATIONS = new Set([7, 14, 21, 30, 45, 60]);
+const OWNER_EDITABLE_STATUSES = new Set(["PENDING", "REJECTED", "ACTIVE"]);
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function EditProjectPage({ params }: Props) {
   if (
     !project ||
     project.creatorId !== session.userId ||
-    (project.status !== "PENDING" && project.status !== "REJECTED")
+    !OWNER_EDITABLE_STATUSES.has(project.status)
   ) {
     notFound();
   }

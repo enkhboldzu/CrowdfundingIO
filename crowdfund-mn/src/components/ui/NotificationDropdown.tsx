@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Bell, Check, Users, ShieldCheck, RefreshCw, X, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/context/ToastContext";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -49,7 +49,6 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
   const [open, setOpen]     = useState(false);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const containerRef        = useRef<HTMLDivElement>(null);
-  const { show }            = useToast();
 
   const unreadCount = notifs.filter(n => !n.isRead).length;
 
@@ -223,15 +222,16 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
 
           {/* Footer */}
           <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50/60">
-            <button
-              onClick={() => { setOpen(false); show("Мэдэгдлийн хуудас тун удахгүй нэмэгдэнэ! 🔔", "info"); }}
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
               className="flex items-center justify-center gap-1.5 w-full text-sm font-semibold text-blue-800 hover:text-blue-900 py-2 rounded-xl hover:bg-blue-50 transition-colors"
             >
               Бүх мэдэгдлийг харах
               <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
               </svg>
-            </button>
+            </Link>
           </div>
         </div>
       )}

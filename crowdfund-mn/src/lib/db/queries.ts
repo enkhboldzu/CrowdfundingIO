@@ -19,13 +19,11 @@ export async function getProjectCountsByCategory(): Promise<Record<string, numbe
   }
 }
 
-/* ── Landing page projects: all active (newest first) + trending ────── */
+/* ── Landing page projects: all active + admin-curated showcase ─────── */
 
 export async function getLandingProjects(limit = 20) {
   try {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    const [projects, trending] = await Promise.all([
+    const [projects, featured, trending, verified] = await Promise.all([
       // All approved (ACTIVE) projects, newest first.
       prisma.project.findMany({
         where: { status: "ACTIVE", isDeleted: false },
@@ -33,22 +31,47 @@ export async function getLandingProjects(limit = 20) {
         orderBy: { createdAt: "desc" },
         take: limit,
       }),
-      // Trending: most backers in the last 7 days; falls back to newest via page.tsx logic
+      // Admin-picked featured project.
+      prisma.project.findMany({
+        where: { status: "ACTIVE", isDeleted: false, isFeatured: true },
+        include: { creator: true },
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+        take: 1,
+      }),
+      // Admin-picked trending projects.
       prisma.project.findMany({
         where: {
           status: "ACTIVE",
           isDeleted: false,
-          createdAt: { gte: sevenDaysAgo },
+          isTrending: true,
         },
         include: { creator: true },
-        orderBy: [{ backers: "desc" }, { createdAt: "desc" }],
-        take: 4,
+        orderBy: [{ updatedAt: "desc" }, { raised: "desc" }, { createdAt: "desc" }],
+        take: 6,
+      }),
+      // Verified projects also qualify for the section when more curated slots are needed.
+      prisma.project.findMany({
+        where: {
+          status: "ACTIVE",
+          isDeleted: false,
+          isVerified: true,
+        },
+        include: { creator: true },
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+        take: 6,
       }),
     ]);
 
-    return { projects, trending };
+    const curated = [
+      ...trending,
+      ...verified,
+    ].filter((project, index, all) =>
+      all.findIndex((candidate) => candidate.id === project.id) === index
+    );
+
+    return { projects, featured, trending: curated };
   } catch {
-    return { projects: [], trending: [] };
+    return { projects: [], featured: [], trending: [] };
   }
 }
 

@@ -25,18 +25,32 @@ const cardVariant = {
 
 interface Props {
   projects: Project[];
+  featured: Project[];
   trending: Project[];
 }
 
-export function TrendingProjects({ projects, trending }: Props) {
-  const isEmpty = projects.length === 0 && trending.length === 0;
+function uniqueProjects(projects: Project[]): Project[] {
+  return projects.filter((project, index, all) =>
+    all.findIndex((candidate) => candidate.id === project.id) === index
+  );
+}
 
-  // Featured: explicit isFeatured flag, or null (no mock fallback)
-  const featured = projects.find(p => p.isFeatured) ?? null;
+export function TrendingProjects({ projects, featured, trending }: Props) {
+  const featuredProject =
+    featured[0] ??
+    projects.find((project) => project.isFeatured) ??
+    null;
 
-  // Trending grid: last-7-days results from DB; if none, fall back to newest 3
-  const trendDisplay =
-    trending.length > 0 ? trending.slice(0, 3) : projects.slice(0, 3);
+  const trendDisplay = uniqueProjects([
+    ...trending.filter((project) => project.id !== featuredProject?.id),
+    ...projects.filter((project) =>
+      project.id !== featuredProject?.id &&
+      (project.isTrending || project.isVerified)
+    ),
+    ...projects.filter((project) => project.id !== featuredProject?.id),
+  ]).slice(0, 3);
+
+  const isEmpty = !featuredProject && trendDisplay.length === 0;
 
   if (isEmpty) {
     return (
@@ -101,8 +115,8 @@ export function TrendingProjects({ projects, trending }: Props) {
         </motion.div>
 
         {/* ── Featured project (full-width) ── */}
-        {featured && (
-          <ProjectCard project={featured} featured className="mb-6" />
+        {featuredProject && (
+          <ProjectCard project={featuredProject} featured className="mb-6" />
         )}
 
         {/* ── Trending grid ── */}
