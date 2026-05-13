@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import type { FormEvent } from "react";
 import Image from "next/image";
 import { Footer }       from "@/components/landing/Footer";
 import { Badge }        from "@/components/ui/Badge";
@@ -10,9 +11,16 @@ import { formatMNT } from "@/lib/formatters";
 import { cn }           from "@/lib/utils";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useToast }     from "@/context/ToastContext";
+import { supportProject } from "@/lib/actions/donations";
 import type { Project, RewardTier, FundingUpdate } from "@/types";
 
 type Tab = "about" | "updates" | "rewards";
+type SupportSelection = {
+  rewardTierId: string | null;
+  amount: number;
+};
+type SupportProjectResult = Awaited<ReturnType<typeof supportProject>>;
+type SupportProjectSuccess = Extract<SupportProjectResult, { success: true }>;
 
 const CATEGORY_LABELS: Record<string, string> = {
   technology:  "Технологи",
@@ -39,8 +47,44 @@ interface Props {
 
 export function ProjectDetailClient({ project, rewards, updates }: Props) {
   const [tab, setTab] = useState<Tab>("about");
-  const percent = fundingPercent(project.raised, project.goal);
-  const tiers   = rewards;
+  const [liveProject, setLiveProject] = useState(project);
+  const [tiers, setTiers] = useState(rewards);
+  const [supportSelection, setSupportSelection] = useState<SupportSelection | null>(null);
+  const { guard } = useAuthGuard();
+  const { show } = useToast();
+  const percent = fundingPercent(liveProject.raised, liveProject.goal);
+
+  function openSupport(tier?: RewardTier) {
+    guard(() => {
+      setSupportSelection({
+        rewardTierId: tier?.id ?? null,
+        amount: tier?.amount ?? 10,
+      });
+    });
+  }
+
+  function handleSupportCompleted(result: SupportProjectSuccess) {
+    setLiveProject((current) => ({
+      ...current,
+      raised: result.project.raised,
+      backers: result.project.backers,
+    }));
+
+    if (result.rewardTier) {
+      setTiers((current) => current.map((tier) =>
+        tier.id === result.rewardTier?.id
+          ? {
+              ...tier,
+              backerCount: result.rewardTier.backerCount,
+              remaining: result.rewardTier.remaining,
+            }
+          : tier
+      ));
+    }
+
+    setSupportSelection(null);
+    show(result.goalReached ? "Дэмжлэг бүртгэгдлээ. Төслийн зорилго биеллээ!" : "Дэмжлэг амжилттай бүртгэгдлээ.", "info");
+  }
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "about",   label: "Тухай" },
@@ -128,7 +172,7 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
 
               {/* Mobile: funding card */}
               <div className="lg:hidden mb-6">
-                <FundingCard project={project} percent={percent} />
+                <FundingCard project={liveProject} percent={percent} onSupport={() => openSupport()} />
               </div>
 
               {/* Tags */}
@@ -168,13 +212,13 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
               {/* Tab content */}
               {tab === "about"   && <AboutTab project={project} />}
               {tab === "updates" && <UpdatesTab updates={updates} />}
-              {tab === "rewards" && <RewardsTab tiers={tiers} />}
+              {tab === "rewards" && <RewardsTab tiers={tiers} onSelectTier={openSupport} />}
             </div>
 
             {/* ── Right: sticky sidebar ─────────────────── */}
             <div className="hidden lg:block lg:col-span-5">
               <div className="sticky top-24 space-y-4">
-                <FundingCard project={project} percent={percent} />
+                <FundingCard project={liveProject} percent={percent} onSupport={() => openSupport()} />
 
                 {tiers.length > 0 && (
                   <div>
@@ -183,7 +227,7 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
                     </p>
                     <div className="space-y-3">
                       {tiers.map(tier => (
-                        <RewardTierCard key={tier.id} tier={tier} />
+                        <RewardTierCard key={tier.id} tier={tier} onSelect={() => openSupport(tier)} />
                       ))}
                     </div>
                   </div>
@@ -220,6 +264,16 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
         </div>
 
       </main>
+      {supportSelection && (
+        <SupportModal
+          project={liveProject}
+          tiers={tiers}
+          initialAmount={supportSelection.amount}
+          initialRewardTierId={supportSelection.rewardTierId}
+          onClose={() => setSupportSelection(null)}
+          onCompleted={handleSupportCompleted}
+        />
+      )}
       <Footer />
     </>
   );
@@ -228,14 +282,7 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
 
 /* ── Sub-components ──────────────────────────────────────────── */
 
-function FundingCard({ project, percent }: { project: Project; percent: number }) {
-  const { guard } = useAuthGuard();
-  const { show }  = useToast();
-
-  function handleSupport() {
-    guard(() => show("Дэмжлэгийн төлбөрийн систем удахгүй нэмэгдэнэ!", "info"));
-  }
-
+function FundingCard({ project, percent, onSupport }: { project: Project; percent: number; onSupport: () => void }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
       {/* Raised */}
@@ -274,7 +321,7 @@ function FundingCard({ project, percent }: { project: Project; percent: number }
 
       {/* CTA */}
       <button
-        onClick={handleSupport}
+        onClick={onSupport}
         className="w-full bg-blue-800 hover:bg-blue-900 active:bg-blue-950 text-white font-bold text-base py-3.5 rounded-xl transition-colors shadow-cta flex items-center justify-center gap-2"
       >
         Дэмжих
@@ -285,9 +332,7 @@ function FundingCard({ project, percent }: { project: Project; percent: number }
 
       {/* Payment icons */}
       <div className="mt-3.5 flex items-center justify-center gap-3">
-        <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">QPay</span>
-        <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">SocialPay</span>
-        <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">Карт</span>
+        <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">QPay</span>
       </div>
 
       {project.daysLeft <= 7 && (
@@ -295,6 +340,222 @@ function FundingCard({ project, percent }: { project: Project; percent: number }
           ⚠️ {daysLeftLabel(project.daysLeft)} — яарна уу!
         </p>
       )}
+    </div>
+  );
+}
+
+function SupportModal({
+  project,
+  tiers,
+  initialAmount,
+  initialRewardTierId,
+  onClose,
+  onCompleted,
+}: {
+  project: Project;
+  tiers: RewardTier[];
+  initialAmount: number;
+  initialRewardTierId: string | null;
+  onClose: () => void;
+  onCompleted: (result: SupportProjectSuccess) => void;
+}) {
+  const [amount, setAmount] = useState(String(initialAmount));
+  const [selectedRewardTierId, setSelectedRewardTierId] = useState(initialRewardTierId);
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  const selectedTier = useMemo(
+    () => tiers.find((tier) => tier.id === selectedRewardTierId) ?? null,
+    [selectedRewardTierId, tiers]
+  );
+  const parsedAmount = Number(amount || 0);
+  const minimumAmount = Math.max(10, selectedTier?.amount ?? 10);
+  const quickAmounts = useMemo(() => {
+    const values = [10, selectedTier?.amount, 100, 1000, 5000, 10000]
+      .filter((value): value is number => typeof value === "number" && value >= minimumAmount);
+    return Array.from(new Set(values)).slice(0, 5);
+  }, [minimumAmount, selectedTier?.amount]);
+
+  function changeAmount(value: string) {
+    setAmount(value.replace(/[^\d]/g, ""));
+    setError("");
+  }
+
+  function selectRewardTier(tier: RewardTier | null) {
+    setSelectedRewardTierId(tier?.id ?? null);
+    setAmount(String(Math.max(Number(amount || 0), tier?.amount ?? 10)));
+    setError("");
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount < minimumAmount) {
+      setError(`Дэмжлэгийн дүн хамгийн багадаа ${formatMNT(minimumAmount)} байна.`);
+      return;
+    }
+
+    if (selectedTier?.isLimited && selectedTier.remaining !== undefined && selectedTier.remaining <= 0) {
+      setError("Энэ урамшуулал дууссан байна.");
+      return;
+    }
+
+    startTransition(() => {
+      void (async () => {
+        const result = await supportProject({
+          projectId: project.id,
+          amount: parsedAmount,
+          paymentMethod: "QPAY",
+          rewardTierId: selectedRewardTierId,
+        });
+
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        onCompleted(result);
+      })();
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-slate-950/55 px-3 py-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="support-modal-title"
+      onMouseDown={onClose}
+    >
+      <form
+        onSubmit={handleSubmit}
+        onMouseDown={(event) => event.stopPropagation()}
+        className="w-full max-w-lg max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-white/80"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Төсөл дэмжих</p>
+            <h2 id="support-modal-title" className="mt-1 font-display text-xl font-bold text-slate-950">
+              {project.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+            aria-label="Хаах"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5.22 5.22a.75.75 0 011.06 0L10 8.94l3.72-3.72a.75.75 0 111.06 1.06L11.06 10l3.72 3.72a.75.75 0 11-1.06 1.06L10 11.06l-3.72 3.72a.75.75 0 11-1.06-1.06L8.94 10 5.22 6.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-5">
+          {tiers.length > 0 && (
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-800">Урамшуулал</label>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => selectRewardTier(null)}
+                  className={cn(
+                    "w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                    selectedRewardTierId === null
+                      ? "border-blue-700 bg-blue-50 text-blue-900"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
+                  )}
+                >
+                  <span className="font-semibold">Зөвхөн дэмжих</span>
+                </button>
+                {tiers.map((tier) => {
+                  const isSoldOut = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 0;
+
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      onClick={() => selectRewardTier(tier)}
+                      disabled={isSoldOut}
+                      className={cn(
+                        "w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+                        selectedRewardTierId === tier.id
+                          ? "border-blue-700 bg-blue-50 text-blue-900"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
+                      )}
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span>
+                          <span className="block font-semibold">{tier.title}</span>
+                          <span className="mt-0.5 block text-xs text-slate-500">{formatMNT(tier.amount)}-с эхэлнэ</span>
+                        </span>
+                        {isSoldOut ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-400">Дууссан</span>
+                        ) : tier.isLimited && tier.remaining !== undefined ? (
+                          <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-bold text-orange-600">{tier.remaining} үлдсэн</span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="support-amount" className="mb-2 block text-sm font-bold text-slate-800">
+              Дэмжлэгийн дүн
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₮</span>
+              <input
+                id="support-amount"
+                value={amount}
+                onChange={(event) => changeAmount(event.target.value)}
+                inputMode="numeric"
+                min={minimumAmount}
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-base font-semibold text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {quickAmounts.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => changeAmount(String(value))}
+                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-blue-50 hover:text-blue-800"
+                >
+                  {formatMNT(value)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-bold text-slate-800">Төлбөрийн хэлбэр</label>
+            <div className="rounded-xl border border-blue-700 bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm">
+              QPay
+            </div>
+            <p className="mt-2 text-xs font-medium text-slate-400">Одоогоор зөвхөн QPay төлбөр дэмжигдэнэ.</p>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-100 px-5 py-4">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="w-full rounded-xl bg-blue-800 py-3.5 text-base font-bold text-white shadow-cta transition-colors hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {isPending ? "Бүртгэж байна..." : `${formatMNT(parsedAmount || minimumAmount)} дэмжих`}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -391,7 +652,7 @@ function UpdatesTab({ updates }: { updates: FundingUpdate[] }) {
   );
 }
 
-function RewardsTab({ tiers }: { tiers: RewardTier[] }) {
+function RewardsTab({ tiers, onSelectTier }: { tiers: RewardTier[]; onSelectTier: (tier: RewardTier) => void }) {
   if (tiers.length === 0) {
     return (
       <div className="text-center py-20">
@@ -407,14 +668,15 @@ function RewardsTab({ tiers }: { tiers: RewardTier[] }) {
   return (
     <div className="space-y-4">
       {tiers.map(tier => (
-        <RewardTierCard key={tier.id} tier={tier} />
+        <RewardTierCard key={tier.id} tier={tier} onSelect={() => onSelectTier(tier)} />
       ))}
     </div>
   );
 }
 
-function RewardTierCard({ tier }: { tier: RewardTier }) {
+function RewardTierCard({ tier, onSelect }: { tier: RewardTier; onSelect: () => void }) {
   const isAlmostGone = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 5;
+  const isSoldOut = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 0;
 
   return (
     <div className={cn(
@@ -424,7 +686,7 @@ function RewardTierCard({ tier }: { tier: RewardTier }) {
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <span className="font-display font-bold text-blue-800 text-xl">
-            ₮{tier.amount.toLocaleString()}
+            {formatMNT(tier.amount)}
           </span>
           <h4 className="font-semibold text-slate-900 text-sm mt-0.5">{tier.title}</h4>
         </div>
@@ -447,8 +709,13 @@ function RewardTierCard({ tier }: { tier: RewardTier }) {
         <span>Хүргэлт: {tier.estimatedDelivery}</span>
       </div>
 
-      <button className="w-full bg-blue-50 hover:bg-blue-800 text-blue-800 hover:text-white text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 border border-blue-100 hover:border-blue-800">
-        Энэ шагналыг сонгох
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={isSoldOut}
+        className="w-full bg-blue-50 hover:bg-blue-800 text-blue-800 hover:text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 border border-blue-100 hover:border-blue-800"
+      >
+        {isSoldOut ? "Урамшуулал дууссан" : "Энэ шагналыг сонгох"}
       </button>
     </div>
   );

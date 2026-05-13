@@ -83,7 +83,7 @@ export function TrustSection() {
         {/* Payment trust bar */}
         <div className="mt-16 p-8 rounded-3xl bg-slate-50 border border-slate-100">
           <p className="text-center text-slate-500 text-sm font-medium mb-6 uppercase tracking-widest">
-            Манай төлбөрийн системүүд
+            Одоогоор дэмждэг төлбөрийн систем
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8">
             {/* QPay */}
@@ -92,25 +92,6 @@ export function TrustSection() {
                 <span className="text-white text-xs font-bold">Q</span>
               </div>
               <span className="font-bold text-slate-700 text-sm">QPay</span>
-            </div>
-
-            {/* SocialPay */}
-            <div className="flex items-center gap-2 px-5 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-              <div className="w-6 h-6 rounded bg-green-600 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">S</span>
-              </div>
-              <span className="font-bold text-slate-700 text-sm">SocialPay</span>
-            </div>
-
-            {/* Visa / MasterCard placeholder */}
-            <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-              <span className="font-bold text-blue-700 text-sm italic">VISA</span>
-              <span className="text-slate-300">|</span>
-              <span className="font-bold text-orange-500 text-xs">
-                <span className="text-red-500">●</span>
-                <span className="text-orange-400 -ml-1">●</span>{" "}
-                Mastercard
-              </span>
             </div>
 
             {/* SSL badge */}
