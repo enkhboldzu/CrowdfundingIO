@@ -355,12 +355,29 @@ interface ImageUploadProps {
   onUploadingChange: (uploading: boolean) => void;
 }
 
+type ImageUploadMode =
+  | { type: "append" }
+  | { type: "replaceAll" }
+  | { type: "replaceOne"; index: number };
+
 function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: ImageUploadProps) {
   const ref = useRef<HTMLInputElement>(null);
+  const uploadModeRef = useRef<ImageUploadMode>({ type: "append" });
   const [localError, setLocalError] = useState<string | null>(null);
 
+  function openPicker(mode: ImageUploadMode) {
+    uploadModeRef.current = mode;
+    ref.current?.click();
+  }
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const remaining = MAX_PROJECT_IMAGES - images.length;
+    const mode = uploadModeRef.current;
+    uploadModeRef.current = { type: "append" };
+
+    const maxFiles =
+      mode.type === "replaceOne" ? 1 :
+      mode.type === "replaceAll" ? MAX_PROJECT_IMAGES :
+      MAX_PROJECT_IMAGES - images.length;
     const files = Array.from(e.target.files ?? []);
     let nextError: string | null = null;
 
@@ -381,7 +398,7 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
     setLocalError(nextError);
     e.target.value = "";
 
-    const filesToUpload = validFiles.slice(0, remaining);
+    const filesToUpload = validFiles.slice(0, maxFiles);
     if (filesToUpload.length === 0) return;
 
     onUploadingChange(true);
@@ -408,7 +425,18 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
         }
       }));
 
-      onChange([...images, ...uploaded]);
+      if (mode.type === "replaceAll") {
+        images.forEach((image) => {
+          if (image.preview.startsWith("blob:")) URL.revokeObjectURL(image.preview);
+        });
+        onChange(uploaded.slice(0, MAX_PROJECT_IMAGES));
+      } else if (mode.type === "replaceOne") {
+        const replaced = images[mode.index];
+        if (replaced?.preview.startsWith("blob:")) URL.revokeObjectURL(replaced.preview);
+        onChange(images.map((image, index) => index === mode.index ? uploaded[0] : image));
+      } else {
+        onChange([...images, ...uploaded].slice(0, MAX_PROJECT_IMAGES));
+      }
     } catch (err) {
       const message = err instanceof Error && err.message !== "Upload failed"
         ? err.message
@@ -423,6 +451,19 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
     const removed = images.find((image) => image.id === id);
     if (removed?.preview.startsWith("blob:")) URL.revokeObjectURL(removed.preview);
     onChange(images.filter((image) => image.id !== id));
+  }
+
+  function handleMakeCover(index: number) {
+    if (index <= 0) return;
+    const selected = images[index];
+    onChange([selected, ...images.filter((_, currentIndex) => currentIndex !== index)]);
+  }
+
+  function handleClearAll() {
+    images.forEach((image) => {
+      if (image.preview.startsWith("blob:")) URL.revokeObjectURL(image.preview);
+    });
+    onChange([]);
   }
 
   const displayError = localError ?? error;
@@ -459,20 +500,43 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
           {images.length > 1 && (
             <div className="grid grid-cols-3 gap-2 p-3 bg-white">
               {images.map((image, index) => (
-                <button
+                <div
                   key={image.id}
-                  type="button"
-                  onClick={() => handleRemove(image.id)}
                   className="relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-100 group/thumb"
-                  aria-label={`Зураг ${index + 1} устгах`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={image.preview} alt="" className="w-full h-full object-cover" />
                   <span className="absolute left-1.5 top-1.5 rounded-full bg-blue-700 px-2 py-0.5 text-[10px] font-bold text-white">
                     {index === 0 ? "Нүүр" : index + 1}
                   </span>
-                  <span className="absolute inset-0 bg-red-600/0 group-hover/thumb:bg-red-600/20 transition-colors" />
-                </button>
+                  <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/thumb:opacity-100 group-focus-within/thumb:opacity-100">
+                    {index > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleMakeCover(index)}
+                        className="rounded-md bg-white/95 px-1.5 py-1 text-[10px] font-bold text-blue-700 shadow-sm"
+                      >
+                        Нүүр
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openPicker({ type: "replaceOne", index })}
+                      disabled={uploading}
+                      className="rounded-md bg-white/95 px-1.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm disabled:opacity-50"
+                    >
+                      Солих
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(image.id)}
+                      disabled={uploading}
+                      className="rounded-md bg-red-600 px-1.5 py-1 text-[10px] font-bold text-white shadow-sm disabled:opacity-50"
+                    >
+                      Устгах
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -490,7 +554,7 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
               {images.length < MAX_PROJECT_IMAGES && (
                 <button
                   type="button"
-                  onClick={() => ref.current?.click()}
+                  onClick={() => openPicker({ type: "append" })}
                   disabled={uploading}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
                 >
@@ -499,11 +563,19 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
               )}
               <button
                 type="button"
-                onClick={() => images[0] && handleRemove(images[0].id)}
+                onClick={() => openPicker({ type: "replaceAll" })}
+                disabled={uploading}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Зураг солих
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAll}
                 disabled={uploading}
                 className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
               >
-                Устгах
+                Бүгдийг устгах
               </button>
             </div>
           </div>
@@ -512,7 +584,7 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
         /* ── Empty / pick state ── */
         <button
           type="button"
-          onClick={() => ref.current?.click()}
+          onClick={() => openPicker({ type: "append" })}
           disabled={uploading}
           className="w-full border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-2xl p-8 text-center transition-all duration-200 group"
         >
