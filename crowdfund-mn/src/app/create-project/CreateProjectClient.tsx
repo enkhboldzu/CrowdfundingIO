@@ -85,6 +85,7 @@ type ErrMap    = Record<string, string>;
 const MAX_PROJECT_IMAGES = 3;
 const MAX_PROJECT_DOCUMENTS = 5;
 const MIN_PROJECT_GOAL = 10;
+const MIN_REWARD_AMOUNT = 10;
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
@@ -228,8 +229,8 @@ function validate(step: number, d: FormValues): ErrMap {
     d.rewards.forEach((r, i) => {
       if (!r.title.trim())      e[`rt${i}`] = "Урамшуулалын нэр оруулна уу";
       if (!r.amount)            e[`ra${i}`] = "Дүн оруулна уу";
-      else if (isNaN(Number(r.amount)) || Number(r.amount) < 1_000)
-                                e[`ra${i}`] = "Хамгийн бага дүн ₮1,000";
+      else if (isNaN(Number(r.amount)) || Number(r.amount) < MIN_REWARD_AMOUNT)
+                                e[`ra${i}`] = "Хамгийн бага дүн ₮10";
       if (!r.description.trim()) e[`rd${i}`] = "Тайлбар оруулна уу";
     });
   }
@@ -1010,7 +1011,7 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
               <Label htmlFor={`ra${i}`} required>Дэмжлэгийн дүн</Label>
               <FInput id={`ra${i}`} type="number" value={r.amount}
                 onChange={v => setReward(i, "amount", v)}
-                placeholder="10000" error={e[`ra${i}`]} prefix="₮" />
+                placeholder="10" error={e[`ra${i}`]} prefix="₮" />
               <ErrMsg msg={e[`ra${i}`]} />
             </div>
 

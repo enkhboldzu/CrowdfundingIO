@@ -106,7 +106,10 @@ export function Navbar() {
   }, []);
 
   /* Close mobile menu on route change */
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    const id = window.setTimeout(() => setMobileOpen(false), 0);
+    return () => window.clearTimeout(id);
+  }, [pathname]);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -126,14 +129,14 @@ export function Navbar() {
       )}
     >
       <div className="container-page">
-        <nav className="flex items-center justify-between h-16">
+        <nav className="flex items-center justify-between h-14 sm:h-16">
 
           {/* ── Col 1: Logo ──────────────────────────── */}
-          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-sm font-display">CF</span>
+          <Link href="/" className="flex items-center gap-2 min-w-0 flex-shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg gradient-brand flex items-center justify-center shadow-md flex-shrink-0">
+              <span className="text-white font-bold text-xs sm:text-sm font-display">CF</span>
             </div>
-            <span className={cn("font-display font-bold text-lg transition-colors duration-300", hasBg ? "text-blue-800" : "text-white")}>
+            <span className={cn("font-display font-bold text-base sm:text-lg transition-colors duration-300", hasBg ? "text-blue-800" : "text-white")}>
               crowdfund<span className="text-blue-300">.mn</span>
             </span>
           </Link>
@@ -191,9 +194,9 @@ export function Navbar() {
           </div>
 
           {/* ── Mobile right cluster ──────────────────── */}
-          <div className="md:hidden flex items-center gap-1 flex-shrink-0">
+          <div className="md:hidden flex items-center gap-0.5 flex-shrink-0">
             {isLoggedIn && (
-              <div className="flex items-center gap-1 animate-fade-up">
+              <div className="flex items-center gap-0.5">
                 <NotificationDropdown scrolled={hasBg} />
                 <UserDropdown scrolled={hasBg} />
               </div>

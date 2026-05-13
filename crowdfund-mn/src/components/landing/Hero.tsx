@@ -79,7 +79,7 @@ export function Hero({ stats }: HeroProps) {
   ];
 
   return (
-    <section className="relative overflow-hidden min-h-[92vh] flex items-center gradient-brand-hero">
+    <section className="relative overflow-hidden min-h-[100svh] sm:min-h-[92vh] flex items-center gradient-brand-hero">
 
       {/* Decorative blobs */}
       <div
@@ -104,7 +104,7 @@ export function Hero({ stats }: HeroProps) {
         }}
       />
 
-      <div className="container-page relative z-10 py-24 lg:py-32">
+      <div className="container-page relative z-10 pt-24 pb-20 sm:py-24 lg:py-32">
         <motion.div
           className="max-w-4xl mx-auto text-center"
           variants={container}
@@ -113,9 +113,9 @@ export function Hero({ stats }: HeroProps) {
         >
 
           {/* Eyebrow badge */}
-          <motion.div variants={fadeUp} className="inline-flex items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-8">
+          <motion.div variants={fadeUp} className="inline-flex max-w-full items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 mb-6 sm:mb-8">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-white/90 text-sm font-medium">
+            <span className="text-white/90 text-xs sm:text-sm font-medium truncate">
               Монголын #1 краудфандинг платформ
             </span>
           </motion.div>
@@ -123,7 +123,7 @@ export function Hero({ stats }: HeroProps) {
           {/* Headline */}
           <motion.h1
             variants={fadeUp}
-            className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl xl:text-7xl text-white leading-tight tracking-tight mb-6 text-balance"
+            className="font-display font-bold text-[2rem] sm:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.18] sm:leading-tight tracking-tight mb-5 sm:mb-6 text-balance"
           >
             Таны санааг{" "}
             <span className="relative inline-block">
@@ -139,7 +139,7 @@ export function Hero({ stats }: HeroProps) {
           {/* Sub-headline */}
           <motion.p
             variants={fadeUp}
-            className="text-white/75 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto mb-10 text-balance"
+            className="text-white/75 text-base sm:text-xl leading-7 sm:leading-relaxed max-w-2xl mx-auto mb-8 sm:mb-10 text-balance"
           >
             Монголын нийгэмд үнэ цэнтэй бүтээл туурвих, хамтын хөрөнгөөр
             хэрэгжүүлэх шинэ арга зам. Итгэлцэл, ил тод байдал, хамтын ажиллагаа.
@@ -148,11 +148,11 @@ export function Hero({ stats }: HeroProps) {
           {/* CTA buttons */}
           <motion.div
             variants={fadeUp}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-12 sm:mb-16"
           >
             <Link
               href="/explore"
-              className={cn(buttonVariants({ size: "xl" }), "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
+              className={cn(buttonVariants({ size: "xl" }), "w-full sm:w-auto bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
             >
               Төслүүд харах
             </Link>
@@ -160,7 +160,7 @@ export function Hero({ stats }: HeroProps) {
               href="/create-project"
               className={cn(
                 buttonVariants({ variant: "outline", size: "xl" }),
-                "border-white text-white hover:bg-white hover:text-blue-800"
+                "w-full sm:w-auto border-white text-white hover:bg-white hover:text-blue-800"
               )}
             >
               Өөрийн төсөл эхлэх
@@ -170,7 +170,7 @@ export function Hero({ stats }: HeroProps) {
           {/* Stats */}
           <motion.div
             variants={container}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 max-w-3xl mx-auto"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-6 sm:gap-8 max-w-3xl mx-auto"
           >
             {STATS.map((stat) => (
               <motion.div key={stat.label} variants={statItem} className="text-center">

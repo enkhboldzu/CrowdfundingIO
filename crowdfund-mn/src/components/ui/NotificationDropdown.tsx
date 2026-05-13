@@ -136,8 +136,8 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
       {open && (
         <div
           className={cn(
-            "fixed inset-x-3 top-20 z-[70] w-auto max-h-[calc(100vh-6rem)]",
-            "sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+12px)] sm:z-[60] sm:w-[400px] sm:max-h-none",
+            "fixed left-1/2 top-16 z-[70] w-[calc(100vw-1.5rem)] max-w-[420px] -translate-x-1/2 max-h-[calc(100vh-5rem)]",
+            "sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+12px)] sm:z-[60] sm:w-[400px] sm:max-w-none sm:translate-x-0 sm:max-h-none",
             "bg-white rounded-2xl border border-slate-100",
             "shadow-xl shadow-slate-200/60",
             "animate-fade-up overflow-hidden"
@@ -176,7 +176,7 @@ export function NotificationDropdown({ scrolled }: { scrolled: boolean }) {
           </div>
 
           {/* List */}
-          <div className="max-h-[calc(100vh-14rem)] sm:max-h-[360px] overflow-y-auto overscroll-contain divide-y divide-slate-50">
+          <div className="max-h-[calc(100vh-13rem)] sm:max-h-[360px] overflow-y-auto overscroll-contain divide-y divide-slate-50">
             {notifs.length === 0 ? (
               <div className="py-14 text-center">
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
