@@ -1,52 +1,64 @@
+function Skeleton({ className }: { className: string }) {
+  return <div className={`animate-pulse rounded-2xl bg-slate-200/80 ${className}`} />;
+}
+
 export default function ProfileLoading() {
   return (
-    <div className="min-h-screen bg-slate-50 animate-pulse">
-
-      {/* Hero skeleton */}
-      <div className="gradient-brand-hero pt-24 pb-14">
-        <div className="container-page">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8">
-            {/* Avatar skeleton */}
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white/20 flex-shrink-0" />
-            {/* Info skeleton */}
-            <div className="flex-1 space-y-3">
-              <div className="h-8 w-48 bg-white/20 rounded-xl" />
-              <div className="h-4 w-56 bg-white/15 rounded-lg" />
-              <div className="h-3 w-36 bg-white/10 rounded-lg" />
+    <main className="min-h-screen bg-slate-50 pt-24">
+      <div className="container-page">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7 lg:p-8">
+          <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+              <Skeleton className="h-24 w-24 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <Skeleton className="h-7 w-36" />
+                <Skeleton className="h-10 w-72 max-w-full" />
+                <Skeleton className="h-4 w-full max-w-xl" />
+                <Skeleton className="h-4 w-2/3 max-w-md" />
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="mt-4 h-2 w-full rounded-full" />
+              <Skeleton className="mt-4 h-11 w-full" />
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Stats strip skeleton */}
-      <div className="bg-white border-b border-slate-100 shadow-sm">
-        <div className="container-page">
-          <div className="grid grid-cols-3 divide-x divide-slate-100">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="flex items-center gap-4 py-5 px-6">
-                <div className="hidden sm:block w-10 h-10 rounded-xl bg-slate-100 flex-shrink-0" />
-                <div className="space-y-2">
-                  <div className="h-6 w-20 bg-slate-100 rounded" />
-                  <div className="h-3 w-24 bg-slate-100 rounded" />
+        <div className="grid gap-3 py-5 sm:grid-cols-3">
+          {[0, 1, 2].map(item => (
+            <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <Skeleton className="h-11 w-11 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-6 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-8 flex gap-2">
+          {[0, 1, 2].map(item => (
+            <Skeleton key={item} className="h-12 w-36 rounded-t-2xl" />
+          ))}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[0, 1, 2, 3].map(item => (
+            <div key={item} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="grid sm:grid-cols-[170px_minmax(0,1fr)]">
+                <Skeleton className="h-44 rounded-none sm:h-full" />
+                <div className="space-y-3 p-5">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-20 w-full" />
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Tab bar skeleton */}
-      <div className="container-page py-8">
-        <div className="h-14 w-full sm:w-96 bg-white rounded-2xl border border-slate-100 mb-8" />
-
-        {/* Cards skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="h-36 bg-white rounded-2xl border border-slate-100 shadow-card" />
+            </div>
           ))}
         </div>
       </div>
-
-    </div>
+    </main>
   );
 }

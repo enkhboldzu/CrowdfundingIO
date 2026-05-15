@@ -1,22 +1,43 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { GuardedLink } from "@/components/ui/GuardedLink";
-import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import {
-  Calendar, Check, Plus, Heart, FolderOpen,
-  Mail, Lock, Wallet, TrendingUp, Users,
-  Eye, Pencil, Clock, AlertCircle, CheckCircle2, XCircle,
-  Loader2, Shield, ChevronRight, CreditCard, Globe,
-  ArrowRight, Pen,
+  AlertCircle,
+  ArrowRight,
+  BadgeCheck,
+  Calendar,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  CircleDollarSign,
+  Clock,
+  CreditCard,
+  Eye,
+  FolderOpen,
+  Heart,
+  KeyRound,
+  Loader2,
+  Mail,
+  Pencil,
+  Plus,
+  ReceiptText,
+  Shield,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Wallet,
+  XCircle,
 } from "lucide-react";
 import { Footer } from "@/components/landing/Footer";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { fundingPercent } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, daysLeftLabel, fundingPercent } from "@/lib/utils";
 import type { Project } from "@/types";
 import { updateProfile } from "@/lib/actions/user";
 import {
@@ -27,40 +48,157 @@ import {
 } from "@/lib/upload";
 import { uploadErrorMessage } from "@/lib/upload-client";
 
-/* ── Types ──────────────────────────────────────────────────────────── */
-
 type ProfileTab = "backed" | "projects" | "settings";
 
 export interface ProfileUser {
-  id:         string;
-  name:       string | null;
-  bio:        string | null;
-  email:      string | null;
-  phone:      string | null;
-  avatar:     string | null;
+  id: string;
+  name: string | null;
+  bio: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar: string | null;
   isVerified: boolean;
-  createdAt:  string;
+  createdAt: string;
 }
 
 export interface DonationStats {
   totalAmount: number;
-  count:       number;
+  count: number;
 }
 
 export interface BackedDonation {
-  id:        string;
-  amount:    number;
+  id: string;
+  amount: number;
   createdAt: string;
-  project:   Project;
+  project: Project;
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────────── */
+interface ProfileClientProps {
+  user: ProfileUser;
+  donationStats: DonationStats;
+  backedDonations: BackedDonation[];
+  createdProjects: Project[];
+  initialTab?: ProfileTab;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  technology: "Технологи",
+  arts: "Урлаг",
+  film: "Кино",
+  environment: "Байгаль",
+  games: "Тоглоом",
+  health: "Эрүүл мэнд",
+  education: "Боловсрол",
+  community: "Нийгэм",
+  food: "Хоол",
+  fashion: "Загвар",
+  music: "Хөгжим",
+  publishing: "Хэвлэл",
+  social: "Нийгэм",
+  startups: "Стартап",
+};
+
+const AVATAR_COLORS = [
+  "bg-blue-600",
+  "bg-emerald-600",
+  "bg-violet-600",
+  "bg-rose-600",
+  "bg-amber-600",
+  "bg-cyan-600",
+];
+
+const BACKED_STATUS_CONFIG = {
+  active: {
+    label: "Идэвхтэй",
+    dot: "bg-emerald-500",
+    text: "text-emerald-700",
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+  },
+  funded: {
+    label: "Санхүүжсэн",
+    dot: "bg-blue-600",
+    text: "text-blue-700",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+  },
+  ended: {
+    label: "Дууссан",
+    dot: "bg-slate-400",
+    text: "text-slate-600",
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+  },
+};
+
+const CREATED_STATUS_CONFIG = {
+  PENDING: {
+    label: "Хянагдаж байна",
+    hint: "Админ шалгаж дуусмагц нийтлэгдэх боломжтой.",
+    icon: Clock,
+    text: "text-amber-700",
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+  },
+  ACTIVE: {
+    label: "Нийтлэгдсэн",
+    hint: "Төсөл дэмжлэг авч байна.",
+    icon: CheckCircle2,
+    text: "text-emerald-700",
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+  },
+  FUNDED: {
+    label: "Санхүүжсэн",
+    hint: "Зорилгодоо хүрсэн төсөл.",
+    icon: CheckCircle2,
+    text: "text-blue-700",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+  },
+  REJECTED: {
+    label: "Татгалзсан",
+    hint: "Засвар оруулаад дахин илгээх боломжтой.",
+    icon: XCircle,
+    text: "text-red-700",
+    bg: "bg-red-50",
+    border: "border-red-200",
+  },
+  FAILED: {
+    label: "Дууссан",
+    hint: "Хугацаа дууссан төсөл.",
+    icon: AlertCircle,
+    text: "text-slate-600",
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+  },
+  CANCELLED: {
+    label: "Цуцлагдсан",
+    hint: "Төсөл идэвхгүй болсон.",
+    icon: XCircle,
+    text: "text-slate-600",
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+  },
+} as const;
 
 function getDisplayName(user: ProfileUser): string {
-  if (user.name?.trim()) return user.name;
+  if (user.name?.trim()) return user.name.trim();
   if (user.email) return user.email.split("@")[0];
   if (user.phone) return user.phone;
-  return "Шинэ Дэмжигч";
+  return "Шинэ дэмжигч";
+}
+
+function formatMoney(amount: number): string {
+  return `${amount.toLocaleString("mn-MN")}₮`;
+}
+
+function formatDate(isoDate: string): string {
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(isoDate));
 }
 
 function formatMemberSince(isoDate: string): string {
@@ -68,147 +206,32 @@ function formatMemberSince(isoDate: string): string {
   return `${d.getFullYear()} оны ${d.getMonth() + 1}-р сараас`;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  technology: "Технологи", arts: "Урлаг",       film: "Кино",        environment: "Байгаль",
-  games:      "Тоглоом",   health: "Эрүүл мэнд", education: "Боловсрол", community: "Нийгэм",
-  food:       "Хоол",       fashion: "Загвар",    music: "Хөгжим",     publishing: "Хэвлэл",
-};
+function getProfileScore(user: ProfileUser): number {
+  return [
+    Boolean(user.name?.trim()),
+    Boolean(user.bio?.trim()),
+    Boolean(user.avatar),
+    Boolean(user.email || user.phone),
+  ].filter(Boolean).length;
+}
 
-const AVATAR_COLORS = ["bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-rose-500", "bg-amber-500", "bg-cyan-500"];
+function updateTabUrl(tab: ProfileTab) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (tab === "backed") url.searchParams.delete("tab");
+  else url.searchParams.set("tab", tab);
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 function InitialAvatar({ name, className }: { name: string; className?: string }) {
   const char = (name.trim().charAt(0) || "?").toUpperCase();
   const color = AVATAR_COLORS[char.charCodeAt(0) % AVATAR_COLORS.length];
+
   return (
     <div className={cn("flex items-center justify-center font-bold text-white select-none", color, className)}>
       {char}
     </div>
   );
-}
-
-/* ── Status configs ──────────────────────────────────────────────────── */
-
-const BACKED_STATUS_CONFIG = {
-  active: { label: "Идэвхтэй",   dot: "bg-green-400",  text: "text-green-700",  bg: "bg-green-50",  border: "border-green-200"  },
-  funded: { label: "Санхүүжсэн", dot: "bg-blue-500",   text: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200"   },
-  ended:  { label: "Дууссан",    dot: "bg-slate-400",  text: "text-slate-600",  bg: "bg-slate-50",  border: "border-slate-200"  },
-};
-
-const CREATED_STATUS_CONFIG = {
-  PENDING:   { label: "Хянагдаж байна", icon: Clock,        dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200"   },
-  ACTIVE:    { label: "Нийтлэгдсэн",   icon: CheckCircle2, dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
-  FUNDED:    { label: "Санхүүжсэн",    icon: CheckCircle2, dot: "bg-blue-500",    text: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-200"    },
-  REJECTED:  { label: "Татгалзсан",    icon: XCircle,      dot: "bg-red-500",     text: "text-red-700",     bg: "bg-red-50",     border: "border-red-200"     },
-  FAILED:    { label: "Дууссан",       icon: AlertCircle,  dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
-  CANCELLED: { label: "Цуцлагдсан",   icon: XCircle,      dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
-} as const;
-
-/* ── InlineField — click to edit ─────────────────────────────────────── */
-
-function InlineField({ label, value, placeholder, multiline = false, onSave, saving }: {
-  label: string;
-  value: string;
-  placeholder: string;
-  multiline?: boolean;
-  onSave: (v: string) => Promise<void>;
-  saving?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const [localSaving, setLocalSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
-
-  function startEdit() {
-    setDraft(value);
-    setEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }
-
-  async function save() {
-    if (draft === value) { setEditing(false); return; }
-    setLocalSaving(true);
-    await onSave(draft.trim());
-    setLocalSaving(false);
-    setEditing(false);
-  }
-
-  function cancel() {
-    setDraft(value);
-    setEditing(false);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !multiline) { e.preventDefault(); save(); }
-    if (e.key === "Escape") cancel();
-  }
-
-  const isBusy = localSaving || saving;
-
-  return (
-    <div>
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">{label}</p>
-      {editing ? (
-        <div className="space-y-2">
-          {multiline ? (
-            <textarea
-              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={3}
-              placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent resize-none bg-white"
-            />
-          ) : (
-            <input
-              ref={inputRef as React.RefObject<HTMLInputElement>}
-              type="text"
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent bg-white"
-            />
-          )}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={save}
-              disabled={isBusy}
-              className="inline-flex items-center gap-1.5 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              {localSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" strokeWidth={2.5} />}
-              Хадгалах
-            </button>
-            <button type="button" onClick={cancel} className="text-xs font-semibold text-gray-500 hover:text-gray-800 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-              Болих
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={startEdit}
-          className="group flex items-start gap-2 w-full text-left hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-lg transition-colors"
-        >
-          <span className={cn("text-sm leading-relaxed flex-1", value ? "text-gray-900" : "text-gray-400 italic")}>
-            {value || placeholder}
-          </span>
-          <Pen className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-600 mt-0.5 shrink-0 transition-colors" strokeWidth={2} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ── Root component ──────────────────────────────────────────────────── */
-
-interface ProfileClientProps {
-  user:            ProfileUser;
-  donationStats:   DonationStats;
-  backedDonations: BackedDonation[];
-  createdProjects: Project[];
-  initialTab?:     ProfileTab;
 }
 
 export function ProfileClient({
@@ -220,170 +243,156 @@ export function ProfileClient({
 }: ProfileClientProps) {
   const [tab, setTab] = useState<ProfileTab>(initialTab);
   const [user, setUser] = useState<ProfileUser>(initialUser);
+  const displayName = getDisplayName(user);
+  const profileScore = getProfileScore(user);
+  const profilePercent = Math.round((profileScore / 4) * 100);
+
+  const tabs: { id: ProfileTab; label: string; icon: React.ElementType; count?: number }[] = [
+    { id: "backed", label: "Дэмжсэн төслүүд", icon: Heart, count: donationStats.count },
+    { id: "projects", label: "Миний төслүүд", icon: FolderOpen, count: createdProjects.length },
+    { id: "settings", label: "Тохиргоо", icon: Shield },
+  ];
+
+  function selectTab(nextTab: ProfileTab) {
+    setTab(nextTab);
+    updateTabUrl(nextTab);
+  }
 
   function handleProfileUpdate(updates: Partial<ProfileUser>) {
     setUser(prev => ({ ...prev, ...updates }));
   }
 
-  const displayName = getDisplayName(user);
-  const isNameEmpty = !user.name?.trim();
-
-  const tabs: { id: ProfileTab; label: string; icon: React.ElementType; count?: number }[] = [
-    { id: "backed",   label: "Дэмжсэн",      icon: Heart,      count: donationStats.count    },
-    { id: "projects", label: "Төслүүд",       icon: FolderOpen, count: createdProjects.length },
-    { id: "settings", label: "Command Center", icon: Shield                                    },
-  ];
-
   return (
     <>
-      <main className="min-h-screen bg-gray-50">
-
-        {/* ── Command Center Header ─────────────────────────────── */}
-        <section className="bg-white border-b border-gray-200 pt-20 pb-0">
+      <main className="min-h-screen bg-slate-50">
+        <section className="border-b border-slate-200 bg-white pt-24">
           <div className="container-page">
-
-            {/* Top row: avatar + identity + metrics */}
-            <div className="py-8 grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] gap-6 lg:gap-10 items-start">
-
-              {/* Avatar (circle, strict) */}
-              <div className="flex-shrink-0">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-gray-200">
+            <div className="rounded-3xl border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_55%,#eff6ff_100%)] p-5 shadow-sm sm:p-7 lg:p-8">
+              <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[1.4rem] border border-white bg-slate-100 shadow-sm ring-1 ring-slate-200">
                     {user.avatar ? (
-                      <Image src={user.avatar} alt={displayName} width={80} height={80} className="object-cover w-full h-full" />
+                      <Image src={user.avatar} alt={displayName} fill className="object-cover" sizes="96px" priority />
                     ) : (
-                      <InitialAvatar name={displayName} className="w-full h-full text-2xl" />
+                      <InitialAvatar name={displayName} className="h-full w-full text-3xl" />
+                    )}
+                    {user.isVerified && (
+                      <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white" title="Баталгаажсан">
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      </span>
                     )}
                   </div>
-                  {user.isVerified && (
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-800 rounded-full flex items-center justify-center ring-2 ring-white" title="Баталгаажсан">
-                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.4} />
+                        Миний профайл
+                      </span>
+                      {user.isVerified ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          <BadgeCheck className="h-3.5 w-3.5" strokeWidth={2.4} />
+                          Баталгаажсан
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                          <AlertCircle className="h-3.5 w-3.5" strokeWidth={2.4} />
+                          Профайл дутуу
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Identity block */}
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className={cn("font-bold text-2xl leading-tight", isNameEmpty ? "text-gray-400 italic" : "text-gray-900")}>
-                    {displayName}
-                  </h1>
-                  {user.isVerified && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full">
-                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                      Баталгаажсан
-                    </span>
-                  )}
-                  {isNameEmpty && (
-                    <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                      Профайл тохируулаарай
-                    </span>
-                  )}
-                </div>
-                {user.bio ? (
-                  <p className="text-sm text-gray-500 leading-relaxed">{user.bio}</p>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">Товч танилцуулга нэм...</p>
-                )}
-                <div className="flex items-center gap-4 pt-1 flex-wrap">
-                  {(user.email || user.phone) && (
-                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                      <Mail className="w-3.5 h-3.5" strokeWidth={2} />
-                      {user.email ?? user.phone}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <Calendar className="w-3.5 h-3.5" strokeWidth={2} />
-                    {formatMemberSince(user.createdAt)} гишүүн
-                  </span>
-                </div>
-              </div>
+                    <h1 className="font-display text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+                      {displayName}
+                    </h1>
+                    <p className={cn("mt-3 max-w-2xl text-sm leading-6", user.bio ? "text-slate-600" : "text-slate-400")}>
+                      {user.bio || "Өөрийн тухай товч танилцуулга нэмбэл бусад хэрэглэгч таныг илүү амархан танина."}
+                    </p>
 
-              {/* Edit button */}
-              <div className="hidden lg:block">
-                <button
-                  onClick={() => setTab("settings")}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-blue-800 hover:text-blue-800 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Pen className="w-3.5 h-3.5" strokeWidth={2} />
-                  Edit Profile
-                </button>
-              </div>
-            </div>
-
-            {/* ── Impact Metrics strip ── */}
-            <div className="grid grid-cols-3 border-t border-gray-100 -mx-4 sm:mx-0">
-              {/* Total Contributed */}
-              <div className="px-4 sm:px-6 py-4 border-r border-gray-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Wallet className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Нийт дэмжсэн</span>
+                    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
+                      {(user.email || user.phone) && (
+                        <span className="inline-flex min-w-0 items-center gap-2">
+                          <Mail className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
+                          <span className="truncate">{user.email ?? user.phone}</span>
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-slate-400" strokeWidth={2} />
+                        {formatMemberSince(user.createdAt)} гишүүн
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                {donationStats.totalAmount > 0 ? (
-                  <p className="font-bold text-xl text-gray-900">₮{donationStats.totalAmount.toLocaleString()}</p>
-                ) : (
-                  <button onClick={() => setTab("backed")} className="group flex items-center gap-1 text-sm font-semibold text-blue-800 hover:text-blue-900 mt-0.5">
-                    Анхны төслөө дэмжээрэй
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Профайл бэлэн байдал</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700">{profileScore} / 4 мэдээлэл бүрэн</p>
+                    </div>
+                    <span className="text-2xl font-black text-blue-700">{profilePercent}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-blue-700 transition-all duration-500" style={{ width: `${profilePercent}%` }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => selectTab("settings")}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800"
+                  >
+                    <Pencil className="h-4 w-4" strokeWidth={2.4} />
+                    Профайл засах
                   </button>
-                )}
-              </div>
-
-              {/* Projects Backed */}
-              <div className="px-4 sm:px-6 py-4 border-r border-gray-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Heart className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Дэмжсэн</span>
                 </div>
-                {donationStats.count > 0 ? (
-                  <p className="font-bold text-xl text-gray-900">{donationStats.count} <span className="text-sm font-normal text-gray-500">төсөл</span></p>
-                ) : (
-                  <Link href="/explore" className="group flex items-center gap-1 text-sm font-semibold text-blue-800 hover:text-blue-900 mt-0.5">
-                    Судлах
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
-                  </Link>
-                )}
-              </div>
-
-              {/* Created Projects */}
-              <div className="px-4 sm:px-6 py-4">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <TrendingUp className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Үүсгэсэн</span>
-                </div>
-                {createdProjects.length > 0 ? (
-                  <p className="font-bold text-xl text-gray-900">{createdProjects.length} <span className="text-sm font-normal text-gray-500">төсөл</span></p>
-                ) : (
-                  <GuardedLink href="/create-project" className="group flex items-center gap-1 text-sm font-semibold text-blue-800 hover:text-blue-900 mt-0.5">
-                    Төсөл эхлүүлэх
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
-                  </GuardedLink>
-                )}
               </div>
             </div>
 
-            {/* ── Tab bar ── */}
-            <div className="flex gap-0 -mb-px overflow-x-auto">
-              {tabs.map(t => {
-                const Icon = t.icon;
-                const active = tab === t.id;
+            <div className="grid gap-3 py-5 sm:grid-cols-3">
+              <ProfileStat
+                icon={Wallet}
+                label="Нийт дэмжсэн"
+                value={formatMoney(donationStats.totalAmount)}
+                tone="blue"
+              />
+              <ProfileStat
+                icon={Heart}
+                label="Дэмжсэн төсөл"
+                value={`${donationStats.count.toLocaleString("mn-MN")}`}
+                tone="rose"
+              />
+              <ProfileStat
+                icon={TrendingUp}
+                label="Үүсгэсэн төсөл"
+                value={`${createdProjects.length.toLocaleString("mn-MN")}`}
+                tone="emerald"
+              />
+            </div>
+
+            <div className="-mb-px flex gap-2 overflow-x-auto pb-px">
+              {tabs.map(item => {
+                const Icon = item.icon;
+                const active = tab === item.id;
+
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
+                    key={item.id}
+                    type="button"
+                    onClick={() => selectTab(item.id)}
                     className={cn(
-                      "inline-flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap",
+                      "inline-flex shrink-0 items-center gap-2 rounded-t-2xl border border-b-0 px-4 py-3 text-sm font-bold transition-colors",
                       active
-                        ? "border-blue-800 text-blue-800"
-                        : "border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300",
+                        ? "border-slate-200 bg-slate-50 text-blue-800"
+                        : "border-transparent bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-900",
                     )}
                   >
-                    <Icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
-                    {t.label}
-                    {t.count !== undefined && (
-                      <span className={cn("text-[11px] font-bold px-1.5 py-0.5 rounded-full", active ? "bg-blue-800 text-white" : "bg-gray-100 text-gray-500")}>
-                        {t.count}
+                    <Icon className="h-4 w-4" strokeWidth={active ? 2.6 : 2.2} />
+                    {item.label}
+                    {item.count !== undefined && (
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px] font-black",
+                        active ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-500",
+                      )}>
+                        {item.count}
                       </span>
                     )}
                   </button>
@@ -393,28 +402,162 @@ export function ProfileClient({
           </div>
         </section>
 
-        {/* ── Tab Content ───────────────────────────────────────────── */}
         <div className="container-page py-8">
-          {tab === "backed"   && <BackedTab donations={backedDonations} />}
+          {tab === "backed" && <BackedTab donations={backedDonations} />}
           {tab === "projects" && <ProjectsTab projects={createdProjects} />}
           {tab === "settings" && (
-            <CommandCenterSettings
+            <SettingsTab
               user={user}
               createdProjects={createdProjects}
               onProfileUpdate={handleProfileUpdate}
             />
           )}
         </div>
-
       </main>
       <Footer />
     </>
   );
 }
 
-/* ── Command Center Settings ─────────────────────────────────────────── */
+function ProfileStat({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: "blue" | "rose" | "emerald";
+}) {
+  const toneClass = {
+    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    rose: "bg-rose-50 text-rose-700 border-rose-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  }[tone];
 
-function CommandCenterSettings({
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", toneClass)}>
+        <Icon className="h-5 w-5" strokeWidth={2.3} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+        <p className="mt-1 truncate text-xl font-black text-slate-950">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function InlineField({
+  label,
+  value,
+  placeholder,
+  multiline = false,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  multiline?: boolean;
+  onSave: (value: string) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  function startEdit() {
+    setDraft(value);
+    setEditing(true);
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function cancel() {
+    setDraft(value);
+    setEditing(false);
+  }
+
+  async function save() {
+    if (draft.trim() === value.trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const ok = await onSave(draft.trim());
+    setSaving(false);
+    if (ok) setEditing(false);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Escape") cancel();
+    if (event.key === "Enter" && !multiline) {
+      event.preventDefault();
+      void save();
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      {editing ? (
+        <div className="space-y-3">
+          {multiline ? (
+            <textarea
+              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              value={draft}
+              onChange={event => setDraft(event.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={4}
+              placeholder={placeholder}
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
+          ) : (
+            <input
+              ref={inputRef as React.RefObject<HTMLInputElement>}
+              value={draft}
+              onChange={event => setDraft(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800 disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" strokeWidth={2.5} />}
+              Хадгалах
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            >
+              Болих
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={startEdit}
+          className="group flex w-full items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50/60"
+        >
+          <span className={cn("min-w-0 flex-1 text-sm leading-6", value ? "text-slate-800" : "text-slate-400")}>
+            {value || placeholder}
+          </span>
+          <Pencil className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-blue-700" strokeWidth={2.2} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SettingsTab({
   user,
   createdProjects,
   onProfileUpdate,
@@ -426,381 +569,447 @@ function CommandCenterSettings({
   const { user: authUser, role, login: authLogin } = useAuth();
   const { show: showToast } = useToast();
 
-  async function handleSaveField(field: "name" | "bio", value: string) {
+  async function handleSaveField(field: "name" | "bio", value: string): Promise<boolean> {
     const result = await updateProfile({ [field]: value });
-    if (result.success) {
-      onProfileUpdate({ [field]: value || null });
-      showToast("Хадгалагдлаа.", "info");
-      if (field === "name" && role) {
-        authLogin(role, { name: value.trim() || authUser?.name || "", email: authUser?.email ?? null, avatar: authUser?.avatar ?? null });
-      }
-    } else {
-      showToast(result.error ?? "Алдаа гарлаа.", "error");
+    if (!result.success) {
+      showToast(result.error ?? "Хадгалахад алдаа гарлаа.", "error");
+      return false;
     }
+
+    onProfileUpdate({ [field]: value || null });
+    showToast("Амжилттай хадгалагдлаа.", "info");
+
+    if (field === "name" && role) {
+      authLogin(role, {
+        name: value.trim() || authUser?.name || "",
+        email: authUser?.email ?? null,
+        avatar: authUser?.avatar ?? null,
+      });
+    }
+
+    return true;
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <IdentityCluster user={user} onSaveField={handleSaveField} onProfileUpdate={onProfileUpdate} />
-      <SecurityCluster user={user} />
-      <FinancialCluster user={user} createdProjects={createdProjects} />
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="space-y-6">
+        <IdentityPanel user={user} onSaveField={handleSaveField} onProfileUpdate={onProfileUpdate} />
+        <SecurityPanel />
+      </div>
+      <div className="space-y-6">
+        <ProfileChecklist user={user} />
+        <FinancialPanel createdProjects={createdProjects} />
+      </div>
     </div>
   );
 }
 
-/* ── Identity Cluster ────────────────────────────────────────────────── */
-
-function IdentityCluster({
+function IdentityPanel({
   user,
   onSaveField,
   onProfileUpdate,
 }: {
   user: ProfileUser;
-  onSaveField: (field: "name" | "bio", value: string) => Promise<void>;
+  onSaveField: (field: "name" | "bio", value: string) => Promise<boolean>;
   onProfileUpdate: (updates: Partial<ProfileUser>) => void;
 }) {
+  const { user: authUser, role, login: authLogin } = useAuth();
   const { show: showToast } = useToast();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState(user.avatar ?? "");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar ?? null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const displayName = getDisplayName(user);
 
-  async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleAvatarSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     if (!file) return;
-    e.target.value = "";
-    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) { showToast("PNG, JPG, WEBP зураг оруулна уу.", "error"); return; }
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) { showToast(`Зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`, "error"); return; }
+    event.target.value = "";
+
+    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
+      showToast("PNG, JPG эсвэл WEBP зураг оруулна уу.", "error");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      showToast(`Зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`, "error");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
     if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
-    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarPreview(previewUrl);
     setAvatarUploading(true);
+
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
       if (!res.ok) throw new Error(await uploadErrorMessage(res));
+
       const { url } = await res.json() as { url: string };
-      setAvatarUrl(url);
       const result = await updateProfile({ avatar: url });
-      if (result.success) {
-        onProfileUpdate({ avatar: url });
-        showToast("Профайл зураг шинэчлэгдлээ.", "info");
-      } else {
-        showToast(result.error ?? "Алдаа гарлаа.", "error");
+      if (!result.success) throw new Error(result.error ?? "Профайл зураг хадгалахад алдаа гарлаа.");
+
+      setAvatarPreview(url);
+      onProfileUpdate({ avatar: url });
+      if (role) {
+        authLogin(role, {
+          name: authUser?.name ?? displayName,
+          email: authUser?.email ?? null,
+          avatar: url,
+        });
       }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Зураг хуулахад алдаа гарлаа.", "error");
+      showToast("Профайл зураг шинэчлэгдлээ.", "info");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Зураг хуулахад алдаа гарлаа.", "error");
       setAvatarPreview(user.avatar ?? "");
-      setAvatarUrl(user.avatar ?? null);
     } finally {
       setAvatarUploading(false);
+      URL.revokeObjectURL(previewUrl);
     }
   }
 
-  const displayName = getDisplayName(user);
-
   return (
-    <ClusterCard
-      badge="Identity"
+    <Panel
+      eyebrow="Профайл"
       title="Хувийн мэдээлэл"
-      description="Таны нэр болон танилцуулга кампанийн хуудсанд харагдана."
+      description="Энэ мэдээлэл таны үүсгэсэн төсөл болон хэрэглэгчийн хэсэгт харагдана."
+      icon={BadgeCheck}
     >
-      {/* Avatar row */}
-      <div className="flex items-center gap-5 pb-5 mb-5 border-b border-gray-100">
-        <div className="relative flex-shrink-0">
-          <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-gray-200">
-            {(avatarPreview || avatarUrl) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarPreview || avatarUrl!} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <InitialAvatar name={displayName} className="w-full h-full text-xl" />
-            )}
-          </div>
+      <div className="flex flex-col gap-5 border-b border-slate-100 pb-6 sm:flex-row sm:items-center">
+        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+          {avatarPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarPreview} alt={displayName} className="h-full w-full object-cover" />
+          ) : (
+            <InitialAvatar name={displayName} className="h-full w-full text-2xl" />
+          )}
           {avatarUploading && (
-            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
-              <Loader2 className="w-4 h-4 text-white animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45">
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
             </div>
           )}
         </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-slate-900">Профайл зураг</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">Нүүр танигдахуйц, цэвэр зураг оруулбал илүү итгэлтэй харагдана.</p>
+        </div>
+
         <div>
           <input ref={avatarInputRef} type="file" accept={ACCEPTED_IMAGE_INPUT} className="hidden" onChange={handleAvatarSelect} />
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
             disabled={avatarUploading}
-            className="text-sm font-semibold text-gray-700 border border-gray-200 hover:border-blue-800 hover:text-blue-800 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-60"
           >
-            {avatarUploading ? "Хуулж байна..." : "Зураг солих"}
+            {avatarUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" strokeWidth={2.4} />}
+            {avatarUploading ? "Хуулж байна" : "Зураг солих"}
           </button>
-          <p className="text-xs text-gray-400 mt-1.5">PNG, JPG, WEBP · {MAX_IMAGE_UPLOAD_MB} MB хүртэл</p>
+          <p className="mt-1.5 text-xs text-slate-400">PNG, JPG, WEBP · {MAX_IMAGE_UPLOAD_MB} MB хүртэл</p>
         </div>
       </div>
 
-      {/* Name inline field */}
-      <div className="space-y-5">
+      <div className="mt-6 grid gap-5">
         <InlineField
           label="Нэр"
           value={user.name ?? ""}
-          placeholder="Таны нэрийг бичнэ үү..."
-          onSave={v => onSaveField("name", v)}
+          placeholder="Таны нэрийг бичнэ үү"
+          onSave={value => onSaveField("name", value)}
         />
         <InlineField
           label="Товч танилцуулга"
           value={user.bio ?? ""}
-          placeholder="Та хэн бэ? Хоббийн тухай, ажлын чиглэл..."
+          placeholder="Та хэн бэ, ямар төсөл сонирхдог вэ?"
           multiline
-          onSave={v => onSaveField("bio", v)}
+          onSave={value => onSaveField("bio", value)}
         />
-
-        {/* Read-only contact */}
-        <div className="pt-2 border-t border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">И-мэйл / Утас</p>
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-            <Mail className="w-4 h-4 text-gray-400 shrink-0" strokeWidth={2} />
-            <span className="text-sm text-gray-500 flex-1">{user.email ?? user.phone ?? "—"}</span>
-            <span className="text-[11px] text-gray-400">Өөрчлөх боломжгүй</span>
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Холбоо барих</p>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <Mail className="h-4 w-4 text-slate-400" strokeWidth={2.2} />
+            <span className="min-w-0 flex-1 break-all text-sm font-semibold text-slate-700">{user.email ?? user.phone ?? "Холбоо барих мэдээлэл байхгүй"}</span>
+            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-400 ring-1 ring-slate-200">Бүртгэлийн мэдээлэл</span>
           </div>
         </div>
       </div>
-    </ClusterCard>
+    </Panel>
   );
 }
 
-/* ── Security Cluster ────────────────────────────────────────────────── */
-
-function SecurityCluster({ user }: { user: ProfileUser }) {
+function SecurityPanel() {
   const { show: showToast } = useToast();
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
+  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
 
-  /* Security score */
-  const score = [
-    true,               // password always set
-    Boolean(user.avatar),
-    user.isVerified,
-  ].filter(Boolean).length;
-  const scoreLabels = ["Сул", "Дундаж", "Хүчтэй"];
-  const scoreColors = ["bg-red-400", "bg-amber-400", "bg-emerald-500"];
-  const scoreLabel  = scoreLabels[score - 1] ?? scoreLabels[0];
-  const scoreColor  = scoreColors[score - 1] ?? scoreColors[0];
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
 
-  async function handlePasswordSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (pwd.next !== pwd.confirm) { showToast("Нууц үг таарахгүй байна.", "error"); return; }
-    if (!pwd.next || pwd.next.length < 8) { showToast("8+ тэмдэгт нууц үг оруулна уу.", "error"); return; }
-    setSaving(true);
-    const result = await updateProfile({ currentPassword: pwd.current, newPassword: pwd.next });
-    setSaving(false);
-    if (result.success) {
-      showToast("Нууц үг амжилттай солигдлоо.", "info");
-      setPwd({ current: "", next: "", confirm: "" });
-      setShowPasswordForm(false);
-    } else {
-      showToast(result.error ?? "Алдаа гарлаа.", "error");
+    if (passwords.next !== passwords.confirm) {
+      showToast("Шинэ нууц үг таарахгүй байна.", "error");
+      return;
     }
+
+    if (passwords.next.length < 8) {
+      showToast("Шинэ нууц үг 8-аас дээш тэмдэгттэй байх ёстой.", "error");
+      return;
+    }
+
+    setSaving(true);
+    const result = await updateProfile({
+      currentPassword: passwords.current,
+      newPassword: passwords.next,
+    });
+    setSaving(false);
+
+    if (!result.success) {
+      showToast(result.error ?? "Нууц үг солиход алдаа гарлаа.", "error");
+      return;
+    }
+
+    showToast("Нууц үг амжилттай солигдлоо.", "info");
+    setPasswords({ current: "", next: "", confirm: "" });
+    setOpen(false);
   }
 
-  const scoreItems = [
-    { label: "Нууц үг тогтоосон", done: true },
-    { label: "Профайл зураг нэмсэн", done: Boolean(user.avatar) },
-    { label: "Холбоо барих баталгаажсан", done: user.isVerified },
-  ];
-
   return (
-    <ClusterCard badge="Security" title="Аюулгүй байдлын тохиргоо" description="Бүртгэлийнхээ хамгаалалтыг бэхжүүлнэ үү.">
-
-      {/* Security score bar */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-gray-500">Хамгаалалтын түвшин</span>
-          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full text-white", scoreColor)}>
-            {scoreLabel}
+    <Panel
+      eyebrow="Аюулгүй байдал"
+      title="Нэвтрэх хамгаалалт"
+      description="Нууц үгээ тогтмол шинэчилж, бүртгэлээ хамгаалалттай байлгаарай."
+      icon={KeyRound}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(value => !value)}
+        className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-blue-200 hover:bg-blue-50/50"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 ring-1 ring-slate-200">
+            <Shield className="h-5 w-5" strokeWidth={2.2} />
           </span>
-        </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className={cn("h-full rounded-full transition-all duration-500", scoreColor)}
-            style={{ width: `${(score / 3) * 100}%` }}
-          />
-        </div>
-        <div className="mt-3 space-y-1.5">
-          {scoreItems.map(item => (
-            <div key={item.label} className="flex items-center gap-2">
-              <div className={cn("w-4 h-4 rounded-full flex items-center justify-center", item.done ? "bg-emerald-100" : "bg-gray-100")}>
-                {item.done
-                  ? <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
-                  : <span className="w-1.5 h-1.5 rounded-full bg-gray-300 block" />
-                }
-              </div>
-              <span className={cn("text-xs", item.done ? "text-gray-700" : "text-gray-400")}>{item.label}</span>
-            </div>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-slate-900">Нууц үг солих</span>
+            <span className="mt-0.5 block text-sm text-slate-500">Одоогийн нууц үгээ баталгаажуулаад шинэ нууц үг хадгална.</span>
+          </span>
+        </span>
+        <ChevronRight className={cn("h-5 w-5 shrink-0 text-slate-400 transition-transform", open && "rotate-90")} strokeWidth={2.2} />
+      </button>
+
+      {open && (
+        <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
+          {[
+            { id: "current" as const, label: "Одоогийн нууц үг", placeholder: "Одоогийн нууц үг" },
+            { id: "next" as const, label: "Шинэ нууц үг", placeholder: "8-аас дээш тэмдэгт" },
+            { id: "confirm" as const, label: "Шинэ нууц үг давтах", placeholder: "Шинэ нууц үгээ давтана" },
+          ].map(field => (
+            <label key={field.id} className="block">
+              <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{field.label}</span>
+              <input
+                type="password"
+                value={passwords[field.id]}
+                onChange={event => setPasswords(prev => ({ ...prev, [field.id]: event.target.value }))}
+                placeholder={field.placeholder}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
           ))}
-        </div>
-      </div>
-
-      <div className="border-t border-gray-100 divide-y divide-gray-100">
-        {/* Password change */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowPasswordForm(v => !v)}
-            className="w-full flex items-center justify-between py-3.5 text-left group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Lock className="w-4 h-4 text-gray-600" strokeWidth={2} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Нууц үг солих</p>
-                <p className="text-xs text-gray-400">Хүчтэй нууц үг ашиглаарай</p>
-              </div>
-            </div>
-            <ChevronRight className={cn("w-4 h-4 text-gray-400 transition-transform", showPasswordForm && "rotate-90")} strokeWidth={2} />
-          </button>
-
-          {showPasswordForm && (
-            <form onSubmit={handlePasswordSave} className="pb-4 space-y-3">
-              {([
-                { id: "current" as const, label: "Одоогийн нууц үг", placeholder: "••••••••" },
-                { id: "next"    as const, label: "Шинэ нууц үг",     placeholder: "8+ тэмдэгт" },
-                { id: "confirm" as const, label: "Давтах",           placeholder: "••••••••"   },
-              ]).map(f => (
-                <div key={f.id}>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">{f.label}</label>
-                  <input
-                    type="password"
-                    value={pwd[f.id]}
-                    onChange={e => setPwd(p => ({ ...p, [f.id]: e.target.value }))}
-                    placeholder={f.placeholder}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent bg-white"
-                  />
-                </div>
-              ))}
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-                >
-                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" strokeWidth={2.5} />}
-                  Хадгалах
-                </button>
-                <button type="button" onClick={() => { setShowPasswordForm(false); setPwd({ current: "", next: "", confirm: "" }); }} className="text-sm font-semibold text-gray-500 hover:text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Болих</button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* 2FA (coming soon) */}
-        <div className="flex items-center justify-between py-3.5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-              <Shield className="w-4 h-4 text-gray-600" strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">2 шатлалт баталгаажуулалт</p>
-              <p className="text-xs text-gray-400">SMS эсвэл authenticator app</p>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800 disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" strokeWidth={2.6} />}
+              Нууц үг хадгалах
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setPasswords({ current: "", next: "", confirm: "" });
+              }}
+              className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            >
+              Болих
+            </button>
           </div>
-          <span className="text-[11px] font-bold text-gray-400 border border-gray-200 px-2 py-1 rounded-full">Тун удахгүй</span>
-        </div>
-      </div>
-    </ClusterCard>
+        </form>
+      )}
+    </Panel>
   );
 }
 
-/* ── Financial Cluster ───────────────────────────────────────────────── */
+function ProfileChecklist({ user }: { user: ProfileUser }) {
+  const items = [
+    { label: "Нэр бичсэн", done: Boolean(user.name?.trim()) },
+    { label: "Танилцуулга нэмсэн", done: Boolean(user.bio?.trim()) },
+    { label: "Профайл зурагтай", done: Boolean(user.avatar) },
+    { label: "Холбоо барих мэдээлэлтэй", done: Boolean(user.email || user.phone) },
+  ];
+  const doneCount = items.filter(item => item.done).length;
 
-function FinancialCluster({ user: _user, createdProjects }: { user: ProfileUser; createdProjects: Project[] }) {
+  return (
+    <Panel
+      eyebrow="Бэлэн байдал"
+      title="Профайл checklist"
+      description="Дутуу зүйлээ гүйцээвэл таны профайл илүү итгэлтэй харагдана."
+      icon={ReceiptText}
+      compact
+    >
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-3xl font-black text-slate-950">{doneCount}/4</p>
+          <p className="text-sm text-slate-500">мэдээлэл бүрэн</p>
+        </div>
+        <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-black text-blue-700">{Math.round((doneCount / 4) * 100)}%</span>
+      </div>
+      <div className="space-y-2">
+        {items.map(item => (
+          <div key={item.label} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+            <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full", item.done ? "bg-emerald-100 text-emerald-700" : "bg-white text-slate-300 ring-1 ring-slate-200")}>
+              {item.done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+            </span>
+            <span className={cn("text-sm font-semibold", item.done ? "text-slate-800" : "text-slate-400")}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function FinancialPanel({ createdProjects }: { createdProjects: Project[] }) {
   const uniqueBanks = Array.from(
     new Map(
       createdProjects
-        .filter(p => (p as unknown as Record<string, unknown>).bankName)
-        .map(p => {
-          const pp = p as unknown as Record<string, unknown>;
-          return [pp.bankName as string, { bankName: pp.bankName as string, bankAccount: pp.bankAccount as string }];
-        })
-    ).values()
+        .filter(project => (project as unknown as Record<string, unknown>).bankName)
+        .map(project => {
+          const raw = project as unknown as Record<string, unknown>;
+          return [
+            `${raw.bankName}-${raw.bankAccount}`,
+            {
+              bankName: raw.bankName as string,
+              bankAccount: raw.bankAccount as string,
+              bankAccountName: raw.bankAccountName as string | undefined,
+              projectTitle: project.title,
+              projectSlug: project.slug,
+            },
+          ];
+        }),
+    ).values(),
   );
 
   return (
-    <ClusterCard badge="Financial" title="Санхүүгийн мэдээлэл" description="Санхүүжилт хүлээн авах дансны мэдээлэл. Төсөл бүрд тохируулагддаг.">
+    <Panel
+      eyebrow="Санхүү"
+      title="Төслийн данс"
+      description="Дансны мэдээлэл төсөл бүрийн тохиргооноос авна."
+      icon={CreditCard}
+      compact
+    >
       {uniqueBanks.length > 0 ? (
         <div className="space-y-3">
-          {uniqueBanks.map(b => (
-            <div key={b.bankName} className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-lg">
-              <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                <CreditCard className="w-4 h-4 text-blue-800" strokeWidth={2} />
+          {uniqueBanks.map(bank => (
+            <Link
+              key={`${bank.bankName}-${bank.bankAccount}`}
+              href={`/projects/${bank.projectSlug}/edit`}
+              className="group block rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50/60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-slate-900">{bank.bankName}</p>
+                  <p className="mt-1 truncate font-mono text-xs text-slate-500">{bank.bankAccount}</p>
+                  {bank.bankAccountName && (
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-400">{bank.bankAccountName}</p>
+                  )}
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700" strokeWidth={2.3} />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{b.bankName}</p>
-                <p className="text-xs text-gray-400 font-mono">{b.bankAccount}</p>
-              </div>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Холбогдсон</span>
-            </div>
+              <p className="mt-3 line-clamp-1 text-xs text-slate-400">{bank.projectTitle}</p>
+            </Link>
           ))}
-          <p className="text-xs text-gray-400 mt-1">Банкны мэдээллийг засахын тулд тухайн төсөл дотроос edit хийнэ үү.</p>
         </div>
       ) : (
-        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Globe className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
-          </div>
-          <p className="text-sm font-semibold text-gray-700 mb-1">Данс холбогдоогүй байна</p>
-          <p className="text-xs text-gray-400 mb-4">Санхүүжилт авахын тулд эхлээд төсөл үүсгэж банкны мэдээллээ оруулна уу.</p>
-          <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+          <CircleDollarSign className="mx-auto h-8 w-8 text-slate-300" strokeWidth={1.8} />
+          <p className="mt-3 text-sm font-bold text-slate-800">Одоогоор данс холбогдоогүй</p>
+          <p className="mx-auto mt-1 max-w-60 text-sm leading-6 text-slate-500">Төсөл үүсгэх үед банкны мэдээллээ оруулна.</p>
+          <GuardedLink href="/create-project" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800">
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
             Төсөл эхлүүлэх
           </GuardedLink>
         </div>
       )}
-    </ClusterCard>
+    </Panel>
   );
 }
 
-/* ── ClusterCard wrapper ─────────────────────────────────────────────── */
-
-function ClusterCard({ badge, title, description, children }: {
-  badge: string;
+function Panel({
+  eyebrow,
+  title,
+  description,
+  icon: Icon,
+  compact = false,
+  children,
+}: {
+  eyebrow: string;
   title: string;
   description: string;
+  icon: React.ElementType;
+  compact?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-800">{badge}</span>
-          <h3 className="font-bold text-gray-900 text-base mt-0.5">{title}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+    <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className={cn("flex items-start gap-4 border-b border-slate-100", compact ? "p-5" : "p-6")}>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+          <Icon className="h-5 w-5" strokeWidth={2.3} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">{eyebrow}</p>
+          <h2 className="mt-1 font-display text-xl font-black tracking-tight text-slate-950">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
         </div>
       </div>
-      <div className="px-5 py-5">{children}</div>
-    </div>
+      <div className={compact ? "p-5" : "p-6"}>{children}</div>
+    </section>
   );
 }
-
-/* ── Backed Projects tab ─────────────────────────────────────────────── */
 
 function BackedTab({ donations }: { donations: BackedDonation[] }) {
   if (donations.length === 0) {
     return (
       <EmptyState
-        icon={<Heart className="w-6 h-6 text-gray-300" />}
-        title="Дэмжсэн төсөл байхгүй байна"
-        description="Та төсөл дэмжмэгц төлсөн дүн, огноо, явцыг эндээс харна."
+        icon={Heart}
+        title="Дэмжсэн төсөл алга байна"
+        description="Та төсөл дэмжмэгц төлсөн дүн, огноо, төслийн явц энд нэг дор харагдана."
         action={
-          <Link href="/explore" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
+          <Link href="/explore" className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800">
             Дэмжих төсөл хайх
+            <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
           </Link>
         }
       />
     );
   }
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {donations.map(item => <BackedCard key={item.id} item={item} />)}
+    <div className="space-y-5">
+      <SectionToolbar
+        title="Дэмжсэн төслүүд"
+        description="Таны амжилттай төлсөн дэмжлэгүүд болон тухайн төслийн явц."
+        action={
+          <Link href="/explore" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800">
+            Илүү төсөл үзэх
+            <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+          </Link>
+        }
+      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {donations.map(donation => <BackedCard key={donation.id} item={donation} />)}
+      </div>
     </div>
   );
 }
@@ -808,161 +1017,205 @@ function BackedTab({ donations }: { donations: BackedDonation[] }) {
 function BackedCard({ item }: { item: BackedDonation }) {
   const { amount, createdAt, project } = item;
   const percent = fundingPercent(project.raised, project.goal);
-  const st = project.status ?? "ACTIVE";
-  const key: keyof typeof BACKED_STATUS_CONFIG = st === "FUNDED" ? "funded" : st === "ACTIVE" ? "active" : "ended";
-  const cfg = BACKED_STATUS_CONFIG[key];
+  const status = project.status ?? "ACTIVE";
+  const statusKey: keyof typeof BACKED_STATUS_CONFIG = status === "FUNDED" ? "funded" : status === "ACTIVE" ? "active" : "ended";
+  const cfg = BACKED_STATUS_CONFIG[statusKey];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors">
-      <div className="flex gap-4 p-4">
-        <Link href={`/projects/${project.slug}`} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
-          <Image src={project.coverImage} alt={project.title} fill className="object-cover" sizes="80px" />
+    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-card-hover">
+      <div className="grid sm:grid-cols-[170px_minmax(0,1fr)]">
+        <Link href={`/projects/${project.slug}`} className="relative block h-44 bg-slate-100 sm:h-full">
+          <Image src={project.coverImage} alt={project.title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 170px" />
         </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <Link href={`/projects/${project.slug}`} className="font-bold text-sm text-gray-900 line-clamp-2 hover:text-blue-800 transition-colors leading-snug">
-              {project.title}
-            </Link>
-            <span className={cn("inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0", cfg.bg, cfg.text, cfg.border)}>
-              <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
+        <div className="flex min-w-0 flex-col p-5">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-black", cfg.bg, cfg.text, cfg.border)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
               {cfg.label}
             </span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">{formatDate(createdAt)}</span>
           </div>
-          <p className="text-xs text-gray-400 mb-2">{CATEGORY_LABELS[project.category] ?? project.category} · {createdAt.split("T")[0]}</p>
-          <p className="text-xs font-semibold text-gray-700">₮{amount.toLocaleString()} дэмжсэн</p>
+
+          <Link href={`/projects/${project.slug}`} className="line-clamp-2 text-base font-black leading-snug text-slate-950 transition-colors hover:text-blue-800">
+            {project.title}
+          </Link>
+          <p className="mt-2 text-sm font-semibold text-slate-500">{CATEGORY_LABELS[project.category] ?? project.category}</p>
+
+          <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Таны дэмжлэг</span>
+              <span className="text-sm font-black text-blue-700">{formatMoney(amount)}</span>
+            </div>
+            <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
+          </div>
         </div>
       </div>
-      <div className="px-4 pb-4">
-        <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
-      </div>
-    </div>
+    </article>
   );
 }
 
-/* ── My Projects tab ─────────────────────────────────────────────────── */
-
 function ProjectsTab({ projects }: { projects: Project[] }) {
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        icon={FolderOpen}
+        title="Үүсгэсэн төсөл алга байна"
+        description="Санаагаа оруулаад илгээсний дараа хяналтын төлөв, нийтлэгдсэн эсэх, дэмжлэгийн явцаа эндээс харна."
+        action={
+          <GuardedLink href="/create-project" className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800">
+            Төсөл эхлэх
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+          </GuardedLink>
+        }
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{projects.length} төсөл</p>
-        <GuardedLink href="/create-project" className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-lg transition-colors">
-          <Plus className="w-4 h-4" strokeWidth={2.5} />
-          Шинэ төсөл
-        </GuardedLink>
+      <SectionToolbar
+        title="Миний төслүүд"
+        description="Үүсгэсэн төслүүдийн төлөв, явц, засах болон харах холбоосууд."
+        action={
+          <GuardedLink href="/create-project" className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800">
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            Шинэ төсөл
+          </GuardedLink>
+        }
+      />
+      <div className="grid gap-4">
+        {projects.map(project => <CreatedProjectCard key={project.id} project={project} />)}
       </div>
-      {projects.length === 0 ? (
-        <EmptyState
-          icon={<FolderOpen className="w-6 h-6 text-gray-300" />}
-          title="Үүсгэсэн төсөл байхгүй байна"
-          description="Санаагаа танилцуулж илгээсний дараа хянагдах төлөв, нийтлэгдсэн эсэх, дэмжлэгийн явцаа эндээс харна."
-          action={
-            <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
-              Төсөл эхлэх
-            </GuardedLink>
-          }
-        />
-      ) : (
-        <div className="space-y-4">
-          {projects.map(p => <CreatedProjectCard key={p.id} project={p} />)}
-        </div>
-      )}
     </div>
   );
 }
 
 function CreatedProjectCard({ project }: { project: Project }) {
   const percent = fundingPercent(project.raised, project.goal);
-  const daysUrgent = (project.daysLeft ?? 0) <= 7;
-  const statusKey = (project.status ?? "ACTIVE") as keyof typeof CREATED_STATUS_CONFIG;
-  const cfg = CREATED_STATUS_CONFIG[statusKey] ?? CREATED_STATUS_CONFIG.ACTIVE;
+  const statusKey = project.status ?? "ACTIVE";
+  const cfg = CREATED_STATUS_CONFIG[statusKey];
   const StatusIcon = cfg.icon;
   const isPublic = statusKey === "ACTIVE" || statusKey === "FUNDED";
   const canEdit = statusKey === "PENDING" || statusKey === "REJECTED" || statusKey === "ACTIVE";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex flex-col sm:flex-row">
-        <div className="relative sm:w-44 h-40 sm:h-auto flex-shrink-0 bg-gray-100">
-          <Image src={project.coverImage} alt={project.title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 176px" />
-          <div className={cn("absolute top-3 left-3 inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-full border", cfg.bg, cfg.text, cfg.border)}>
-            <StatusIcon className="w-3 h-3" strokeWidth={2.5} />
+    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-200 hover:shadow-card-hover">
+      <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="relative h-56 bg-slate-100 lg:h-auto">
+          <Image src={project.coverImage} alt={project.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 260px" />
+          <span className={cn("absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black backdrop-blur", cfg.bg, cfg.text, cfg.border)}>
+            <StatusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
             {cfg.label}
-          </div>
+          </span>
         </div>
-        <div className="flex-1 p-5 flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
+
+        <div className="min-w-0 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <span className="text-xs font-semibold text-blue-800 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full mb-1.5 inline-block">
+              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 ring-1 ring-blue-100">
                 {CATEGORY_LABELS[project.category] ?? project.category}
               </span>
-              <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2">{project.title}</h3>
+              <h3 className="mt-3 font-display text-xl font-black leading-tight tracking-tight text-slate-950">
+                {project.title}
+              </h3>
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{project.description}</p>
             </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {isPublic ? (
-                <Link href={`/projects/${project.slug}`} className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-800 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 transition-all" title="Харах">
-                  <Eye className="w-4 h-4" strokeWidth={2} />
+
+            <div className="flex shrink-0 gap-2">
+              {isPublic && (
+                <Link href={`/projects/${project.slug}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800" title="Төсөл харах">
+                  <Eye className="h-4 w-4" strokeWidth={2.3} />
                 </Link>
-              ) : (
-                <div className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-200 border border-gray-100 cursor-not-allowed" title="Нийтлэгдээгүй">
-                  <Eye className="w-4 h-4" strokeWidth={2} />
-                </div>
               )}
-              {canEdit ? (
-                <Link href={`/projects/${project.slug}/edit`} className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-800 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 transition-all" title="Засах">
-                  <Pencil className="w-4 h-4" strokeWidth={2} />
+              {canEdit && (
+                <Link href={`/projects/${project.slug}/edit`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800" title="Төсөл засах">
+                  <Pencil className="h-4 w-4" strokeWidth={2.3} />
                 </Link>
-              ) : (
-                <div className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-200 border border-gray-100 cursor-not-allowed" title="Засах боломжгүй">
-                  <Pencil className="w-4 h-4" strokeWidth={2} />
-                </div>
               )}
             </div>
           </div>
 
-          {statusKey === "PENDING" && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2.5 rounded-lg">
-              <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" strokeWidth={2} />
-              Таны төсөл администраторын хянаж байна (24–48 цаг).
-            </div>
-          )}
-          {statusKey === "REJECTED" && (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-800 text-xs px-3 py-2.5 rounded-lg">
-              <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-red-500" strokeWidth={2} />
-              <span><span className="font-semibold">Татгалзсан: </span>{project.rejectionReason ?? "Дэлгэрэнгүй байхгүй."}</span>
+          {(statusKey === "PENDING" || statusKey === "REJECTED") && (
+            <div className={cn("mt-4 flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm leading-6", cfg.bg, cfg.text, cfg.border)}>
+              <StatusIcon className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.4} />
+              <span>
+                {statusKey === "REJECTED" ? (
+                  <>
+                    <span className="font-black">Татгалзсан шалтгаан: </span>
+                    {project.rejectionReason ?? "Дэлгэрэнгүй тайлбар байхгүй байна."}
+                  </>
+                ) : (
+                  cfg.hint
+                )}
+              </span>
             </div>
           )}
 
-          <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
-          <div className="flex items-center justify-between text-xs text-gray-500 flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" strokeWidth={2} />{project.backers.toLocaleString()} дэмжигч</span>
-              {isPublic && project.daysLeft !== undefined && (
-                <span className={cn("font-semibold", daysUrgent ? "text-red-600" : "text-gray-600")}>{project.daysLeft} өдөр</span>
+          <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+            <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="h-4 w-4" strokeWidth={2.2} />
+                {project.backers.toLocaleString("mn-MN")} дэмжигч
+              </span>
+              {isPublic && typeof project.daysLeft === "number" && (
+                <span className="inline-flex items-center gap-1.5 font-bold text-slate-700">
+                  <Clock className="h-4 w-4" strokeWidth={2.2} />
+                  {daysLeftLabel(project.daysLeft)}
+                </span>
               )}
+              <span className="inline-flex items-center gap-1.5 font-black text-blue-700">
+                <Target className="h-4 w-4" strokeWidth={2.2} />
+                {percent.toFixed(0)}%
+              </span>
             </div>
-            <span className="font-bold text-blue-800">{percent.toFixed(0)}% санхүүжсэн</span>
           </div>
         </div>
       </div>
+    </article>
+  );
+}
+
+function SectionToolbar({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Профайл</p>
+        <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-slate-950">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+      </div>
+      {action}
     </div>
   );
 }
 
-/* ── Shared EmptyState ───────────────────────────────────────────────── */
-
-function EmptyState({ icon, title, description, action }: {
-  icon:        React.ReactNode;
-  title:       string;
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ElementType;
+  title: string;
   description: string;
-  action:      React.ReactNode;
+  action: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-6 py-16 text-center max-w-sm mx-auto">
-      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">{icon}</div>
-      <h3 className="font-bold text-gray-900 text-base mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 leading-relaxed mb-6">{description}</p>
-      {action}
+    <div className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+        <Icon className="h-7 w-7" strokeWidth={2.2} />
+      </div>
+      <h2 className="mt-5 font-display text-2xl font-black tracking-tight text-slate-950">{title}</h2>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">{description}</p>
+      <div className="mt-6">{action}</div>
     </div>
   );
 }
