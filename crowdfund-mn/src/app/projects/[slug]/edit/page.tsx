@@ -80,6 +80,7 @@ export default async function EditProjectPage({ params }: Props) {
       title:       reward.title,
       amount:      reward.amount,
       description: reward.description,
+      image:       normalizeImageSrc(reward.image),
     })),
   };
 

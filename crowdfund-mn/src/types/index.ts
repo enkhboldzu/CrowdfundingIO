@@ -62,6 +62,7 @@ export interface RewardTier {
   title: string;
   amount: number;
   description: string;
+  image?: string | null;
   backerCount: number;
   estimatedDelivery: string;
   isLimited: boolean;

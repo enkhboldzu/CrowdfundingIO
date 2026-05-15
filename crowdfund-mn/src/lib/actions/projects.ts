@@ -94,7 +94,7 @@ export async function createProject(data: {
   galleryImages?: string[];
   videoUrl?: string;
   documents?: string[];
-  rewards: Array<{ title: string; amount: number; description: string }>;
+  rewards: Array<{ title: string; amount: number; description: string; image?: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
   if (!session) {
@@ -140,6 +140,7 @@ export async function createProject(data: {
             title:             r.title.trim(),
             amount:            r.amount,
             description:       r.description.trim(),
+            image:             toStoredImage(r.image),
             estimatedDelivery: deliveryMonth,
             isLimited:         false,
           })),
@@ -176,7 +177,7 @@ export async function updateOwnProject(data: {
   galleryImages?: string[];
   videoUrl?: string;
   documents?: string[];
-  rewards: Array<{ title: string; amount: number; description: string }>;
+  rewards: Array<{ title: string; amount: number; description: string; image?: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
   if (!session) {
@@ -245,6 +246,7 @@ export async function updateOwnProject(data: {
             title:             r.title.trim(),
             amount:            r.amount,
             description:       r.description.trim(),
+            image:             toStoredImage(r.image),
             estimatedDelivery: deliveryMonth,
             isLimited:         false,
           })),

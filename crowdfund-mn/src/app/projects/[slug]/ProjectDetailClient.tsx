@@ -19,7 +19,6 @@ import {
 } from "@/lib/actions/donations";
 import type { Project, RewardTier, FundingUpdate } from "@/types";
 
-type Tab = "about" | "updates" | "rewards";
 type SupportSelection = {
   rewardTierId: string | null;
   amount: number;
@@ -116,7 +115,6 @@ interface Props {
 }
 
 export function ProjectDetailClient({ project, rewards, updates }: Props) {
-  const [tab, setTab] = useState<Tab>("about");
   const [liveProject, setLiveProject] = useState(project);
   const [tiers, setTiers] = useState(rewards);
   const [supportSelection, setSupportSelection] = useState<SupportSelection | null>(null);
@@ -156,108 +154,18 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
     show(result.goalReached ? "Дэмжлэг бүртгэгдлээ. Төслийн зорилго биеллээ!" : "Дэмжлэг амжилттай бүртгэгдлээ.", "info");
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "about",   label: "Тухай" },
-    { id: "updates", label: updates.length ? `Шинэчлэлт (${updates.length})` : "Шинэчлэлт" },
-    { id: "rewards", label: tiers.length   ? `Шагнал (${tiers.length})`      : "Шагнал" },
-  ];
-
   return (
     <>
       <main className="min-h-screen bg-slate-50">
 
         <ProjectShowcase project={liveProject} percent={percent} onSupport={() => openSupport()} />
 
-        {/* ── Main layout ──────────────────────────────────── */}
+        {/* ── Campaign story layout ──────────────────────── */}
         <div className="container-page py-8 lg:py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-
-            {/* ── Left: content ──────────────────────────── */}
-            <div className="lg:col-span-7 min-w-0">
-
-              {/* Tags */}
-              {project.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {project.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-medium"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab bar */}
-              <div className="border-b border-slate-200 mb-6">
-                <div className="flex gap-1">
-                  {tabs.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      className={cn(
-                        "px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors",
-                        tab === t.id
-                          ? "border-blue-800 text-blue-800"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      )}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tab content */}
-              {tab === "about"   && <AboutTab project={project} />}
-              {tab === "updates" && <UpdatesTab updates={updates} />}
-              {tab === "rewards" && <RewardsTab tiers={tiers} onSelectTier={openSupport} />}
-            </div>
-
-            {/* ── Right: sticky sidebar ─────────────────── */}
-            <div className="hidden lg:block lg:col-span-5">
-              <div className="sticky top-24 space-y-4">
-                {tiers.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">
-                      Шагналын түвшин
-                    </p>
-                    <div className="space-y-3">
-                      {tiers.map(tier => (
-                        <RewardTierCard key={tier.id} tier={tier} onSelect={() => openSupport(tier)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Share */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                  <p className="text-xs font-semibold text-slate-500 mb-3">Хуваалцах</p>
-                  <div className="flex gap-2">
-                    <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 py-2.5 rounded-xl transition-colors">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
-                      X / Twitter
-                    </button>
-                    <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 py-2.5 rounded-xl transition-colors">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7.119 3.504C5.127 3.504 3.5 5.123 3.5 7.119v9.762c0 1.997 1.627 3.615 3.619 3.615h9.762c1.997 0 3.619-1.618 3.619-3.615V7.119c0-1.996-1.622-3.615-3.619-3.615H7.119zm0-1.504h9.762C19.152 2 21 3.852 21 7.119v9.762C21 20.148 19.152 22 16.881 22H7.119C4.848 22 3 20.148 3 16.881V7.119C3 3.852 4.848 2 7.119 2zm4.881 5a5 5 0 100 10A5 5 0 0012 7zm0 1.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm5.25-.75a.75.75 0 110 1.5.75.75 0 010-1.5z"/>
-                      </svg>
-                      Instagram
-                    </button>
-                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2.5 rounded-xl transition-colors">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Хуулах
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[190px_minmax(0,1fr)_320px] xl:gap-10">
+            <CampaignSideNav project={project} tiers={tiers} updates={updates} />
+            <CampaignStory project={project} tiers={tiers} updates={updates} onSelectTier={openSupport} />
+            <CampaignRewardRail tiers={tiers} onSelectTier={openSupport} />
           </div>
         </div>
 
@@ -279,6 +187,339 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
 
 
 /* ── Sub-components ──────────────────────────────────────────── */
+
+interface CampaignStorySection {
+  id: string;
+  navLabel: string;
+  title: string;
+  content?: string | null;
+  image?: string;
+  imageLabel?: string;
+}
+
+function campaignStorySections(project: Project): CampaignStorySection[] {
+  const images = uniqueProjectImages(project);
+
+  return [
+    {
+      id: "project-story",
+      navLabel: "Project story",
+      title: "Төслийн түүх",
+      content: project.story,
+      image: images[0],
+      imageLabel: "Campaign cover",
+    },
+    {
+      id: "problem",
+      navLabel: "Problem",
+      title: "Ямар асуудлыг шийдэх вэ?",
+      content: project.description,
+      image: images[1],
+      imageLabel: "Problem visual",
+    },
+    {
+      id: "solution",
+      navLabel: "Solution",
+      title: "Шийдэл ба зорилго",
+      content: project.purpose,
+      image: images[2],
+      imageLabel: "Solution visual",
+    },
+    {
+      id: "funding-usage",
+      navLabel: "Funding use",
+      title: "Хөрөнгийн ашиглалт",
+      content: project.fundingUsage,
+      image: images[3],
+      imageLabel: "Funding visual",
+    },
+    {
+      id: "team",
+      navLabel: "Who we are",
+      title: "Багийн тухай",
+      content: project.teamInfo,
+    },
+    {
+      id: "risks",
+      navLabel: "Risks",
+      title: "Эрсдэлүүд болон сорилтууд",
+      content: project.risks,
+    },
+  ].filter((section) => Boolean(section.content?.trim()) || Boolean(section.image));
+}
+
+function sectionSummary(text?: string | null) {
+  const clean = text?.replace(/\s+/g, " ").trim();
+  if (!clean) return "Энэ зураг нь campaign story-ийн тухайн хэсгийг визуалаар тайлбарлана.";
+  return clean.length > 150 ? `${clean.slice(0, 150).trim()}...` : clean;
+}
+
+function CampaignSideNav({
+  project,
+  tiers,
+  updates,
+}: {
+  project: Project;
+  tiers: RewardTier[];
+  updates: FundingUpdate[];
+}) {
+  const sections = campaignStorySections(project);
+
+  return (
+    <aside className="hidden lg:block">
+      <nav className="sticky top-28 border-l-4 border-slate-300 pl-5 text-sm text-slate-500">
+        <div className="space-y-4">
+          {sections.map((section, index) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className={cn(
+                "block transition-colors hover:text-blue-800",
+                index === 0 ? "font-bold text-slate-700" : "font-medium"
+              )}
+            >
+              {section.navLabel}
+            </a>
+          ))}
+
+          <a href="#rewards" className="block font-medium transition-colors hover:text-blue-800">
+            Rewards
+          </a>
+          {tiers.length > 0 && (
+            <div className="space-y-2 border-l border-dashed border-slate-300 pl-4">
+              {tiers.slice(0, 4).map((tier) => (
+                <a
+                  key={tier.id}
+                  href="#rewards"
+                  className="block truncate text-xs font-medium text-slate-500 transition-colors hover:text-blue-800"
+                >
+                  {tier.title}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {updates.length > 0 && (
+            <a href="#updates" className="block font-medium transition-colors hover:text-blue-800">
+              Updates
+            </a>
+          )}
+          <a href="#timeline" className="block font-medium transition-colors hover:text-blue-800">
+            Timeline
+          </a>
+        </div>
+      </nav>
+    </aside>
+  );
+}
+
+function CampaignStory({
+  project,
+  tiers,
+  updates,
+  onSelectTier,
+}: {
+  project: Project;
+  tiers: RewardTier[];
+  updates: FundingUpdate[];
+  onSelectTier: (tier: RewardTier) => void;
+}) {
+  const sections = campaignStorySections(project);
+
+  return (
+    <article className="min-w-0 space-y-10">
+      {project.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {project.tags.map(tag => (
+            <span
+              key={tag}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {sections.map((section, index) => (
+        <section
+          key={section.id}
+          id={section.id}
+          className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7"
+        >
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">
+            {section.navLabel}
+          </p>
+          <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">
+            {section.title}
+          </h2>
+
+          {section.image && (
+            <StoryMediaFigure
+              image={section.image}
+              title={section.title}
+              label={section.imageLabel ?? `Campaign image ${index + 1}`}
+              summary={sectionSummary(section.content)}
+            />
+          )}
+
+          {section.content?.trim() ? (
+            <p className="project-copy project-copy-preserve mt-5">{section.content.trim()}</p>
+          ) : (
+            <p className="mt-5 text-sm text-slate-400">Энэ хэсгийн дэлгэрэнгүй мэдээлэл хараахан нэмэгдээгүй байна.</p>
+          )}
+        </section>
+      ))}
+
+      <section id="rewards" className="scroll-mt-28">
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Rewards</p>
+          <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Урамшуулал</h2>
+        </div>
+        <RewardsTab tiers={tiers} onSelectTier={onSelectTier} />
+      </section>
+
+      {updates.length > 0 && (
+        <section id="updates" className="scroll-mt-28">
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Updates</p>
+            <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Шинэчлэлтүүд</h2>
+          </div>
+          <UpdatesTab updates={updates} />
+        </section>
+      )}
+
+      <CampaignTimeline project={project} />
+    </article>
+  );
+}
+
+function StoryMediaFigure({
+  image,
+  title,
+  label,
+  summary,
+}: {
+  image: string;
+  title: string;
+  label: string;
+  summary: string;
+}) {
+  return (
+    <figure className="mt-5 overflow-hidden rounded-2xl border border-slate-100 bg-slate-950">
+      <div className="relative aspect-[16/10] min-h-[260px]">
+        <Image
+          src={image}
+          alt={title}
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 760px"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-transparent p-5 text-white sm:p-6">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-200">{label}</p>
+          <h3 className="font-display text-xl font-bold sm:text-2xl">{title}</h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200">{summary}</p>
+        </div>
+      </div>
+    </figure>
+  );
+}
+
+function CampaignRewardRail({
+  tiers,
+  onSelectTier,
+}: {
+  tiers: RewardTier[];
+  onSelectTier: (tier: RewardTier) => void;
+}) {
+  const featuredTier = tiers[0];
+
+  if (!featuredTier) return null;
+
+  return (
+    <aside className="hidden xl:block">
+      <div className="sticky top-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
+        {featuredTier.image ? (
+          <div className="relative aspect-[4/3] bg-slate-100">
+            <Image
+              src={featuredTier.image}
+              alt={featuredTier.title}
+              fill
+              className="object-cover"
+              sizes="320px"
+            />
+            <div className="absolute left-4 top-4 rounded-full bg-pink-600 px-2.5 py-1 text-[10px] font-bold uppercase text-white shadow-sm">
+              Онцлох
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-br from-blue-50 to-slate-100 p-6 text-center">
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Онцлох шагнал</p>
+            <p className="mt-2 font-display text-3xl font-bold text-slate-950">{formatMNT(featuredTier.amount)}</p>
+          </div>
+        )}
+
+        <div className="p-5">
+          {featuredTier.image && (
+            <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-700">
+              Онцлох шагнал
+            </span>
+          )}
+          <p className="mt-3 font-display text-3xl font-bold text-slate-950">{formatMNT(featuredTier.amount)}</p>
+          <h3 className="mt-2 font-display text-lg font-bold text-slate-900">{featuredTier.title}</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{featuredTier.description}</p>
+
+          <button
+            type="button"
+            onClick={() => onSelectTier(featuredTier)}
+            className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+          >
+            Энэ шагналыг сонгох
+          </button>
+
+          {tiers.length > 1 && (
+            <a
+              href="#rewards"
+              className="mt-3 flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+            >
+              Бүх урамшуулал харах
+            </a>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function CampaignTimeline({ project }: { project: Project }) {
+  const start = project.publishedAt ?? project.createdAt;
+  const timeline = [
+    { label: "Кампан эхэлсэн", value: start ? new Date(start).toLocaleDateString("mn-MN") : "Тун удахгүй" },
+    { label: "Дэмжлэг авах хугацаа", value: project.endsAt ? new Date(project.endsAt).toLocaleDateString("mn-MN") : daysLeftLabel(project.daysLeft) },
+    { label: "Одоогийн төлөв", value: project.status ?? "ACTIVE" },
+  ];
+
+  return (
+    <section id="timeline" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7">
+      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Timeline</p>
+      <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Project timeline</h2>
+      <div className="mt-6 space-y-4">
+        {timeline.map((item, index) => (
+          <div key={item.label} className="flex gap-4">
+            <div className="flex flex-col items-center">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-800 text-xs font-bold text-white">{index + 1}</span>
+              {index < timeline.length - 1 && <span className="h-full w-px bg-slate-200" />}
+            </div>
+            <div className="pb-4">
+              <p className="text-sm font-bold text-slate-900">{item.label}</p>
+              <p className="mt-1 text-sm text-slate-500">{item.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function ProjectShowcase({
   project,
@@ -773,10 +1014,17 @@ function SupportModal({
                           : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
                       )}
                     >
-                      <span className="flex items-start justify-between gap-3">
-                        <span>
-                          <span className="block font-semibold">{tier.title}</span>
-                          <span className="mt-0.5 block text-xs text-slate-500">{formatMNT(tier.amount)}-с эхэлнэ</span>
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-3">
+                          {tier.image && (
+                            <span className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                              <Image src={tier.image} alt="" fill className="object-cover" sizes="44px" />
+                            </span>
+                          )}
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold">{tier.title}</span>
+                            <span className="mt-0.5 block text-xs text-slate-500">{formatMNT(tier.amount)}-с эхэлнэ</span>
+                          </span>
                         </span>
                         {isSoldOut ? (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-400">Дууссан</span>
@@ -852,39 +1100,6 @@ function SupportModal({
   );
 }
 
-function AboutTab({ project }: { project: Project }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <p className="project-copy">{project.description}</p>
-      </div>
-
-      <div className="h-px bg-slate-100" />
-
-      <ProjectTextSection title="Төслийн тухай" content={project.story} />
-      <ProjectTextSection title="Төслийн зорилго" content={project.purpose} />
-      <ProjectTextSection title="Хөрөнгийн ашиглалт" content={project.fundingUsage} />
-      <ProjectTextSection title="Багийн тухай" content={project.teamInfo} />
-      <ProjectTextSection title="Эрсдэлүүд болон сорилтууд" content={project.risks} />
-    </div>
-  );
-}
-
-function ProjectTextSection({ title, content }: { title: string; content?: string | null }) {
-  const text = content?.trim();
-
-  return (
-    <div>
-      <h3 className="font-display font-bold text-slate-900 text-lg mb-3">{title}</h3>
-      {text ? (
-        <p className="project-copy project-copy-preserve">{text}</p>
-      ) : (
-        <p className="text-slate-400 text-sm italic">Бүтээгч энэ хэсгийг хараахан бөглөөгүй байна.</p>
-      )}
-    </div>
-  );
-}
-
 function UpdatesTab({ updates }: { updates: FundingUpdate[] }) {
   if (updates.length === 0) {
     return (
@@ -943,43 +1158,66 @@ function RewardTierCard({ tier, onSelect }: { tier: RewardTier; onSelect: () => 
 
   return (
     <div className={cn(
-      "bg-white rounded-2xl border p-5 transition-colors",
+      "overflow-hidden rounded-2xl border bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg",
       isAlmostGone ? "border-orange-200" : "border-slate-200 hover:border-blue-200"
     )}>
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div>
-          <span className="font-display font-bold text-blue-800 text-xl">
-            {formatMNT(tier.amount)}
-          </span>
-          <h4 className="font-semibold text-slate-900 text-sm mt-0.5">{tier.title}</h4>
+      {tier.image && (
+        <div className="relative aspect-[16/9] bg-slate-100">
+          <Image
+            src={tier.image}
+            alt={tier.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 760px"
+          />
+          <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-700 shadow-sm">
+            Шагнал
+          </div>
         </div>
-        {tier.isLimited && tier.remaining !== undefined && (
-          <span className={cn(
-            "text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 border",
-            isAlmostGone
-              ? "bg-orange-50 text-orange-600 border-orange-200"
-              : "bg-slate-50 text-slate-500 border-slate-200"
-          )}>
-            {tier.remaining} үлдсэн
-          </span>
-        )}
+      )}
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <span className="font-display font-bold text-blue-800 text-2xl">
+              {formatMNT(tier.amount)}
+            </span>
+            <h4 className="font-display font-bold text-slate-950 text-lg mt-1">{tier.title}</h4>
+          </div>
+          {tier.isLimited && tier.remaining !== undefined && (
+            <span className={cn(
+              "text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 border",
+              isAlmostGone
+                ? "bg-orange-50 text-orange-600 border-orange-200"
+                : "bg-slate-50 text-slate-500 border-slate-200"
+            )}>
+              {tier.remaining} үлдсэн
+            </span>
+          )}
+        </div>
+
+        <p className="text-slate-500 text-sm leading-6 mb-4">{tier.description}</p>
+
+        <div className="mb-4 grid grid-cols-2 gap-3 text-xs text-slate-500">
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <span className="block font-bold text-slate-900">{tier.backerCount}</span>
+            <span>хүн дэмжсэн</span>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <span className="block font-bold text-slate-900">{tier.estimatedDelivery}</span>
+            <span>хүргэлт</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onSelect}
+          disabled={isSoldOut}
+          className="w-full bg-blue-50 hover:bg-blue-800 text-blue-800 hover:text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed text-sm font-bold py-3 rounded-xl transition-all duration-200 border border-blue-100 hover:border-blue-800"
+        >
+          {isSoldOut ? "Урамшуулал дууссан" : "Энэ шагналыг сонгох"}
+        </button>
       </div>
-
-      <p className="text-slate-500 text-xs leading-relaxed mb-3">{tier.description}</p>
-
-      <div className="flex items-center justify-between text-xs text-slate-400 mb-3.5">
-        <span>{tier.backerCount} хүн дэмжсэн</span>
-        <span>Хүргэлт: {tier.estimatedDelivery}</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={onSelect}
-        disabled={isSoldOut}
-        className="w-full bg-blue-50 hover:bg-blue-800 text-blue-800 hover:text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed text-sm font-semibold py-2.5 rounded-xl transition-all duration-200 border border-blue-100 hover:border-blue-800"
-      >
-        {isSoldOut ? "Урамшуулал дууссан" : "Энэ шагналыг сонгох"}
-      </button>
     </div>
   );
 }

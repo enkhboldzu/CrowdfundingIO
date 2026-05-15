@@ -104,6 +104,7 @@ model RewardTier {
   title             String
   amount            Int
   description       String     @db.Text
+  image             String?
   backerCount       Int        @default(0)
   estimatedDelivery String
   isLimited         Boolean    @default(false)

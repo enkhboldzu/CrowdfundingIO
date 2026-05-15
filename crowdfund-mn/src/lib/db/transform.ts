@@ -49,6 +49,7 @@ interface DBRewardTier {
   title: string;
   amount: number;
   description: string;
+  image: string | null;
   backerCount: number;
   estimatedDelivery: string;
   isLimited: boolean;
@@ -115,6 +116,7 @@ export function toRewardTier(r: DBRewardTier): RewardTier {
     title:             r.title,
     amount:            r.amount,
     description:       r.description,
+    image:             normalizeImageSrc(r.image),
     backerCount:       r.backerCount,
     estimatedDelivery: r.estimatedDelivery,
     isLimited:         r.isLimited,

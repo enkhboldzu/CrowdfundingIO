@@ -25,6 +25,7 @@ interface RewardTier {
   title:       string;
   amount:      string;
   description: string;
+  image:       string;
 }
 
 interface SelectedProjectImage {
@@ -66,6 +67,7 @@ export interface EditableProjectSeed {
     title:       string;
     amount:      number;
     description: string;
+    image?:      string | null;
   }>;
 }
 
@@ -168,7 +170,7 @@ const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
   story: "", purpose: "", fundingUsage: "", teamInfo: "", risks: "", videoUrl: "", coverImageName: "",
-  rewards: [{ id: "r1", title: "", amount: "", description: "" }],
+  rewards: [{ id: "r1", title: "", amount: "", description: "", image: "" }],
 };
 
 function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
@@ -197,6 +199,7 @@ function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
           title:       reward.title,
           amount:      String(reward.amount),
           description: reward.description,
+          image:       reward.image ?? "",
         }))
       : EMPTY.rewards,
   };
@@ -648,6 +651,124 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
       )}
       <ErrMsg msg={displayError} />
     </>
+  );
+}
+
+function RewardImageUpload({ id, value, onChange }: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
+      setLocalError("Зөвхөн PNG, JPG, WEBP зураг оруулна уу.");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setLocalError(`Нэг зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`);
+      return;
+    }
+
+    setLocalError(null);
+    setUploading(true);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!uploadRes.ok) {
+        throw new Error(await uploadErrorMessage(uploadRes));
+      }
+
+      const json = await uploadRes.json() as { url: string };
+      onChange(json.url);
+    } catch (err) {
+      setLocalError(
+        err instanceof Error && err.message !== "Upload failed"
+          ? err.message
+          : "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу."
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <input
+        ref={ref}
+        id={id}
+        type="file"
+        accept={ACCEPTED_IMAGE_INPUT}
+        disabled={uploading}
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {value ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm">
+          <div className="relative aspect-[4/3]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-slate-950/85 to-transparent p-3">
+              <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">
+                Шагналын зураг
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => ref.current?.click()}
+                  disabled={uploading}
+                  className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm disabled:opacity-60"
+                >
+                  Солих
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange("")}
+                  disabled={uploading}
+                  className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-60"
+                >
+                  Устгах
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          disabled={uploading}
+          className="grid aspect-[4/3] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-70"
+        >
+          <span>
+            <span className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
+                  d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0021.75 18V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
+              </svg>
+            </span>
+            <span className="block text-sm font-bold text-slate-700">
+              {uploading ? "Зураг хуулж байна..." : "Шагналын зураг оруулах"}
+            </span>
+            <span className="mt-1 block text-xs text-slate-400">PNG, JPG, WEBP</span>
+          </span>
+        </button>
+      )}
+
+      <ErrMsg msg={localError ?? undefined} />
+    </div>
   );
 }
 
@@ -1166,11 +1287,14 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
 
       <div className="space-y-4">
         {d.rewards.map((r, i) => (
-          <div key={r.id} className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">
-                Урамшуулал #{i + 1}
-              </span>
+          <div key={r.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div>
+                <span className="inline-flex text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">
+                  Урамшуулал #{i + 1}
+                </span>
+                <p className="mt-2 text-xs text-slate-500">Зурагтай reward card нь project detail дээр илүү тод харагдана.</p>
+              </div>
               {d.rewards.length > 1 && (
                 <button type="button" onClick={() => removeReward(i)}
                   className="text-xs text-red-400 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
@@ -1183,28 +1307,51 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
               )}
             </div>
 
-            <div>
-              <Label htmlFor={`rt${i}`} required>Урамшууллын нэр</Label>
-              <FInput id={`rt${i}`} value={r.title} onChange={v => setReward(i, "title", v)}
-                placeholder="Жишээ: Эрт дэмжигч" error={e[`rt${i}`]} />
-              <ErrMsg msg={e[`rt${i}`]} />
-            </div>
+            <div className="grid gap-5 p-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div>
+                <Label htmlFor={`ri${i}`}>Урамшууллын зураг</Label>
+                <RewardImageUpload id={`ri${i}`} value={r.image} onChange={v => setReward(i, "image", v)} />
+                <Hint>Шагналын бодит бүтээгдэхүүн, постер, teaser зураг оруулбал илүү итгэлтэй харагдана.</Hint>
+              </div>
 
-            <div>
-              <Label htmlFor={`ra${i}`} required>Дэмжлэгийн дүн</Label>
-              <FInput id={`ra${i}`} type="number" value={r.amount}
-                onChange={v => setReward(i, "amount", v)}
-                placeholder="10" error={e[`ra${i}`]} prefix="₮" />
-              <ErrMsg msg={e[`ra${i}`]} />
-            </div>
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px]">
+                  <div>
+                    <Label htmlFor={`rt${i}`} required>Урамшууллын нэр</Label>
+                    <FInput id={`rt${i}`} value={r.title} onChange={v => setReward(i, "title", v)}
+                      placeholder="Жишээ: Эрт дэмжигч" error={e[`rt${i}`]} />
+                    <ErrMsg msg={e[`rt${i}`]} />
+                  </div>
 
-            <div>
-              <Label htmlFor={`rd${i}`} required>Урамшууллын тайлбар</Label>
-              <FTextarea id={`rd${i}`} value={r.description}
-                onChange={v => setReward(i, "description", v)}
-                placeholder="Дэмжигч яг юу авах, хэзээ авахыг тодорхой бичнэ үү."
-                error={e[`rd${i}`]} rows={3} />
-              <ErrMsg msg={e[`rd${i}`]} />
+                  <div>
+                    <Label htmlFor={`ra${i}`} required>Дэмжлэгийн дүн</Label>
+                    <FInput id={`ra${i}`} type="number" value={r.amount}
+                      onChange={v => setReward(i, "amount", v)}
+                      placeholder="10" error={e[`ra${i}`]} prefix="₮" />
+                    <ErrMsg msg={e[`ra${i}`]} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor={`rd${i}`} required>Урамшууллын тайлбар</Label>
+                  <FTextarea id={`rd${i}`} value={r.description}
+                    onChange={v => setReward(i, "description", v)}
+                    placeholder="Дэмжигч яг юу авах, хэзээ авахыг тодорхой бичнэ үү."
+                    error={e[`rd${i}`]} rows={4} />
+                  <ErrMsg msg={e[`rd${i}`]} />
+                </div>
+
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Харагдах байдал</p>
+                  <p className="mt-1 font-display text-xl font-bold text-slate-950">
+                    {r.amount ? `${r.amount}₮` : "Дүн"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">{r.title || "Урамшууллын нэр"}</p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                    {r.description || "Дэмжигчид авах зүйлээ эндээс ойлгоно."}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -1321,14 +1468,18 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
 
   function setReward(i: number, k: keyof RewardTier, v: string) {
     setData(d => ({ ...d, rewards: d.rewards.map((r, idx) => idx === i ? { ...r, [k]: v } : r) }));
-    const ek = k === "title" ? `rt${i}` : k === "amount" ? `ra${i}` : `rd${i}`;
+    const ek =
+      k === "title" ? `rt${i}` :
+      k === "amount" ? `ra${i}` :
+      k === "description" ? `rd${i}` :
+      "";
     if (errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
   }
 
   function addReward() {
     setData(d => ({
       ...d,
-      rewards: [...d.rewards, { id: String(Date.now()), title: "", amount: "", description: "" }],
+      rewards: [...d.rewards, { id: String(Date.now()), title: "", amount: "", description: "", image: "" }],
     }));
   }
 
@@ -1402,6 +1553,7 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
         title:       r.title,
         amount:      Number(r.amount),
         description: r.description,
+        image:       r.image,
       })),
     };
 
