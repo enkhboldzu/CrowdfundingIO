@@ -23,6 +23,27 @@ type ProjectStoryBlockInput = {
   caption?: string;
 };
 
+type ProjectFaqInput = {
+  id?: string;
+  question: string;
+  answer: string;
+};
+
+type ProjectTimelineInput = {
+  id?: string;
+  title: string;
+  date: string;
+  description: string;
+};
+
+type ProjectSocialLinksInput = {
+  website?: string;
+  facebook?: string;
+  instagram?: string;
+  discord?: string;
+  twitter?: string;
+};
+
 function makeSlug(title: string): string {
   const base = title
     .toLowerCase()
@@ -39,7 +60,7 @@ function toStoredImage(image?: string): string | null {
 }
 
 function toStoredImages(images?: string[]): string[] {
-  return normalizeImageList(images).slice(0, 3);
+  return normalizeImageList(images).slice(0, 8);
 }
 
 function toStoredDocuments(documents?: string[]): string[] {
@@ -106,7 +127,39 @@ function toStoredStoryBlocks(blocks?: ProjectStoryBlockInput[]): Prisma.InputJso
       image,
       caption: caption || null,
     }];
-  }).slice(0, 10);
+  });
+}
+
+function toStoredFaq(faq?: ProjectFaqInput[]): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  const rows = (faq ?? []).flatMap((item, index): Prisma.InputJsonObject[] => {
+    const question = item.question.trim();
+    const answer = item.answer.trim();
+    if (!question || !answer) return [];
+    return [{ id: item.id?.trim() || `faq-${index + 1}`, question, answer }];
+  });
+  return rows.length ? rows : Prisma.JsonNull;
+}
+
+function toStoredTimeline(timeline?: ProjectTimelineInput[]): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  const rows = (timeline ?? []).flatMap((item, index): Prisma.InputJsonObject[] => {
+    const title = item.title.trim();
+    const date = item.date.trim();
+    const description = item.description.trim();
+    if (!title) return [];
+    return [{ id: item.id?.trim() || `timeline-${index + 1}`, title, date, description }];
+  });
+  return rows.length ? rows : Prisma.JsonNull;
+}
+
+function toStoredSocialLinks(links?: ProjectSocialLinksInput): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (!links) return Prisma.JsonNull;
+  const clean: Record<string, string> = {};
+  if (links.website?.trim()) clean.website = links.website.trim();
+  if (links.facebook?.trim()) clean.facebook = links.facebook.trim();
+  if (links.instagram?.trim()) clean.instagram = links.instagram.trim();
+  if (links.discord?.trim()) clean.discord = links.discord.trim();
+  if (links.twitter?.trim()) clean.twitter = links.twitter.trim();
+  return Object.keys(clean).length ? clean : Prisma.JsonNull;
 }
 
 const OWNER_EDITABLE_STATUSES = new Set(["PENDING", "REJECTED", "ACTIVE"]);
@@ -142,16 +195,14 @@ export async function createProject(data: {
   bankAccount: string;
   bankAccountName: string;
   story: string;
-  purpose: string;
-  fundingUsage: string;
-  teamInfo: string;
-  risks: string;
   coverImage?: string;
   galleryImages?: string[];
   videoUrl?: string;
   documents?: string[];
-  storyMedia?: ProjectStoryMediaInput[];
   storyBlocks?: ProjectStoryBlockInput[];
+  faq?: ProjectFaqInput[];
+  timeline?: ProjectTimelineInput[];
+  socialLinks?: ProjectSocialLinksInput;
   rewards: Array<{ title: string; amount: number; description: string; image?: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
@@ -167,12 +218,10 @@ export async function createProject(data: {
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
     const videoUrl = toStoredVideoUrl(data.videoUrl);
     const documents = toStoredDocuments(data.documents);
-    const storyMedia = toStoredStoryMedia(data.storyMedia);
     const storyBlocks = toStoredStoryBlocks(data.storyBlocks);
-
-    if (storyBlocks.length < 4) {
-      return { success: false, error: "Дэлгэрэнгүй story хэсэгт хамгийн багадаа 4 зурагтай мэдээлэл оруулна уу." };
-    }
+    const faq = toStoredFaq(data.faq);
+    const timeline = toStoredTimeline(data.timeline);
+    const socialLinks = toStoredSocialLinks(data.socialLinks);
 
     const project = await prisma.project.create({
       data: {
@@ -180,17 +229,19 @@ export async function createProject(data: {
         slug:            makeSlug(data.title),
         description:     data.blurb.trim(),
         story:           data.story.trim(),
-        purpose:         data.purpose.trim(),
-        fundingUsage:    data.fundingUsage.trim(),
-        teamInfo:        data.teamInfo.trim(),
-        risks:           data.risks.trim(),
+        purpose:         "",
+        fundingUsage:    "",
+        teamInfo:        "",
+        risks:           "",
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
         videoUrl,
         documents,
-        storyMedia,
         storyBlocks,
+        faq,
+        timeline,
+        socialLinks,
         goal:            data.goal,
         location:        data.location.trim(),
         bankName:        data.bankName,
@@ -235,16 +286,14 @@ export async function updateOwnProject(data: {
   bankAccount: string;
   bankAccountName: string;
   story: string;
-  purpose: string;
-  fundingUsage: string;
-  teamInfo: string;
-  risks: string;
   coverImage?: string;
   galleryImages?: string[];
   videoUrl?: string;
   documents?: string[];
-  storyMedia?: ProjectStoryMediaInput[];
   storyBlocks?: ProjectStoryBlockInput[];
+  faq?: ProjectFaqInput[];
+  timeline?: ProjectTimelineInput[];
+  socialLinks?: ProjectSocialLinksInput;
   rewards: Array<{ title: string; amount: number; description: string; image?: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
@@ -282,12 +331,10 @@ export async function updateOwnProject(data: {
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
     const videoUrl = toStoredVideoUrl(data.videoUrl);
     const documents = toStoredDocuments(data.documents);
-    const storyMedia = toStoredStoryMedia(data.storyMedia);
     const storyBlocks = toStoredStoryBlocks(data.storyBlocks);
-
-    if (storyBlocks.length < 4) {
-      return { success: false, error: "Дэлгэрэнгүй story хэсэгт хамгийн багадаа 4 зурагтай мэдээлэл оруулна уу." };
-    }
+    const faq = toStoredFaq(data.faq);
+    const timeline = toStoredTimeline(data.timeline);
+    const socialLinks = toStoredSocialLinks(data.socialLinks);
 
     const project = await prisma.project.update({
       where: { id: existing.id },
@@ -295,17 +342,15 @@ export async function updateOwnProject(data: {
         title:           data.title.trim(),
         description:     data.blurb.trim(),
         story:           data.story.trim(),
-        purpose:         data.purpose.trim(),
-        fundingUsage:    data.fundingUsage.trim(),
-        teamInfo:        data.teamInfo.trim(),
-        risks:           data.risks.trim(),
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
         videoUrl,
         documents,
-        storyMedia,
         storyBlocks,
+        faq,
+        timeline,
+        socialLinks,
         goal:            data.goal,
         location:        data.location.trim(),
         bankName:        data.bankName,

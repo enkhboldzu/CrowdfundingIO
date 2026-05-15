@@ -33,6 +33,27 @@ export interface ProjectStoryBlock {
   caption?: string | null;
 }
 
+export interface ProjectFaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface ProjectTimelineItem {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+}
+
+export interface ProjectSocialLinks {
+  website?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  discord?: string | null;
+  twitter?: string | null;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -49,6 +70,9 @@ export interface Project {
   videoUrl?: string | null;
   storyMedia?: ProjectStoryMedia[];
   storyBlocks?: ProjectStoryBlock[];
+  faq?: ProjectFaqItem[];
+  timeline?: ProjectTimelineItem[];
+  socialLinks?: ProjectSocialLinks;
   creator: Creator;
   goal: number;
   raised: number;

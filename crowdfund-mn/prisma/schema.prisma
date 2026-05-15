@@ -76,6 +76,9 @@ model Project {
   documents       String[]        @default([])
   storyMedia      Json?
   storyBlocks     Json?
+  faq             Json?
+  socialLinks     Json?
+  timeline        Json?
   goal            Int
   raised          Int             @default(0)
   backers         Int             @default(0)

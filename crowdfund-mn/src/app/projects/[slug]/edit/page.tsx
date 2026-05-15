@@ -15,7 +15,6 @@ interface Props {
 
 const VALID_DURATIONS = new Set([7, 14, 21, 30, 45, 60]);
 const OWNER_EDITABLE_STATUSES = new Set(["PENDING", "REJECTED", "ACTIVE"]);
-const STORY_MEDIA_SECTIONS = new Set(["story", "problem", "solution", "funding", "team", "risks"]);
 
 export const dynamic = "force-dynamic";
 
@@ -29,46 +28,61 @@ function editableDuration(createdAt: Date, endsAt: Date): number {
     1,
     Math.round((endsAt.getTime() - createdAt.getTime()) / 86_400_000)
   );
-
   return VALID_DURATIONS.has(days) ? days : 30;
-}
-
-function editableStoryMedia(value: unknown): EditableProjectSeed["storyMedia"] {
-  if (!Array.isArray(value)) return [];
-
-  return value.flatMap((item) => {
-    if (!item || typeof item !== "object") return [];
-
-    const row = item as Record<string, unknown>;
-    const section = typeof row.section === "string" ? row.section : "";
-    if (!STORY_MEDIA_SECTIONS.has(section)) return [];
-
-    return [{
-      section: section as NonNullable<EditableProjectSeed["storyMedia"]>[number]["section"],
-      image: typeof row.image === "string" ? normalizeImageSrc(row.image) : null,
-      label: typeof row.label === "string" ? row.label : null,
-      caption: typeof row.caption === "string" ? row.caption : null,
-    }];
-  });
 }
 
 function editableStoryBlocks(value: unknown): EditableProjectSeed["storyBlocks"] {
   if (!Array.isArray(value)) return [];
-
-  return value.slice(0, 10).flatMap((item, index) => {
+  return value.flatMap((item, index) => {
     if (!item || typeof item !== "object") return [];
-
     const row = item as Record<string, unknown>;
     const title = typeof row.title === "string" ? row.title : "";
     const body = typeof row.body === "string" ? row.body : "";
     const image = typeof row.image === "string" ? normalizeImageSrc(row.image) : null;
     const caption = typeof row.caption === "string" ? row.caption : null;
     const id = typeof row.id === "string" ? row.id : `story-block-${index + 1}`;
-
     if (!title && !body && !image) return [];
-
     return [{ id, title, body, image, caption }];
   });
+}
+
+function editableFaq(value: unknown): EditableProjectSeed["faq"] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const question = typeof row.question === "string" ? row.question : "";
+    const answer = typeof row.answer === "string" ? row.answer : "";
+    const id = typeof row.id === "string" ? row.id : `faq-${index + 1}`;
+    if (!question && !answer) return [];
+    return [{ id, question, answer }];
+  });
+}
+
+function editableTimeline(value: unknown): EditableProjectSeed["timeline"] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title : "";
+    const date = typeof row.date === "string" ? row.date : "";
+    const description = typeof row.description === "string" ? row.description : "";
+    const id = typeof row.id === "string" ? row.id : `timeline-${index + 1}`;
+    if (!title) return [];
+    return [{ id, title, date, description }];
+  });
+}
+
+function editableSocialLinks(value: unknown): EditableProjectSeed["socialLinks"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const row = value as Record<string, unknown>;
+  return {
+    website: typeof row.website === "string" ? row.website : undefined,
+    facebook: typeof row.facebook === "string" ? row.facebook : undefined,
+    instagram: typeof row.instagram === "string" ? row.instagram : undefined,
+    discord: typeof row.discord === "string" ? row.discord : undefined,
+    twitter: typeof row.twitter === "string" ? row.twitter : undefined,
+  };
 }
 
 export default async function EditProjectPage({ params }: Props) {
@@ -92,7 +106,7 @@ export default async function EditProjectPage({ params }: Props) {
     notFound();
   }
 
-  const images = normalizeImageList(project.galleryImages).slice(0, 3);
+  const images = normalizeImageList(project.galleryImages).slice(0, 8);
   const coverImage = normalizeImageSrc(project.coverImage);
   const seed: EditableProjectSeed = {
     id:              project.id,
@@ -107,15 +121,13 @@ export default async function EditProjectPage({ params }: Props) {
     bankAccount:     project.bankAccount,
     bankAccountName: project.bankAccountName,
     story:           project.story,
-    purpose:         project.purpose ?? "",
-    fundingUsage:    project.fundingUsage ?? "",
-    teamInfo:        project.teamInfo ?? "",
-    risks:           project.risks ?? "",
     videoUrl:        project.videoUrl ?? "",
     images:          images.length > 0 ? images : coverImage ? [coverImage] : [],
     documents:       normalizeDocumentList(project.documents).slice(0, 5),
-    storyMedia:      editableStoryMedia(project.storyMedia),
     storyBlocks:     editableStoryBlocks(project.storyBlocks),
+    faq:             editableFaq(project.faq),
+    timeline:        editableTimeline(project.timeline),
+    socialLinks:     editableSocialLinks(project.socialLinks),
     rewards:         project.rewards.map((reward) => ({
       id:          reward.id,
       title:       reward.title,

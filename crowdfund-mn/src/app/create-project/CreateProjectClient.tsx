@@ -2,9 +2,9 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Footer }           from "@/components/landing/Footer";
-import { buttonVariants }   from "@/lib/button-variants";
-import { cn }               from "@/lib/utils";
+import { Footer } from "@/components/landing/Footer";
+import { buttonVariants } from "@/lib/button-variants";
+import { cn } from "@/lib/utils";
 import { createProject, updateOwnProject } from "@/lib/actions/projects";
 import {
   ACCEPTED_DOCUMENT_INPUT,
@@ -21,34 +21,25 @@ import { uploadErrorMessage } from "@/lib/upload-client";
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
 interface RewardTier {
-  id:          string;
-  title:       string;
-  amount:      string;
+  id: string;
+  title: string;
+  amount: string;
   description: string;
-  image:       string;
+  image: string;
 }
 
 interface SelectedProjectImage {
-  id:      string;
+  id: string;
   preview: string;
-  url:     string;
+  url: string;
 }
 
 interface SelectedProjectDocument {
-  id:   string;
+  id: string;
   name: string;
   size: number;
   type: string;
-  url:  string;
-}
-
-type StoryMediaSectionKey = "story" | "problem" | "solution" | "funding" | "team" | "risks";
-
-interface ProjectStoryMediaSeed {
-  section: StoryMediaSectionKey;
-  image?: string | null;
-  label?: string | null;
-  caption?: string | null;
+  url: string;
 }
 
 interface StoryBlock {
@@ -59,100 +50,103 @@ interface StoryBlock {
   caption: string;
 }
 
+interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+interface TimelineItem {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+}
+
+interface SocialLinks {
+  website: string;
+  facebook: string;
+  instagram: string;
+  discord: string;
+  twitter: string;
+}
+
 export interface EditableProjectSeed {
-  id:              string;
-  slug:            string;
-  title:           string;
-  blurb:           string;
-  category:        string;
-  location:        string;
-  goal:            number;
-  duration:        number;
-  bankName:        string;
-  bankAccount:     string;
+  id: string;
+  slug: string;
+  title: string;
+  blurb: string;
+  category: string;
+  location: string;
+  goal: number;
+  duration: number;
+  bankName: string;
+  bankAccount: string;
   bankAccountName: string;
-  story:           string;
-  purpose:         string;
-  fundingUsage:    string;
-  teamInfo:        string;
-  risks:           string;
-  images:          string[];
-  videoUrl?:       string | null;
-  documents:       string[];
-  storyMedia?:     ProjectStoryMediaSeed[];
-  storyBlocks?:    Array<{
-    id?:      string | null;
-    title:   string;
-    body:    string;
-    image?:  string | null;
+  story: string;
+  videoUrl?: string | null;
+  images: string[];
+  documents: string[];
+  storyBlocks?: Array<{
+    id?: string | null;
+    title: string;
+    body: string;
+    image?: string | null;
     caption?: string | null;
   }>;
-  rewards:         Array<{
-    id:          string;
-    title:       string;
-    amount:      number;
+  faq?: Array<{ id?: string | null; question: string; answer: string }>;
+  timeline?: Array<{ id?: string | null; title: string; date: string; description: string }>;
+  socialLinks?: {
+    website?: string | null;
+    facebook?: string | null;
+    instagram?: string | null;
+    discord?: string | null;
+    twitter?: string | null;
+  };
+  rewards: Array<{
+    id: string;
+    title: string;
+    amount: number;
     description: string;
-    image?:      string | null;
+    image?: string | null;
   }>;
 }
 
 interface FormValues {
-  title:           string;
-  blurb:           string;
-  category:        string;
-  location:        string;
-  goal:            string;
-  duration:        string;
-  bankName:        string;
-  bankAccount:     string;
+  title: string;
+  blurb: string;
+  category: string;
+  location: string;
+  goal: string;
+  duration: string;
+  bankName: string;
+  bankAccount: string;
   bankAccountName: string;
-  story:           string;
-  purpose:         string;
-  fundingUsage:    string;
-  teamInfo:        string;
-  risks:           string;
-  videoUrl:        string;
-  storyImage:      string;
-  storyImageLabel: string;
-  storyImageCaption: string;
-  problemImage:      string;
-  problemImageLabel: string;
-  problemImageCaption: string;
-  purposeImage:      string;
-  purposeImageLabel: string;
-  purposeImageCaption: string;
-  fundingUsageImage:      string;
-  fundingUsageImageLabel: string;
-  fundingUsageImageCaption: string;
-  teamInfoImage:      string;
-  teamInfoImageLabel: string;
-  teamInfoImageCaption: string;
-  risksImage:      string;
-  risksImageLabel: string;
-  risksImageCaption: string;
-  coverImageName:  string;
-  rewards:         RewardTier[];
-  storyBlocks:     StoryBlock[];
+  story: string;
+  videoUrl: string;
+  storyBlocks: StoryBlock[];
+  faq: FaqItem[];
+  timeline: TimelineItem[];
+  socialLinks: SocialLinks;
+  rewards: RewardTier[];
 }
 
-type StringKey = keyof Omit<FormValues, "rewards" | "storyBlocks">;
-type ErrMap    = Record<string, string>;
+type StringKey = keyof Omit<FormValues, "rewards" | "storyBlocks" | "faq" | "timeline" | "socialLinks">;
+type ErrMap = Record<string, string>;
 
-const MAX_PROJECT_IMAGES = 3;
+/* ── Constants ──────────────────────────────────────────────────────────── */
+
+const MAX_PROJECT_IMAGES = 8;
 const MAX_PROJECT_DOCUMENTS = 5;
-const MIN_STORY_BLOCKS = 4;
-const MAX_STORY_BLOCKS = 10;
 const MIN_PROJECT_GOAL = 10;
 const MIN_REWARD_AMOUNT = 10;
 
 function isSupportedVideoUrl(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return true;
-
   try {
     const url = new URL(trimmed);
     if (!["http:", "https:"].includes(url.protocol)) return false;
-
     const host = url.hostname.replace(/^www\./, "").toLowerCase();
     const path = url.pathname.toLowerCase();
     return (
@@ -166,27 +160,25 @@ function isSupportedVideoUrl(value: string): boolean {
   }
 }
 
-/* ── Constants ──────────────────────────────────────────────────────────── */
-
 const CATEGORIES = [
-  { value: "",             label: "Ангилал сонгоно уу..." },
-  { value: "technology",  label: "💻  Технологи & Гаджет" },
-  { value: "arts",        label: "🎨  Бүтээлч урлаг" },
-  { value: "film",        label: "🎬  Кино & Видео" },
+  { value: "", label: "Ангилал сонгоно уу..." },
+  { value: "technology", label: "💻  Технологи & Гаджет" },
+  { value: "arts", label: "🎨  Бүтээлч урлаг" },
+  { value: "film", label: "🎬  Кино & Видео" },
   { value: "environment", label: "🌿  Байгаль & Ногоон эрчим хүч" },
-  { value: "games",       label: "🎮  Тоглоом" },
-  { value: "health",      label: "❤️  Эрүүл мэнд & Сайн сайхан" },
-  { value: "education",   label: "📚  Боловсрол" },
-  { value: "community",   label: "🤝  Нийгмийн төсөл" },
-  { value: "food",        label: "🍜  Хоол & Ундаа" },
-  { value: "fashion",     label: "👗  Загвар хувцас" },
-  { value: "music",       label: "🎵  Хөгжим" },
-  { value: "publishing",  label: "📖  Хэвлэл & Ном" },
+  { value: "games", label: "🎮  Тоглоом" },
+  { value: "health", label: "❤️  Эрүүл мэнд & Сайн сайхан" },
+  { value: "education", label: "📚  Боловсрол" },
+  { value: "community", label: "🤝  Нийгмийн төсөл" },
+  { value: "food", label: "🍜  Хоол & Ундаа" },
+  { value: "fashion", label: "👗  Загвар хувцас" },
+  { value: "music", label: "🎵  Хөгжим" },
+  { value: "publishing", label: "📖  Хэвлэл & Ном" },
 ];
 
 const DURATIONS = [
-  { value: "",   label: "Хугацаа сонгоно уу..." },
-  { value: "7",  label: "7 хоног" },
+  { value: "", label: "Хугацаа сонгоно уу..." },
+  { value: "7", label: "7 хоног" },
   { value: "14", label: "14 хоног" },
   { value: "21", label: "21 хоног" },
   { value: "30", label: "30 хоног — санал болгох" },
@@ -195,261 +187,185 @@ const DURATIONS = [
 ];
 
 const BANKS = [
-  { value: "",         label: "Банк сонгоно уу..." },
-  { value: "khan",     label: "Хаан банк" },
-  { value: "golomt",   label: "Голомт банк" },
-  { value: "xac",      label: "Хас банк" },
-  { value: "state",    label: "Төрийн банк" },
+  { value: "", label: "Банк сонгоно уу..." },
+  { value: "khan", label: "Хаан банк" },
+  { value: "golomt", label: "Голомт банк" },
+  { value: "xac", label: "Хас банк" },
+  { value: "state", label: "Төрийн банк" },
   { value: "capitron", label: "Капитрон банк" },
-  { value: "most",     label: "Мост мани банк" },
-  { value: "arig",     label: "Ариг банк" },
+  { value: "most", label: "Мост мани банк" },
+  { value: "arig", label: "Ариг банк" },
 ];
 
 const STEPS = [
-  { num: 1, label: "Кампанийн нүүр" },
+  { num: 1, label: "Үндсэн мэдээлэл" },
   { num: 2, label: "Санхүүжилт" },
-  { num: 3, label: "Медиа & түүх" },
-  { num: 4, label: "Урамшуулал" },
-];
-
-interface StoryMediaConfig {
-  section: StoryMediaSectionKey;
-  title: string;
-  description: string;
-  imageKey: StringKey;
-  labelKey: StringKey;
-  captionKey: StringKey;
-}
-
-const STORY_MEDIA_CONFIGS: StoryMediaConfig[] = [
-  {
-    section: "story",
-    title: "Төслийн түүх",
-    description: "Төслийн ерөнхий түүх дээр гарах зураг, зураг дээрх богино тайлбар.",
-    imageKey: "storyImage",
-    labelKey: "storyImageLabel",
-    captionKey: "storyImageCaption",
-  },
-  {
-    section: "problem",
-    title: "Асуудал",
-    description: "Ямар асуудал шийдэхийг харуулах зураг, тайлбар.",
-    imageKey: "problemImage",
-    labelKey: "problemImageLabel",
-    captionKey: "problemImageCaption",
-  },
-  {
-    section: "solution",
-    title: "Шийдэл",
-    description: "Шийдэл ба зорилгын хэсэгт тохирох зураг, тайлбар.",
-    imageKey: "purposeImage",
-    labelKey: "purposeImageLabel",
-    captionKey: "purposeImageCaption",
-  },
-  {
-    section: "funding",
-    title: "Хөрөнгийн ашиглалт",
-    description: "Хөрөнгө хаашаа зарцуулагдахыг илүү ойлгомжтой болгох зураг.",
-    imageKey: "fundingUsageImage",
-    labelKey: "fundingUsageImageLabel",
-    captionKey: "fundingUsageImageCaption",
-  },
-  {
-    section: "team",
-    title: "Багийн тухай",
-    description: "Баг, ажлын процесс, studio эсвэл behind-the-scenes зураг.",
-    imageKey: "teamInfoImage",
-    labelKey: "teamInfoImageLabel",
-    captionKey: "teamInfoImageCaption",
-  },
-  {
-    section: "risks",
-    title: "Эрсдэл",
-    description: "Эрсдэл, төлөвлөгөө, timeline эсвэл баталгаажуулах зураг.",
-    imageKey: "risksImage",
-    labelKey: "risksImageLabel",
-    captionKey: "risksImageCaption",
-  },
+  { num: 3, label: "Түүх" },
+  { num: 4, label: "Медиа" },
+  { num: 5, label: "Урамшуулал" },
 ];
 
 function emptyStoryBlock(index: number): StoryBlock {
-  return {
-    id: `story-block-${index + 1}-${Date.now()}`,
-    title: "",
-    body: "",
-    image: "",
-    caption: "",
-  };
+  return { id: `sb-${index}-${Date.now()}`, title: "", body: "", image: "", caption: "" };
 }
 
-function initialStoryBlocks(): StoryBlock[] {
-  return Array.from({ length: MIN_STORY_BLOCKS }, (_, index) => emptyStoryBlock(index));
+function emptyFaqItem(index: number): FaqItem {
+  return { id: `faq-${index}-${Date.now()}`, question: "", answer: "" };
 }
+
+function emptyTimelineItem(index: number): TimelineItem {
+  return { id: `tl-${index}-${Date.now()}`, title: "", date: "", description: "" };
+}
+
+const EMPTY_SOCIAL: SocialLinks = { website: "", facebook: "", instagram: "", discord: "", twitter: "" };
 
 const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
-  story: "", purpose: "", fundingUsage: "", teamInfo: "", risks: "", videoUrl: "", coverImageName: "",
-  storyImage: "", storyImageLabel: "", storyImageCaption: "",
-  problemImage: "", problemImageLabel: "", problemImageCaption: "",
-  purposeImage: "", purposeImageLabel: "", purposeImageCaption: "",
-  fundingUsageImage: "", fundingUsageImageLabel: "", fundingUsageImageCaption: "",
-  teamInfoImage: "", teamInfoImageLabel: "", teamInfoImageCaption: "",
-  risksImage: "", risksImageLabel: "", risksImageCaption: "",
+  story: "", videoUrl: "",
+  storyBlocks: [],
+  faq: [],
+  timeline: [],
+  socialLinks: { ...EMPTY_SOCIAL },
   rewards: [{ id: "r1", title: "", amount: "", description: "", image: "" }],
-  storyBlocks: initialStoryBlocks(),
 };
 
 function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
   if (!seed) return EMPTY;
-  const mediaBySection = new Map((seed.storyMedia ?? []).map((item) => [item.section, item]));
-  const storyBlocks = seed.storyBlocks?.length
-    ? seed.storyBlocks.map((block, index) => ({
-        id:      block.id || `story-block-${index + 1}`,
-        title:   block.title,
-        body:    block.body,
-        image:   block.image ?? "",
-        caption: block.caption ?? "",
-      }))
-    : initialStoryBlocks();
-
   return {
-    title:           seed.title,
-    blurb:           seed.blurb,
-    category:        seed.category,
-    location:        seed.location,
-    goal:            String(seed.goal),
-    duration:        String(seed.duration),
-    bankName:        seed.bankName,
-    bankAccount:     seed.bankAccount,
+    title: seed.title,
+    blurb: seed.blurb,
+    category: seed.category,
+    location: seed.location,
+    goal: String(seed.goal),
+    duration: String(seed.duration),
+    bankName: seed.bankName,
+    bankAccount: seed.bankAccount,
     bankAccountName: seed.bankAccountName,
-    story:           seed.story,
-    purpose:         seed.purpose,
-    fundingUsage:    seed.fundingUsage,
-    teamInfo:        seed.teamInfo,
-    risks:           seed.risks,
-    videoUrl:        seed.videoUrl ?? "",
-    storyImage:      mediaBySection.get("story")?.image ?? "",
-    storyImageLabel: mediaBySection.get("story")?.label ?? "",
-    storyImageCaption: mediaBySection.get("story")?.caption ?? "",
-    problemImage:      mediaBySection.get("problem")?.image ?? "",
-    problemImageLabel: mediaBySection.get("problem")?.label ?? "",
-    problemImageCaption: mediaBySection.get("problem")?.caption ?? "",
-    purposeImage:      mediaBySection.get("solution")?.image ?? "",
-    purposeImageLabel: mediaBySection.get("solution")?.label ?? "",
-    purposeImageCaption: mediaBySection.get("solution")?.caption ?? "",
-    fundingUsageImage:      mediaBySection.get("funding")?.image ?? "",
-    fundingUsageImageLabel: mediaBySection.get("funding")?.label ?? "",
-    fundingUsageImageCaption: mediaBySection.get("funding")?.caption ?? "",
-    teamInfoImage:      mediaBySection.get("team")?.image ?? "",
-    teamInfoImageLabel: mediaBySection.get("team")?.label ?? "",
-    teamInfoImageCaption: mediaBySection.get("team")?.caption ?? "",
-    risksImage:      mediaBySection.get("risks")?.image ?? "",
-    risksImageLabel: mediaBySection.get("risks")?.label ?? "",
-    risksImageCaption: mediaBySection.get("risks")?.caption ?? "",
-    coverImageName:  "",
-    rewards:         seed.rewards.length > 0
-      ? seed.rewards.map((reward) => ({
-          id:          reward.id,
-          title:       reward.title,
-          amount:      String(reward.amount),
-          description: reward.description,
-          image:       reward.image ?? "",
+    story: seed.story,
+    videoUrl: seed.videoUrl ?? "",
+    storyBlocks: seed.storyBlocks?.length
+      ? seed.storyBlocks.map((b, i) => ({
+          id: b.id || `sb-${i}`,
+          title: b.title,
+          body: b.body,
+          image: b.image ?? "",
+          caption: b.caption ?? "",
+        }))
+      : [],
+    faq: seed.faq?.length
+      ? seed.faq.map((f, i) => ({
+          id: f.id || `faq-${i}`,
+          question: f.question,
+          answer: f.answer,
+        }))
+      : [],
+    timeline: seed.timeline?.length
+      ? seed.timeline.map((t, i) => ({
+          id: t.id || `tl-${i}`,
+          title: t.title,
+          date: t.date,
+          description: t.description,
+        }))
+      : [],
+    socialLinks: {
+      website: seed.socialLinks?.website ?? "",
+      facebook: seed.socialLinks?.facebook ?? "",
+      instagram: seed.socialLinks?.instagram ?? "",
+      discord: seed.socialLinks?.discord ?? "",
+      twitter: seed.socialLinks?.twitter ?? "",
+    },
+    rewards: seed.rewards.length > 0
+      ? seed.rewards.map((r) => ({
+          id: r.id,
+          title: r.title,
+          amount: String(r.amount),
+          description: r.description,
+          image: r.image ?? "",
         }))
       : EMPTY.rewards,
-    storyBlocks,
   };
 }
 
 function imagesFromSeed(seed?: EditableProjectSeed): SelectedProjectImage[] {
-  return (seed?.images ?? []).map((url, index) => ({
-    id: `existing-image-${index}-${url}`,
+  return (seed?.images ?? []).map((url, i) => ({
+    id: `existing-${i}-${url}`,
     preview: url,
     url,
   }));
 }
 
-function fileNameFromUrl(src: string, index: number): string {
-  try {
-    const url = new URL(src, "https://crowdfund.local");
-    const filename = url.pathname.split("/").filter(Boolean).pop();
-    return filename ? decodeURIComponent(filename) : `document-${index + 1}`;
-  } catch {
-    return `document-${index + 1}`;
-  }
-}
-
 function documentsFromSeed(seed?: EditableProjectSeed): SelectedProjectDocument[] {
-  return (seed?.documents ?? []).map((url, index) => ({
-    id:   `existing-document-${index}-${url}`,
-    name: fileNameFromUrl(url, index),
-    size: 0,
-    type: "",
-    url,
-  }));
+  return (seed?.documents ?? []).map((url, i) => {
+    const filename = (() => {
+      try {
+        const u = new URL(url, "https://crowdfund.local");
+        return u.pathname.split("/").filter(Boolean).pop() ?? `document-${i + 1}`;
+      } catch {
+        return `document-${i + 1}`;
+      }
+    })();
+    return { id: `existing-doc-${i}-${url}`, name: filename, size: 0, type: "", url };
+  });
 }
 
 /* ── Validation ─────────────────────────────────────────────────────────── */
 
-function validate(step: number, d: FormValues): ErrMap {
+function validate(step: number, d: FormValues, projectImages: SelectedProjectImage[]): ErrMap {
   const e: ErrMap = {};
 
   if (step === 1) {
-    if (!d.title.trim())                                    e.title    = "Төслийн нэр заавал бөглөх шаардлагатай";
-    else if (d.title.trim().length < 5)                     e.title    = "Нэр хэтэрхий богино (хамгийн багадаа 5 тэмдэгт)";
-    if (!d.blurb.trim())                                    e.blurb    = "Товч тайлбар заавал бөглөх шаардлагатай";
-    else if (d.blurb.trim().length < 20)                    e.blurb    = "Тайлбар хэтэрхий богино (хамгийн багадаа 20 тэмдэгт)";
-    if (!d.category)                                        e.category = "Ангилал сонгоно уу";
-    if (!d.location.trim())                                 e.location = "Байршил заавал бөглөх шаардлагатай";
+    if (!d.title.trim()) e.title = "Төслийн нэр заавал бөглөх шаардлагатай";
+    else if (d.title.trim().length < 5) e.title = "Нэр хэтэрхий богино (хамгийн багадаа 5 тэмдэгт)";
+    if (!d.blurb.trim()) e.blurb = "Товч тайлбар заавал бөглөх шаардлагатай";
+    else if (d.blurb.trim().length < 20) e.blurb = "Тайлбар хэтэрхий богино (хамгийн багадаа 20 тэмдэгт)";
+    if (!d.category) e.category = "Ангилал сонгоно уу";
+    if (!d.location.trim()) e.location = "Байршил заавал бөглөх шаардлагатай";
   }
 
   if (step === 2) {
-    if (!d.goal)                                            e.goal            = "Санхүүжилтийн зорилго заавал бөглөх шаардлагатай";
+    if (!d.goal) e.goal = "Санхүүжилтийн зорилго заавал бөглөх шаардлагатай";
     else if (isNaN(Number(d.goal)) || Number(d.goal) < MIN_PROJECT_GOAL)
-                                                            e.goal            = "Хамгийн бага зорилго ₮10 байна";
-    if (!d.duration)                                        e.duration        = "Хугацаа сонгоно уу";
-    if (!d.bankName)                                        e.bankName        = "Банк сонгоно уу";
-    if (!d.bankAccount.trim())                              e.bankAccount     = "Дансны дугаар заавал бөглөх шаардлагатай";
+      e.goal = "Хамгийн бага зорилго ₮10 байна";
+    if (!d.duration) e.duration = "Хугацаа сонгоно уу";
+    if (!d.bankName) e.bankName = "Банк сонгоно уу";
+    if (!d.bankAccount.trim()) e.bankAccount = "Дансны дугаар заавал бөглөх шаардлагатай";
     else if (!/^\d{8,16}$/.test(d.bankAccount.replace(/\s/g, "")))
-                                                            e.bankAccount     = "Дансны дугаар буруу (8–16 тоон тэмдэгт)";
-    if (!d.bankAccountName.trim())                          e.bankAccountName = "Данс эзэмшигчийн нэр заавал бөглөх шаардлагатай";
+      e.bankAccount = "Дансны дугаар буруу (8–16 тоон тэмдэгт)";
+    if (!d.bankAccountName.trim()) e.bankAccountName = "Данс эзэмшигчийн нэр заавал бөглөх шаардлагатай";
   }
 
   if (step === 3) {
-    if (!d.story.trim())                                    e.story = "Дэлгэрэнгүй тайлбар заавал бөглөх шаардлагатай";
-    else if (d.story.trim().length < 100)                   e.story = "Тайлбар хэтэрхий богино (хамгийн багадаа 100 тэмдэгт)";
-    if (!d.purpose.trim())                                  e.purpose = "Төслийн зорилго заавал бөглөнө үү";
-    else if (d.purpose.trim().length < 20)                  e.purpose = "Зорилгоо арай дэлгэрэнгүй бичнэ үү";
-    if (!d.fundingUsage.trim())                             e.fundingUsage = "Хөрөнгийг хэрхэн ашиглахаа бичнэ үү";
-    else if (d.fundingUsage.trim().length < 20)             e.fundingUsage = "Хөрөнгийн ашиглалтаа арай дэлгэрэнгүй бичнэ үү";
-    if (!d.teamInfo.trim())                                 e.teamInfo = "Багийн тухай мэдээлэл заавал бөглөнө үү";
-    else if (d.teamInfo.trim().length < 20)                 e.teamInfo = "Багийн мэдээллээ арай дэлгэрэнгүй бичнэ үү";
-    if (!d.risks.trim())                                    e.risks = "Эрсдэл, сорилтоо бичнэ үү";
-    else if (d.risks.trim().length < 20)                    e.risks = "Эрсдэлийн хэсгийг арай дэлгэрэнгүй бичнэ үү";
-    if (d.videoUrl.trim() && !isSupportedVideoUrl(d.videoUrl))
-                                                            e.videoUrl = "YouTube, Vimeo эсвэл шууд MP4/WEBM видео линк оруулна уу";
-
-    if (d.storyBlocks.length < MIN_STORY_BLOCKS) {
-      e.storyBlocks = `Хамгийн багадаа ${MIN_STORY_BLOCKS} дэлгэрэнгүй блок оруулна уу`;
-    }
-    if (d.storyBlocks.length > MAX_STORY_BLOCKS) {
-      e.storyBlocks = `Хамгийн ихдээ ${MAX_STORY_BLOCKS} дэлгэрэнгүй блок оруулна уу`;
-    }
-    d.storyBlocks.forEach((block, index) => {
-      if (!block.image.trim()) e[`sbImage${index}`] = "Зураг оруулна уу";
-      if (!block.title.trim()) e[`sbTitle${index}`] = "Гарчиг оруулна уу";
-      else if (block.title.trim().length < 3) e[`sbTitle${index}`] = "Гарчиг арай богино байна";
-      if (!block.body.trim()) e[`sbBody${index}`] = "Мэдээлэл оруулна уу";
-      else if (block.body.trim().length < 20) e[`sbBody${index}`] = "Мэдээллээ арай дэлгэрэнгүй бичнэ үү";
+    if (!d.story.trim()) e.story = "Дэлгэрэнгүй тайлбар заавал бөглөх шаардлагатай";
+    else if (d.story.trim().length < 50) e.story = "Тайлбар хэтэрхий богино (хамгийн багадаа 50 тэмдэгт)";
+    d.storyBlocks.forEach((block, i) => {
+      if (!block.image.trim()) e[`sbImage${i}`] = "Зураг оруулна уу";
+      if (!block.title.trim()) e[`sbTitle${i}`] = "Гарчиг оруулна уу";
+      else if (block.title.trim().length < 3) e[`sbTitle${i}`] = "Гарчиг арай богино байна";
+      if (!block.body.trim()) e[`sbBody${i}`] = "Мэдээлэл оруулна уу";
+      else if (block.body.trim().length < 20) e[`sbBody${i}`] = "Мэдээллээ арай дэлгэрэнгүй бичнэ үү";
+    });
+    d.faq.forEach((f, i) => {
+      if (!f.question.trim()) e[`faqQ${i}`] = "Асуулт бичнэ үү";
+      if (!f.answer.trim()) e[`faqA${i}`] = "Хариулт бичнэ үү";
+    });
+    d.timeline.forEach((t, i) => {
+      if (!t.title.trim()) e[`tlTitle${i}`] = "Гарчиг бичнэ үү";
     });
   }
 
   if (step === 4) {
+    if (projectImages.length === 0) e.coverImages = "1-8 зураг оруулна уу";
+    if (d.videoUrl.trim() && !isSupportedVideoUrl(d.videoUrl))
+      e.videoUrl = "YouTube, Vimeo эсвэл шууд MP4/WEBM видео линк оруулна уу";
+  }
+
+  if (step === 5) {
     d.rewards.forEach((r, i) => {
-      if (!r.title.trim())      e[`rt${i}`] = "Урамшуулалын нэр оруулна уу";
-      if (!r.amount)            e[`ra${i}`] = "Дүн оруулна уу";
+      if (!r.title.trim()) e[`rt${i}`] = "Урамшуулалын нэр оруулна уу";
+      if (!r.amount) e[`ra${i}`] = "Дүн оруулна уу";
       else if (isNaN(Number(r.amount)) || Number(r.amount) < MIN_REWARD_AMOUNT)
-                                e[`ra${i}`] = "Хамгийн бага дүн ₮10";
+        e[`ra${i}`] = "Хамгийн бага дүн ₮10";
       if (!r.description.trim()) e[`rd${i}`] = "Тайлбар оруулна уу";
     });
   }
@@ -457,7 +373,7 @@ function validate(step: number, d: FormValues): ErrMap {
   return e;
 }
 
-/* ── Primitive UI components ────────────────────────────────────────────── */
+/* ── UI Primitives ──────────────────────────────────────────────────────── */
 
 function Label({ htmlFor, children, required }: {
   htmlFor: string;
@@ -500,7 +416,7 @@ const base = [
   "placeholder:text-slate-400 transition-colors duration-150",
   "focus:outline-none focus:ring-2 focus:ring-offset-0",
 ].join(" ");
-const ok  = "border-slate-200 bg-white hover:border-blue-300 focus:ring-blue-500 focus:border-transparent";
+const ok = "border-slate-200 bg-white hover:border-blue-300 focus:ring-blue-500 focus:border-transparent";
 const bad = "border-red-300 bg-red-50/60 focus:ring-red-400 focus:border-transparent";
 
 function FInput({ id, type = "text", value, onChange, placeholder, error, prefix }: {
@@ -512,7 +428,6 @@ function FInput({ id, type = "text", value, onChange, placeholder, error, prefix
   error?: string;
   prefix?: string;
 }) {
-  const cls = cn(base, error ? bad : ok, prefix && "pl-10");
   return (
     <div className={prefix ? "relative" : undefined}>
       {prefix && (
@@ -522,7 +437,8 @@ function FInput({ id, type = "text", value, onChange, placeholder, error, prefix
       )}
       <input id={id} type={type} value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} className={cls} />
+        placeholder={placeholder}
+        className={cn(base, error ? bad : ok, prefix && "pl-10")} />
     </div>
   );
 }
@@ -564,265 +480,79 @@ function FTextarea({ id, value, onChange, placeholder, error, rows = 6 }: {
   );
 }
 
-/* ── Image upload with live preview ─────────────────────────────────────── */
+/* ── Markdown Editor ────────────────────────────────────────────────────── */
 
-interface ImageUploadProps {
-  images: SelectedProjectImage[];
+function MarkdownEditor({ id, value, onChange, placeholder, error }: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
   error?: string;
-  uploading: boolean;
-  onChange: (images: SelectedProjectImage[]) => void;
-  onUploadingChange: (uploading: boolean) => void;
-}
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
 
-type ImageUploadMode =
-  | { type: "append" }
-  | { type: "replaceAll" }
-  | { type: "replaceOne"; index: number };
-
-function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: ImageUploadProps) {
-  const ref = useRef<HTMLInputElement>(null);
-  const uploadModeRef = useRef<ImageUploadMode>({ type: "append" });
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  function openPicker(mode: ImageUploadMode) {
-    uploadModeRef.current = mode;
-    ref.current?.click();
+  function insert(before: string, after = "", defaultText = "") {
+    const ta = ref.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = value.slice(start, end) || defaultText;
+    const next = value.slice(0, start) + before + selected + after + value.slice(end);
+    onChange(next);
+    setTimeout(() => {
+      ta.focus();
+      const cursor = start + before.length + selected.length;
+      ta.setSelectionRange(cursor, cursor);
+    }, 0);
   }
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const mode = uploadModeRef.current;
-    uploadModeRef.current = { type: "append" };
-
-    const maxFiles =
-      mode.type === "replaceOne" ? 1 :
-      mode.type === "replaceAll" ? MAX_PROJECT_IMAGES :
-      MAX_PROJECT_IMAGES - images.length;
-    const files = Array.from(e.target.files ?? []);
-    let nextError: string | null = null;
-
-    const validFiles = files.filter((file) => {
-      if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
-        nextError ??= "Зөвхөн PNG, JPG, WEBP зураг оруулна уу.";
-        return false;
-      }
-
-      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-        nextError ??= `Нэг зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`;
-        return false;
-      }
-
-      return true;
-    });
-
-    setLocalError(nextError);
-    e.target.value = "";
-
-    const filesToUpload = validFiles.slice(0, maxFiles);
-    if (filesToUpload.length === 0) return;
-
-    onUploadingChange(true);
-
-    try {
-      const uploaded = await Promise.all(filesToUpload.map(async (file) => {
-        const fd = new FormData();
-        fd.append("file", file);
-
-        try {
-          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-          if (!uploadRes.ok) {
-            throw new Error(await uploadErrorMessage(uploadRes));
-          }
-
-          const json = await uploadRes.json() as { url: string };
-          return {
-            id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-            preview: json.url,
-            url: json.url,
-          };
-        } catch (err) {
-          throw err;
-        }
-      }));
-
-      if (mode.type === "replaceAll") {
-        images.forEach((image) => {
-          if (image.preview.startsWith("blob:")) URL.revokeObjectURL(image.preview);
-        });
-        onChange(uploaded.slice(0, MAX_PROJECT_IMAGES));
-      } else if (mode.type === "replaceOne") {
-        const replaced = images[mode.index];
-        if (replaced?.preview.startsWith("blob:")) URL.revokeObjectURL(replaced.preview);
-        onChange(images.map((image, index) => index === mode.index ? uploaded[0] : image));
-      } else {
-        onChange([...images, ...uploaded].slice(0, MAX_PROJECT_IMAGES));
-      }
-    } catch (err) {
-      const message = err instanceof Error && err.message !== "Upload failed"
-        ? err.message
-        : "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу.";
-      setLocalError(message);
-    } finally {
-      onUploadingChange(false);
-    }
+  function insertLine(prefix: string) {
+    const ta = ref.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+    const next = value.slice(0, lineStart) + prefix + value.slice(lineStart);
+    onChange(next);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + prefix.length, start + prefix.length);
+    }, 0);
   }
 
-  function handleRemove(id: string) {
-    const removed = images.find((image) => image.id === id);
-    if (removed?.preview.startsWith("blob:")) URL.revokeObjectURL(removed.preview);
-    onChange(images.filter((image) => image.id !== id));
-  }
-
-  function handleMakeCover(index: number) {
-    if (index <= 0) return;
-    const selected = images[index];
-    onChange([selected, ...images.filter((_, currentIndex) => currentIndex !== index)]);
-  }
-
-  function handleClearAll() {
-    images.forEach((image) => {
-      if (image.preview.startsWith("blob:")) URL.revokeObjectURL(image.preview);
-    });
-    onChange([]);
-  }
-
-  const displayError = localError ?? error;
+  const toolBtn = "px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors";
 
   return (
-    <>
-      <input
+    <div>
+      <div className={cn(
+        "flex flex-wrap gap-0.5 px-2 py-1.5 border border-b-0 rounded-t-xl bg-slate-50",
+        error ? "border-red-300" : "border-slate-200"
+      )}>
+        <button type="button" onClick={() => insert("**", "**", "bold текст")} className={cn(toolBtn, "font-black")}>B</button>
+        <button type="button" onClick={() => insertLine("## ")} className={toolBtn}>H2</button>
+        <button type="button" onClick={() => insertLine("### ")} className={toolBtn}>H3</button>
+        <div className="w-px h-5 bg-slate-200 self-center mx-1" />
+        <button type="button" onClick={() => insertLine("- ")} className={toolBtn}>• Жагсаалт</button>
+        <button type="button" onClick={() => insertLine("1. ")} className={toolBtn}>1. Дугаар</button>
+        <div className="w-px h-5 bg-slate-200 self-center mx-1" />
+        <button type="button" onClick={() => insert("[", "](https://)", "линк текст")} className={toolBtn}>Линк</button>
+      </div>
+      <textarea
         ref={ref}
-        id="coverImages"
-        type="file"
-        multiple
-        accept={ACCEPTED_IMAGE_INPUT}
-        disabled={uploading}
-        className="hidden"
-        onChange={handleFileSelect}
+        id={id}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={9}
+        className={cn(
+          base, error ? bad : ok, "resize-y rounded-t-none",
+          "font-mono text-sm"
+        )}
       />
-
-      {uploading && (
-        <p className="mb-2 text-xs font-semibold text-blue-600">Зураг хуулж байна...</p>
-      )}
-
-      {images.length > 0 ? (
-        /* ── Preview state ── */
-        <div className={cn(
-          "rounded-2xl border-2 bg-slate-50 p-3",
-          displayError ? "border-red-300" : "border-emerald-200"
-        )}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={images[0]?.preview ?? ""}
-            alt="Нүүр зургийн урьдчилан харах"
-            className="w-full h-52 object-cover"
-          />
-          {images.length > 1 && (
-            <div className="grid grid-cols-3 gap-2 p-3 bg-white">
-              {images.map((image, index) => (
-                <div
-                  key={image.id}
-                  className="relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-100 group/thumb"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.preview} alt="" className="w-full h-full object-cover" />
-                  <span className="absolute left-1.5 top-1.5 rounded-full bg-blue-700 px-2 py-0.5 text-[10px] font-bold text-white">
-                    {index === 0 ? "Нүүр" : index + 1}
-                  </span>
-                  <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover/thumb:opacity-100 group-focus-within/thumb:opacity-100">
-                    {index > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleMakeCover(index)}
-                        className="rounded-md bg-white/95 px-1.5 py-1 text-[10px] font-bold text-blue-700 shadow-sm"
-                      >
-                        Нүүр
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => openPicker({ type: "replaceOne", index })}
-                      disabled={uploading}
-                      className="rounded-md bg-white/95 px-1.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm disabled:opacity-50"
-                    >
-                      Солих
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(image.id)}
-                      disabled={uploading}
-                      className="rounded-md bg-red-600 px-1.5 py-1 text-[10px] font-bold text-white shadow-sm disabled:opacity-50"
-                    >
-                      Устгах
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Footer bar */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-50 border-t border-emerald-100">
-            <div className="flex items-center gap-2 min-w-0">
-              <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-xs font-semibold text-emerald-700 truncate">
-                {images.length} / {MAX_PROJECT_IMAGES} зураг сонгосон
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 ml-3">
-              {images.length < MAX_PROJECT_IMAGES && (
-                <button
-                  type="button"
-                  onClick={() => openPicker({ type: "append" })}
-                  disabled={uploading}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-                >
-                  Зураг нэмэх
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => openPicker({ type: "replaceAll" })}
-                disabled={uploading}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                Зураг солих
-              </button>
-              <button
-                type="button"
-                onClick={handleClearAll}
-                disabled={uploading}
-                className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
-              >
-                Бүгдийг устгах
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ── Empty / pick state ── */
-        <button
-          type="button"
-          onClick={() => openPicker({ type: "append" })}
-          disabled={uploading}
-          className="w-full border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-2xl p-8 text-center transition-all duration-200 group"
-        >
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
-              <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-              </svg>
-            </div>
-            <p className="text-sm font-semibold text-slate-600">1-3 зураг оруулахын тулд дарна уу</p>
-            <p className="text-xs text-slate-400">PNG, JPG, WEBP · нэг зураг {MAX_IMAGE_UPLOAD_MB} MB хүртэл</p>
-          </div>
-        </button>
-      )}
-      <ErrMsg msg={displayError} />
-    </>
+    </div>
   );
 }
+
+/* ── SingleImageUpload ──────────────────────────────────────────────────── */
 
 function SingleImageUpload({ id, value, onChange, emptyLabel = "Зураг оруулах", badgeLabel = "Зураг" }: {
   id: string;
@@ -839,37 +569,19 @@ function SingleImageUpload({ id, value, onChange, emptyLabel = "Зураг ор�
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-
-    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
-      setLocalError("Зөвхөн PNG, JPG, WEBP зураг оруулна уу.");
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      setLocalError(`Нэг зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`);
-      return;
-    }
-
+    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) { setLocalError("Зөвхөн PNG, JPG, WEBP зураг оруулна уу."); return; }
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) { setLocalError(`Нэг зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`); return; }
     setLocalError(null);
     setUploading(true);
-
     try {
       const fd = new FormData();
       fd.append("file", file);
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!uploadRes.ok) {
-        throw new Error(await uploadErrorMessage(uploadRes));
-      }
-
-      const json = await uploadRes.json() as { url: string };
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await uploadErrorMessage(res));
+      const json = await res.json() as { url: string };
       onChange(json.url);
     } catch (err) {
-      setLocalError(
-        err instanceof Error && err.message !== "Upload failed"
-          ? err.message
-          : "Зураг upload хийхэд алдаа гарлаа. Дахин оролдоно уу."
-      );
+      setLocalError(err instanceof Error && err.message !== "Upload failed" ? err.message : "Зураг upload хийхэд алдаа гарлаа.");
     } finally {
       setUploading(false);
     }
@@ -877,80 +589,164 @@ function SingleImageUpload({ id, value, onChange, emptyLabel = "Зураг ор�
 
   return (
     <div>
-      <input
-        ref={ref}
-        id={id}
-        type="file"
-        accept={ACCEPTED_IMAGE_INPUT}
-        disabled={uploading}
-        className="hidden"
-        onChange={handleFileSelect}
-      />
-
+      <input ref={ref} id={id} type="file" accept={ACCEPTED_IMAGE_INPUT} disabled={uploading} className="hidden" onChange={handleFileSelect} />
       {value ? (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm">
           <div className="relative aspect-[4/3]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="" className="h-full w-full object-cover" />
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-slate-950/85 to-transparent p-3">
-              <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">
-                {badgeLabel}
-              </span>
+              <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">{badgeLabel}</span>
               <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => ref.current?.click()}
-                  disabled={uploading}
-                  className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm disabled:opacity-60"
-                >
-                  Солих
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange("")}
-                  disabled={uploading}
-                  className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-60"
-                >
-                  Устгах
-                </button>
+                <button type="button" onClick={() => ref.current?.click()} disabled={uploading} className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm disabled:opacity-60">Солих</button>
+                <button type="button" onClick={() => onChange("")} disabled={uploading} className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-60">Устгах</button>
               </div>
             </div>
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => ref.current?.click()}
-          disabled={uploading}
-          className="grid aspect-[4/3] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-70"
-        >
+        <button type="button" onClick={() => ref.current?.click()} disabled={uploading}
+          className="grid aspect-[4/3] w-full place-items-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-70">
           <span>
             <span className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7}
-                  d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0021.75 18V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0021.75 18V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
               </svg>
             </span>
-            <span className="block text-sm font-bold text-slate-700">
-              {uploading ? "Зураг хуулж байна..." : emptyLabel}
-            </span>
+            <span className="block text-sm font-bold text-slate-700">{uploading ? "Зураг хуулж байна..." : emptyLabel}</span>
             <span className="mt-1 block text-xs text-slate-400">PNG, JPG, WEBP</span>
           </span>
         </button>
       )}
-
       <ErrMsg msg={localError ?? undefined} />
     </div>
   );
 }
 
-interface DocumentUploadProps {
-  documents: SelectedProjectDocument[];
+/* ── GalleryUpload (1-8 images) ─────────────────────────────────────────── */
+
+type UploadMode = { type: "append" } | { type: "replaceAll" } | { type: "replaceOne"; index: number };
+
+function GalleryUpload({ images, error, uploading, onChange, onUploadingChange }: {
+  images: SelectedProjectImage[];
   error?: string;
   uploading: boolean;
-  onChange: (documents: SelectedProjectDocument[]) => void;
-  onUploadingChange: (uploading: boolean) => void;
+  onChange: (images: SelectedProjectImage[]) => void;
+  onUploadingChange: (v: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const modeRef = useRef<UploadMode>({ type: "append" });
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  function openPicker(mode: UploadMode) {
+    modeRef.current = mode;
+    ref.current?.click();
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const mode = modeRef.current;
+    modeRef.current = { type: "append" };
+    const maxFiles = mode.type === "replaceOne" ? 1 : mode.type === "replaceAll" ? MAX_PROJECT_IMAGES : MAX_PROJECT_IMAGES - images.length;
+    const files = Array.from(e.target.files ?? []);
+    let nextError: string | null = null;
+    const valid = files.filter(f => {
+      if (!ACCEPTED_IMAGE_TYPE_SET.has(f.type)) { nextError ??= "Зөвхөн PNG, JPG, WEBP зураг оруулна уу."; return false; }
+      if (f.size > MAX_IMAGE_UPLOAD_BYTES) { nextError ??= `Нэг зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`; return false; }
+      return true;
+    });
+    setLocalError(nextError);
+    e.target.value = "";
+    const toUpload = valid.slice(0, maxFiles);
+    if (!toUpload.length) return;
+    onUploadingChange(true);
+    try {
+      const uploaded = await Promise.all(toUpload.map(async file => {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(await uploadErrorMessage(res));
+        const json = await res.json() as { url: string };
+        return { id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`, preview: json.url, url: json.url };
+      }));
+      if (mode.type === "replaceAll") onChange(uploaded.slice(0, MAX_PROJECT_IMAGES));
+      else if (mode.type === "replaceOne") onChange(images.map((img, i) => i === mode.index ? uploaded[0] : img));
+      else onChange([...images, ...uploaded].slice(0, MAX_PROJECT_IMAGES));
+    } catch (err) {
+      setLocalError(err instanceof Error && err.message !== "Upload failed" ? err.message : "Зураг upload хийхэд алдаа гарлаа.");
+    } finally {
+      onUploadingChange(false);
+    }
+  }
+
+  function handleRemove(id: string) {
+    onChange(images.filter(img => img.id !== id));
+  }
+
+  function handleMakeCover(i: number) {
+    if (i <= 0) return;
+    onChange([images[i], ...images.filter((_, ci) => ci !== i)]);
+  }
+
+  const displayError = localError ?? error;
+
+  return (
+    <>
+      <input ref={ref} id="galleryUpload" type="file" multiple accept={ACCEPTED_IMAGE_INPUT} disabled={uploading} className="hidden" onChange={handleFileSelect} />
+      {uploading && <p className="mb-2 text-xs font-semibold text-blue-600 animate-pulse">Зураг хуулж байна...</p>}
+      {images.length > 0 ? (
+        <div className={cn("rounded-2xl border-2 overflow-hidden bg-slate-50", displayError ? "border-red-300" : "border-emerald-200")}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={images[0].preview} alt="Нүүр зураг" className="w-full h-56 object-cover" />
+          <div className="p-3">
+            <div className="grid grid-cols-4 gap-2">
+              {images.map((img, i) => (
+                <div key={img.id} className="relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 group/thumb">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                  <span className="absolute left-1 top-1 rounded-full bg-blue-700 px-1.5 py-0.5 text-[9px] font-bold text-white">{i === 0 ? "Нүүр" : i + 1}</span>
+                  <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                    {i > 0 && (
+                      <button type="button" onClick={() => handleMakeCover(i)} className="w-full rounded bg-white/90 py-0.5 text-[10px] font-bold text-blue-700">Нүүр</button>
+                    )}
+                    <button type="button" onClick={() => openPicker({ type: "replaceOne", index: i })} disabled={uploading} className="w-full rounded bg-white/90 py-0.5 text-[10px] font-bold text-slate-700">Солих</button>
+                    <button type="button" onClick={() => handleRemove(img.id)} disabled={uploading} className="w-full rounded bg-red-600 py-0.5 text-[10px] font-bold text-white">Устгах</button>
+                  </div>
+                </div>
+              ))}
+              {images.length < MAX_PROJECT_IMAGES && (
+                <button type="button" onClick={() => openPicker({ type: "append" })} disabled={uploading}
+                  className="aspect-square rounded-xl border-2 border-dashed border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center justify-center text-blue-500">
+                  <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  <span className="text-[10px] font-bold">Нэмэх</span>
+                </button>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between px-1">
+              <span className="text-xs font-semibold text-emerald-700">{images.length} / {MAX_PROJECT_IMAGES} зураг</span>
+              <button type="button" onClick={() => openPicker({ type: "replaceAll" })} disabled={uploading} className="text-xs text-blue-600 hover:text-blue-800 font-semibold">Бүгдийг солих</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => openPicker({ type: "append" })} disabled={uploading}
+          className={cn("w-full border-2 border-dashed rounded-2xl p-10 text-center transition-all group", displayError ? "border-red-300 bg-red-50/40" : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30")}>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+              <svg className="w-7 h-7 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-slate-600">1–{MAX_PROJECT_IMAGES} зураг оруулахын тулд дарна уу</p>
+            <p className="text-xs text-slate-400">PNG, JPG, WEBP · нэг зураг {MAX_IMAGE_UPLOAD_MB} MB хүртэл</p>
+          </div>
+        </button>
+      )}
+      <ErrMsg msg={displayError} />
+    </>
+  );
 }
+
+/* ── DocumentUpload ─────────────────────────────────────────────────────── */
 
 function formatFileSize(size: number): string {
   if (size <= 0) return "Хадгалсан файл";
@@ -959,13 +755,13 @@ function formatFileSize(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function DocumentUpload({
-  documents,
-  error,
-  uploading,
-  onChange,
-  onUploadingChange,
-}: DocumentUploadProps) {
+function DocumentUpload({ documents, error, uploading, onChange, onUploadingChange }: {
+  documents: SelectedProjectDocument[];
+  error?: string;
+  uploading: boolean;
+  onChange: (docs: SelectedProjectDocument[]) => void;
+  onUploadingChange: (v: boolean) => void;
+}) {
   const ref = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -973,234 +769,117 @@ function DocumentUpload({
     const remaining = MAX_PROJECT_DOCUMENTS - documents.length;
     const files = Array.from(e.target.files ?? []);
     let nextError: string | null = null;
-
-    const validFiles = files.filter((file) => {
-      if (!ACCEPTED_DOCUMENT_TYPE_SET.has(file.type)) {
-        nextError ??= "PDF, DOC, DOCX, PNG, JPG, WEBP баримт оруулна уу.";
-        return false;
-      }
-
-      if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-        nextError ??= `Нэг файл ${MAX_DOCUMENT_UPLOAD_MB} MB-аас их байна.`;
-        return false;
-      }
-
+    const valid = files.filter(f => {
+      if (!ACCEPTED_DOCUMENT_TYPE_SET.has(f.type)) { nextError ??= "PDF, DOC, DOCX, PNG, JPG, WEBP баримт оруулна уу."; return false; }
+      if (f.size > MAX_DOCUMENT_UPLOAD_BYTES) { nextError ??= `Нэг файл ${MAX_DOCUMENT_UPLOAD_MB} MB-аас их байна.`; return false; }
       return true;
     });
-
     setLocalError(nextError);
     e.target.value = "";
-
-    const filesToUpload = validFiles.slice(0, remaining);
-    if (filesToUpload.length === 0) return;
-
+    const toUpload = valid.slice(0, remaining);
+    if (!toUpload.length) return;
     onUploadingChange(true);
-
     try {
-      const uploaded = await Promise.all(filesToUpload.map(async (file) => {
+      const uploaded = await Promise.all(toUpload.map(async file => {
         const fd = new FormData();
         fd.append("file", file);
-
-        const uploadRes = await fetch("/api/upload/document", { method: "POST", body: fd });
-        if (!uploadRes.ok) {
-          throw new Error(await uploadErrorMessage(uploadRes));
-        }
-
-        const json = await uploadRes.json() as {
-          url: string;
-          name?: string;
-          size?: number;
-          type?: string;
-        };
-
-        return {
-          id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-          name: json.name ?? file.name,
-          size: json.size ?? file.size,
-          type: json.type ?? file.type,
-          url: json.url,
-        };
+        const res = await fetch("/api/upload/document", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(await uploadErrorMessage(res));
+        const json = await res.json() as { url: string; name?: string; size?: number; type?: string };
+        return { id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`, name: json.name ?? file.name, size: json.size ?? file.size, type: json.type ?? file.type, url: json.url };
       }));
-
       onChange([...documents, ...uploaded]);
     } catch (err) {
-      const message = err instanceof Error && err.message !== "Upload failed"
-        ? err.message
-        : "Баримт upload хийхэд алдаа гарлаа. Дахин оролдоно уу.";
-      setLocalError(message);
+      setLocalError(err instanceof Error && err.message !== "Upload failed" ? err.message : "Баримт upload хийхэд алдаа гарлаа.");
     } finally {
       onUploadingChange(false);
     }
-  }
-
-  function handleRemove(id: string) {
-    onChange(documents.filter((document) => document.id !== id));
   }
 
   const displayError = localError ?? error;
 
   return (
     <>
-      <input
-        ref={ref}
-        id="projectDocuments"
-        type="file"
-        multiple
-        accept={ACCEPTED_DOCUMENT_INPUT}
-        disabled={uploading}
-        className="hidden"
-        onChange={handleFileSelect}
-      />
-
-      {uploading && (
-        <p className="mb-2 text-xs font-semibold text-blue-600">Баримт хуулж байна...</p>
-      )}
-
+      <input ref={ref} id="projectDocuments" type="file" multiple accept={ACCEPTED_DOCUMENT_INPUT} disabled={uploading} className="hidden" onChange={handleFileSelect} />
+      {uploading && <p className="mb-2 text-xs font-semibold text-blue-600">Баримт хуулж байна...</p>}
       {documents.length > 0 ? (
-        <div className={cn(
-          "rounded-2xl border bg-slate-50 p-3 space-y-3",
-          displayError ? "border-red-300" : "border-slate-200"
-        )}>
-          <div className="space-y-2">
-            {documents.map((document, index) => (
-              <div
-                key={document.id}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2v6h6" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-800">
-                    {index + 1}. {document.name}
-                  </p>
-                  <p className="text-xs text-slate-400">{formatFileSize(document.size)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(document.id)}
-                  className="shrink-0 text-xs font-semibold text-red-500 hover:text-red-700"
-                >
-                  Устгах
-                </button>
+        <div className={cn("rounded-2xl border bg-slate-50 p-3 space-y-2", displayError ? "border-red-300" : "border-slate-200")}>
+          {documents.map((doc, i) => (
+            <div key={doc.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2v6h6" />
+                </svg>
               </div>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-            <span className="text-xs font-semibold text-slate-500">
-              {documents.length} / {MAX_PROJECT_DOCUMENTS} баримт хавсаргасан
-            </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-800">{i + 1}. {doc.name}</p>
+                <p className="text-xs text-slate-400">{formatFileSize(doc.size)}</p>
+              </div>
+              <button type="button" onClick={() => onChange(documents.filter(d => d.id !== doc.id))} className="shrink-0 text-xs font-semibold text-red-500 hover:text-red-700">Устгах</button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+            <span className="text-xs font-semibold text-slate-500">{documents.length} / {MAX_PROJECT_DOCUMENTS} баримт</span>
             {documents.length < MAX_PROJECT_DOCUMENTS && (
-              <button
-                type="button"
-                onClick={() => ref.current?.click()}
-                disabled={uploading}
-                className="text-xs font-bold text-blue-600 hover:text-blue-800 disabled:opacity-60"
-              >
-                Баримт нэмэх
-              </button>
+              <button type="button" onClick={() => ref.current?.click()} disabled={uploading} className="text-xs font-bold text-blue-600 hover:text-blue-800">Баримт нэмэх</button>
             )}
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => ref.current?.click()}
-          disabled={uploading}
-          className={cn(
-            "w-full rounded-2xl border-2 border-dashed px-4 py-5 text-left transition-colors",
-            displayError
-              ? "border-red-300 bg-red-50/60"
-              : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"
-          )}
-        >
+        <button type="button" onClick={() => ref.current?.click()} disabled={uploading}
+          className={cn("w-full rounded-2xl border-2 border-dashed px-4 py-5 text-left transition-colors", displayError ? "border-red-300 bg-red-50/60" : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40")}>
           <span className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 10-5.656-5.656l-6.586 6.586a6 6 0 108.486 8.486L20.5 13" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a4 4 0 10-5.656-5.656l-6.586 6.586a6 6 0 108.486 8.486L20.5 13" />
               </svg>
             </span>
             <span>
               <span className="block text-sm font-bold text-slate-800">Баримт бичиг хавсаргах</span>
-              <span className="mt-1 block text-xs leading-relaxed text-slate-500">
-                PDF, DOC, DOCX эсвэл зураг хэлбэрийн нотолгоо оруулна. Нэг файл {MAX_DOCUMENT_UPLOAD_MB} MB хүртэл.
-              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">PDF, DOC, DOCX эсвэл зураг · нэг файл {MAX_DOCUMENT_UPLOAD_MB} MB хүртэл.</span>
             </span>
           </span>
         </button>
       )}
-
       <ErrMsg msg={displayError ?? undefined} />
     </>
   );
 }
 
-/* ── Progress stepper ───────────────────────────────────────────────────── */
+/* ── Stepper (5 steps) ──────────────────────────────────────────────────── */
 
 function Stepper({ current }: { current: number }) {
   return (
     <div className="mb-6">
-      {/* Mobile — pill progress */}
       <div className="sm:hidden bg-white rounded-2xl px-5 py-4 shadow-card flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-            Алхам {current} / {STEPS.length}
-          </p>
-          <p className="text-base font-bold text-slate-900 mt-0.5">
-            {STEPS[current - 1].label}
-          </p>
+          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Алхам {current} / {STEPS.length}</p>
+          <p className="text-base font-bold text-slate-900 mt-0.5">{STEPS[current - 1].label}</p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           {STEPS.map(s => (
-            <div key={s.num} className={cn(
-              "h-1.5 rounded-full transition-all duration-300",
-              s.num < current  ? "bg-blue-800 w-6" :
-              s.num === current ? "bg-blue-600 w-10" :
-              "bg-slate-200 w-6"
-            )} />
+            <div key={s.num} className={cn("h-1.5 rounded-full transition-all duration-300", s.num < current ? "bg-blue-800 w-5" : s.num === current ? "bg-blue-600 w-8" : "bg-slate-200 w-5")} />
           ))}
         </div>
       </div>
-
-      {/* Desktop — circle stepper */}
-      <div className="hidden sm:flex items-center bg-white rounded-2xl px-8 py-5 shadow-card">
+      <div className="hidden sm:flex items-center bg-white rounded-2xl px-6 py-5 shadow-card">
         {STEPS.map((s, i) => (
           <div key={s.num} className="flex-1 flex items-center">
             <div className="flex flex-col items-center shrink-0">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center border-2 font-bold text-sm transition-all duration-300",
-                s.num < current
-                  ? "bg-blue-800 border-blue-800 text-white"
-                  : s.num === current
-                  ? "bg-white border-blue-800 text-blue-800 shadow-md"
-                  : "bg-white border-slate-200 text-slate-400"
-              )}>
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center border-2 font-bold text-sm transition-all duration-300",
+                s.num < current ? "bg-blue-800 border-blue-800 text-white" : s.num === current ? "bg-white border-blue-800 text-blue-800 shadow-md" : "bg-white border-slate-200 text-slate-400")}>
                 {s.num < current ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                 ) : s.num}
               </div>
-              <span className={cn(
-                "mt-2 text-xs font-semibold whitespace-nowrap",
-                s.num === current ? "text-blue-800" :
-                s.num < current  ? "text-slate-500" : "text-slate-400"
-              )}>
+              <span className={cn("mt-1.5 text-[11px] font-semibold whitespace-nowrap", s.num === current ? "text-blue-800" : s.num < current ? "text-slate-500" : "text-slate-400")}>
                 {s.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className="flex-1 mx-3 mb-5">
-                <div className={cn(
-                  "h-0.5 rounded-full transition-all duration-500",
-                  s.num < current ? "bg-blue-800" : "bg-slate-200"
-                )} />
+              <div className="flex-1 mx-2 mb-5">
+                <div className={cn("h-0.5 rounded-full transition-all duration-500", s.num < current ? "bg-blue-800" : "bg-slate-200")} />
               </div>
             )}
           </div>
@@ -1210,40 +889,33 @@ function Stepper({ current }: { current: number }) {
   );
 }
 
-/* ── Step 1 — Үндсэн мэдээлэл ───────────────────────────────────────────── */
+/* ── Step 1 — Үндсэн мэдээлэл ──────────────────────────────────────────── */
 
 function Step1({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) => void; e: ErrMap }) {
   return (
     <div className="space-y-6">
       <div>
         <Label htmlFor="title" required>Кампанийн гарчиг</Label>
-        <FInput id="title" value={d.title} onChange={v => set("title", v)}
-          placeholder="Жишээ: DreamFrame богино кино" error={e.title} />
+        <FInput id="title" value={d.title} onChange={v => set("title", v)} placeholder="Жишээ: DreamFrame богино кино" error={e.title} />
         <ErrMsg msg={e.title} />
-        {!e.title && <Hint>Project detail-ийн эхний дэлгэц дээр хамгийн томоор харагдана.</Hint>}
+        {!e.title && <Hint>Project card болон detail дэлгэц дээр хамгийн томоор харагдана.</Hint>}
       </div>
-
       <div>
         <Label htmlFor="blurb" required>Tagline / товч тайлбар</Label>
-        <FInput id="blurb" value={d.blurb} onChange={v => set("blurb", v)}
-          placeholder="Нэг өгүүлбэрт: юуг, хэнд, яагаад бүтээж байна вэ?" error={e.blurb} />
+        <FInput id="blurb" value={d.blurb} onChange={v => set("blurb", v)} placeholder="Нэг өгүүлбэрт: юуг, хэнд, яагаад бүтээж байна вэ?" error={e.blurb} />
         <ErrMsg msg={e.blurb} />
-        {!e.blurb && <Hint>Hero хэсэг болон project card дээр хамгийн түрүүнд уншигдана.</Hint>}
+        {!e.blurb && <Hint>Hero болон project card дээр хамгийн түрүүнд уншигдана.</Hint>}
       </div>
-
       <div>
         <Label htmlFor="category" required>Ангилал</Label>
-        <FSelect id="category" value={d.category} onChange={v => set("category", v)}
-          options={CATEGORIES} error={e.category} />
+        <FSelect id="category" value={d.category} onChange={v => set("category", v)} options={CATEGORIES} error={e.category} />
         <ErrMsg msg={e.category} />
       </div>
-
       <div>
         <Label htmlFor="location" required>Байршил</Label>
-        <FInput id="location" value={d.location} onChange={v => set("location", v)}
-          placeholder="Жишээ нь: Улаанбаатар, Монгол" error={e.location} />
+        <FInput id="location" value={d.location} onChange={v => set("location", v)} placeholder="Жишээ нь: Улаанбаатар, Монгол" error={e.location} />
         <ErrMsg msg={e.location} />
-        {!e.location && <Hint>Төслийн баг хаанаас ажиллаж байгааг бичнэ үү.</Hint>}
+        {!e.location && <Hint>Баг хаанаас ажиллаж байгааг бичнэ үү.</Hint>}
       </div>
     </div>
   );
@@ -1256,49 +928,36 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
     <div className="space-y-6">
       <div>
         <Label htmlFor="goal" required>Санхүүжилтийн зорилго</Label>
-        <FInput id="goal" type="number" value={d.goal} onChange={v => set("goal", v)}
-          placeholder="10" error={e.goal} prefix="₮" />
+        <FInput id="goal" type="number" value={d.goal} onChange={v => set("goal", v)} placeholder="10" error={e.goal} prefix="₮" />
         <ErrMsg msg={e.goal} />
-        {!e.goal && <Hint>Хэрэгжүүлэхэд үнэхээр хэрэгтэй дүнгээ тавь. Илүү бодитой байх тусам итгэл төрнө.</Hint>}
+        {!e.goal && <Hint>Хэрэгжүүлэхэд үнэхээр хэрэгтэй дүнгээ тавь. Бодитой байх тусам итгэл төрнө.</Hint>}
       </div>
-
       <div>
         <Label htmlFor="duration" required>Кампанит ажлын хугацаа</Label>
-        <FSelect id="duration" value={d.duration} onChange={v => set("duration", v)}
-          options={DURATIONS} error={e.duration} />
+        <FSelect id="duration" value={d.duration} onChange={v => set("duration", v)} options={DURATIONS} error={e.duration} />
         <ErrMsg msg={e.duration} />
-        {!e.duration && <Hint>Хэт урт хугацаа сонирхол сулруулдаг. 14-30 хоног ихэнх төсөлд тохиромжтой.</Hint>}
+        {!e.duration && <Hint>14–30 хоног ихэнх төсөлд тохиромжтой.</Hint>}
       </div>
-
-      {/* Bank info card */}
       <div className="bg-slate-50 rounded-2xl p-5 space-y-5 border border-slate-100">
         <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
           <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
           Банкны мэдээлэл
         </p>
-
         <div>
           <Label htmlFor="bankName" required>Банкны нэр</Label>
-          <FSelect id="bankName" value={d.bankName} onChange={v => set("bankName", v)}
-            options={BANKS} error={e.bankName} />
+          <FSelect id="bankName" value={d.bankName} onChange={v => set("bankName", v)} options={BANKS} error={e.bankName} />
           <ErrMsg msg={e.bankName} />
         </div>
-
         <div>
           <Label htmlFor="bankAccount" required>Дансны дугаар</Label>
-          <FInput id="bankAccount" value={d.bankAccount} onChange={v => set("bankAccount", v)}
-            placeholder="1234567890" error={e.bankAccount} />
+          <FInput id="bankAccount" value={d.bankAccount} onChange={v => set("bankAccount", v)} placeholder="1234567890" error={e.bankAccount} />
           <ErrMsg msg={e.bankAccount} />
         </div>
-
         <div>
           <Label htmlFor="bankAccountName" required>Данс эзэмшигчийн нэр</Label>
-          <FInput id="bankAccountName" value={d.bankAccountName}
-            onChange={v => set("bankAccountName", v)}
-            placeholder="Данс дээрх нэртэй яг адил бичнэ" error={e.bankAccountName} />
+          <FInput id="bankAccountName" value={d.bankAccountName} onChange={v => set("bankAccountName", v)} placeholder="Данс дээрх нэртэй яг адил бичнэ" error={e.bankAccountName} />
           <ErrMsg msg={e.bankAccountName} />
           <Hint>Админ шалгахдаа энэ мэдээллийг тулгана.</Hint>
         </div>
@@ -1307,319 +966,347 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
   );
 }
 
-function StoryMediaFields({ d, set }: {
-  d: FormValues;
-  set: (k: StringKey, v: string) => void;
+/* ── Story Blocks ───────────────────────────────────────────────────────── */
+
+function StoryBlocksFields({ blocks, errors, setBlock, addBlock, removeBlock, moveUp, moveDown }: {
+  blocks: StoryBlock[];
+  errors: ErrMap;
+  setBlock: (i: number, k: keyof StoryBlock, v: string) => void;
+  addBlock: () => void;
+  removeBlock: (i: number) => void;
+  moveUp: (i: number) => void;
+  moveDown: (i: number) => void;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
-      <div className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Түүхийн зураг</p>
-        <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Хэсэг бүрийн зураг, тайлбар</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Эдгээр зураг, богино гарчиг, тайлбар нь төслийн дэлгэрэнгүй хуудсанд тухайн хэсэгтээ таарч харагдана.
-          Зургийн цомгоос автоматаар сонгохгүй, бүтээгч өөрөө эндээс удирдана.
-        </p>
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Дэлгэрэнгүй Story Blocks</p>
+          <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Campaign story</h3>
+          <p className="mt-1.5 text-sm leading-6 text-slate-500">
+            Campaign story-г зураг, гарчиг, тайлбартайгаар дарааллаар үүсгэнэ. Блок нэмэх заавал биш.
+          </p>
+        </div>
+        {blocks.length > 0 && (
+          <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">{blocks.length} блок</span>
+        )}
       </div>
 
       <div className="space-y-4">
-        {STORY_MEDIA_CONFIGS.map((config) => (
-          <div key={config.section} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-            <div className="mb-3">
-              <p className="font-display text-base font-bold text-slate-900">{config.title}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">{config.description}</p>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-              <div>
-                <Label htmlFor={`${config.section}-image`}>Зураг</Label>
-                <SingleImageUpload
-                  id={`${config.section}-image`}
-                  value={d[config.imageKey]}
-                  onChange={(value) => set(config.imageKey, value)}
-                  emptyLabel="Хэсгийн зураг оруулах"
-                  badgeLabel="Хэсгийн зураг"
-                />
+        {blocks.map((block, i) => (
+          <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 py-3">
+              <span className="text-xs font-bold text-blue-700">Блок #{i + 1}</span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => moveUp(i)} disabled={i === 0}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 transition-colors" title="Дээш">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                </button>
+                <button type="button" onClick={() => moveDown(i)} disabled={i === blocks.length - 1}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 transition-colors" title="Доош">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <button type="button" onClick={() => removeBlock(i)} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Устгах">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
               </div>
-
+            </div>
+            <div className="grid gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div>
+                <Label htmlFor={`sbImg${i}`} required>Зураг</Label>
+                <SingleImageUpload id={`sbImg${i}`} value={block.image} onChange={v => setBlock(i, "image", v)} emptyLabel="Story зураг оруулах" badgeLabel="Story зураг" />
+                <ErrMsg msg={errors[`sbImage${i}`]} />
+              </div>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor={`${config.section}-label`}>Зураг дээрх богино гарчиг</Label>
-                  <FInput
-                    id={`${config.section}-label`}
-                    value={d[config.labelKey]}
-                    onChange={(value) => set(config.labelKey, value)}
-                    placeholder={config.title}
-                  />
-                  <Hint>Жишээ: “Шийдэл”, “Багийн ажил”, “Хөрөнгийн төлөвлөгөө”.</Hint>
+                  <Label htmlFor={`sbTitle${i}`} required>Гарчиг</Label>
+                  <FInput id={`sbTitle${i}`} value={block.title} onChange={v => setBlock(i, "title", v)} placeholder="Жишээ: Туршилтын явц, эхний загвар..." error={errors[`sbTitle${i}`]} />
+                  <ErrMsg msg={errors[`sbTitle${i}`]} />
                 </div>
-
                 <div>
-                  <Label htmlFor={`${config.section}-caption`}>Зураг дээрх богино тайлбар</Label>
-                  <FTextarea
-                    id={`${config.section}-caption`}
-                    value={d[config.captionKey]}
-                    onChange={(value) => set(config.captionKey, value)}
-                    placeholder="Энэ зураг тухайн хэсгийг ямар утгаар тайлбарлаж байгааг 1-2 өгүүлбэрээр бичнэ үү."
-                    rows={2}
-                  />
+                  <Label htmlFor={`sbBody${i}`} required>Мэдээлэл</Label>
+                  <FTextarea id={`sbBody${i}`} value={block.body} onChange={v => setBlock(i, "body", v)} placeholder="Энэ зурагтай холбоотой дэлгэрэнгүй мэдээллээ бичнэ үү." error={errors[`sbBody${i}`]} rows={4} />
+                  <ErrMsg msg={errors[`sbBody${i}`]} />
+                </div>
+                <div>
+                  <Label htmlFor={`sbCaption${i}`}>Зургийн тайлбар</Label>
+                  <FInput id={`sbCaption${i}`} value={block.caption} onChange={v => setBlock(i, "caption", v)} placeholder="Заавал биш. Зураг дээр харагдах 1 богино өгүүлбэр." />
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {blocks.length === 0 && (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          </div>
+          <p className="text-sm text-slate-500 font-medium">Одоохондоо story блок байхгүй байна</p>
+          <p className="text-xs text-slate-400 mt-1">Доорх товчийг дарж зурагтай story блок нэмнэ үү</p>
+        </div>
+      )}
+
+      <button type="button" onClick={addBlock}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 py-4 text-sm font-bold text-blue-700 transition hover:border-blue-400 hover:bg-blue-50">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+        Story блок нэмэх
+      </button>
     </div>
   );
 }
 
-function StoryBlocksFields({
-  blocks,
-  errors,
-  setStoryBlock,
-  addStoryBlock,
-  removeStoryBlock,
-}: {
-  blocks: StoryBlock[];
+/* ── FAQ ─────────────────────────────────────────────────────────────────── */
+
+function FaqFields({ faq, errors, setFaq, addFaq, removeFaq }: {
+  faq: FaqItem[];
   errors: ErrMap;
-  setStoryBlock: (index: number, key: keyof StoryBlock, value: string) => void;
-  addStoryBlock: () => void;
-  removeStoryBlock: (index: number) => void;
+  setFaq: (i: number, k: keyof FaqItem, v: string) => void;
+  addFaq: () => void;
+  removeFaq: (i: number) => void;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Дэлгэрэнгүй story</p>
-          <h3 className="mt-1 font-display text-xl font-bold text-slate-950">4-10 зурагтай мэдээллийн блок</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Эдгээр блок доошоо дарааллаараа гарч, campaign story-г илүү баялаг болгоно.
-            Блок бүр зураг, гарчиг, мэдээлэлтэй байна.
-          </p>
-        </div>
-        <span className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-500">
-          {blocks.length} / {MAX_STORY_BLOCKS}
-        </span>
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">FAQ</p>
+        <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Түгээмэл асуулт, хариулт</h3>
+        <p className="mt-1.5 text-sm leading-6 text-slate-500">Дэмжигчдийн гаргах асуулт, хариултыг эндээс нэмнэ. Заавал биш.</p>
       </div>
-
-      <ErrMsg msg={errors.storyBlocks} />
-
-      <div className="space-y-5">
-        {blocks.map((block, index) => (
-          <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3">
-              <span className="text-xs font-bold text-blue-700">Блок #{index + 1}</span>
-              {blocks.length > MIN_STORY_BLOCKS && (
-                <button
-                  type="button"
-                  onClick={() => removeStoryBlock(index)}
-                  className="text-xs font-bold text-red-500 transition hover:text-red-700"
-                >
-                  Устгах
-                </button>
-              )}
+      <div className="space-y-4">
+        {faq.map((f, i) => (
+          <div key={f.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 py-2.5">
+              <span className="text-xs font-bold text-emerald-700">Асуулт #{i + 1}</span>
+              <button type="button" onClick={() => removeFaq(i)} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-
-            <div className="grid gap-4 p-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+            <div className="p-4 space-y-3">
               <div>
-                <Label htmlFor={`storyBlockImage${index}`} required>Зураг</Label>
-                <SingleImageUpload
-                  id={`storyBlockImage${index}`}
-                  value={block.image}
-                  onChange={(value) => setStoryBlock(index, "image", value)}
-                  emptyLabel="Story зураг оруулах"
-                  badgeLabel="Story зураг"
-                />
-                <ErrMsg msg={errors[`sbImage${index}`]} />
+                <Label htmlFor={`faqQ${i}`} required>Асуулт</Label>
+                <FInput id={`faqQ${i}`} value={f.question} onChange={v => setFaq(i, "question", v)} placeholder="Жишээ: Хэзээ хүргэлт хийх вэ?" error={errors[`faqQ${i}`]} />
+                <ErrMsg msg={errors[`faqQ${i}`]} />
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor={`storyBlockTitle${index}`} required>Гарчиг</Label>
-                  <FInput
-                    id={`storyBlockTitle${index}`}
-                    value={block.title}
-                    onChange={(value) => setStoryBlock(index, "title", value)}
-                    placeholder="Жишээ: Туршилтын явц, эхний загвар, хэрэглэгчийн үр дүн..."
-                    error={errors[`sbTitle${index}`]}
-                  />
-                  <ErrMsg msg={errors[`sbTitle${index}`]} />
-                </div>
-
-                <div>
-                  <Label htmlFor={`storyBlockBody${index}`} required>Мэдээлэл</Label>
-                  <FTextarea
-                    id={`storyBlockBody${index}`}
-                    value={block.body}
-                    onChange={(value) => setStoryBlock(index, "body", value)}
-                    placeholder="Энэ зурагтай холбоотой дэлгэрэнгүй мэдээллээ бичнэ үү."
-                    error={errors[`sbBody${index}`]}
-                    rows={4}
-                  />
-                  <ErrMsg msg={errors[`sbBody${index}`]} />
-                </div>
-
-                <div>
-                  <Label htmlFor={`storyBlockCaption${index}`}>Зураг дээрх богино тайлбар</Label>
-                  <FInput
-                    id={`storyBlockCaption${index}`}
-                    value={block.caption}
-                    onChange={(value) => setStoryBlock(index, "caption", value)}
-                    placeholder="Заавал биш. Зураг дээр давхар харагдах 1 богино өгүүлбэр."
-                  />
-                </div>
+              <div>
+                <Label htmlFor={`faqA${i}`} required>Хариулт</Label>
+                <FTextarea id={`faqA${i}`} value={f.answer} onChange={v => setFaq(i, "answer", v)} placeholder="Дэлгэрэнгүй хариулт бичнэ үү..." error={errors[`faqA${i}`]} rows={3} />
+                <ErrMsg msg={errors[`faqA${i}`]} />
               </div>
             </div>
           </div>
         ))}
       </div>
-
-      {blocks.length < MAX_STORY_BLOCKS && (
-        <button
-          type="button"
-          onClick={addStoryBlock}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 py-4 text-sm font-bold text-blue-700 transition hover:border-blue-400 hover:bg-blue-50"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Дэлгэрэнгүй блок нэмэх
-        </button>
+      {faq.length === 0 && (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center mb-4">
+          <p className="text-sm text-slate-500">FAQ одоохондоо хоосон байна</p>
+        </div>
       )}
+      <button type="button" onClick={addFaq}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-emerald-200 py-3.5 text-sm font-bold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-50">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+        FAQ нэмэх
+      </button>
     </div>
   );
 }
 
-/* ── Step 3 — Агуулга ───────────────────────────────────────────────────── */
+/* ── Timeline ────────────────────────────────────────────────────────────── */
 
-function Step3({
-  d, set, e,
-  projectImages, projectImagesUploading, onProjectImagesChange, onProjectImagesUploadingChange,
-  projectDocuments, projectDocumentsUploading, onProjectDocumentsChange, onProjectDocumentsUploadingChange,
-  setStoryBlock, addStoryBlock, removeStoryBlock,
-}: {
+function TimelineFields({ timeline, errors, setTimeline, addTimeline, removeTimeline }: {
+  timeline: TimelineItem[];
+  errors: ErrMap;
+  setTimeline: (i: number, k: keyof TimelineItem, v: string) => void;
+  addTimeline: () => void;
+  removeTimeline: (i: number) => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-violet-700">Хуанли</p>
+        <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Төслийн timeline</h3>
+        <p className="mt-1.5 text-sm leading-6 text-slate-500">Прототип, бета, launch гэх мэт чухал үе шатуудыг нэмнэ. Заавал биш.</p>
+      </div>
+      <div className="space-y-3">
+        {timeline.map((t, i) => (
+          <div key={t.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 py-2.5">
+              <span className="text-xs font-bold text-violet-700">Milestone #{i + 1}</span>
+              <button type="button" onClick={() => removeTimeline(i)} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_160px]">
+              <div>
+                <Label htmlFor={`tlTitle${i}`} required>Нэр</Label>
+                <FInput id={`tlTitle${i}`} value={t.title} onChange={v => setTimeline(i, "title", v)} placeholder="Жишээ: Прототип, Бета тест, Нийтлэл..." error={errors[`tlTitle${i}`]} />
+                <ErrMsg msg={errors[`tlTitle${i}`]} />
+              </div>
+              <div>
+                <Label htmlFor={`tlDate${i}`}>Огноо</Label>
+                <FInput id={`tlDate${i}`} type="date" value={t.date} onChange={v => setTimeline(i, "date", v)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor={`tlDesc${i}`}>Тайлбар</Label>
+                <FInput id={`tlDesc${i}`} value={t.description} onChange={v => setTimeline(i, "description", v)} placeholder="Энэ үе шатны зорилго, гол ажил..." />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {timeline.length === 0 && (
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center mb-4">
+          <p className="text-sm text-slate-500">Timeline одоохондоо хоосон байна</p>
+        </div>
+      )}
+      <button type="button" onClick={addTimeline}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-violet-200 py-3.5 text-sm font-bold text-violet-700 transition hover:border-violet-400 hover:bg-violet-50">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+        Milestone нэмэх
+      </button>
+    </div>
+  );
+}
+
+/* ── Social Links ───────────────────────────────────────────────────────── */
+
+function SocialLinksFields({ links, setLink }: {
+  links: SocialLinks;
+  setLink: (k: keyof SocialLinks, v: string) => void;
+}) {
+  const fields: { key: keyof SocialLinks; label: string; placeholder: string; icon: React.ReactNode }[] = [
+    { key: "website", label: "Вэбсайт", placeholder: "https://yourproject.com", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg> },
+    { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/yourpage", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg> },
+    { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/yourhandle", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg> },
+    { key: "discord", label: "Discord", placeholder: "https://discord.gg/yourserver", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.057a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" /></svg> },
+    { key: "twitter", label: "X / Twitter", placeholder: "https://twitter.com/yourhandle", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg> },
+  ];
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Холбоос</p>
+        <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Нийгмийн сүлжээ & Вэбсайт</h3>
+        <p className="mt-1.5 text-sm leading-6 text-slate-500">Заавал биш. Дэмжигчид таны community-тэй холбогдоход тусална.</p>
+      </div>
+      <div className="space-y-4">
+        {fields.map(({ key, label, placeholder, icon }) => (
+          <div key={key}>
+            <Label htmlFor={`social-${key}`}>{label}</Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3.5 flex items-center text-slate-400 pointer-events-none">{icon}</span>
+              <input
+                id={`social-${key}`}
+                type="url"
+                value={links[key]}
+                onChange={e => setLink(key, e.target.value)}
+                placeholder={placeholder}
+                className={cn(base, ok, "pl-10")}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 3 — Түүх ──────────────────────────────────────────────────────── */
+
+function Step3({ d, set, e, setBlock, addBlock, removeBlock, moveBlockUp, moveBlockDown, setFaq, addFaq, removeFaq, setTimeline, addTimeline, removeTimeline, setLink }: {
+  d: FormValues;
+  set: (k: StringKey, v: string) => void;
+  e: ErrMap;
+  setBlock: (i: number, k: keyof StoryBlock, v: string) => void;
+  addBlock: () => void;
+  removeBlock: (i: number) => void;
+  moveBlockUp: (i: number) => void;
+  moveBlockDown: (i: number) => void;
+  setFaq: (i: number, k: keyof FaqItem, v: string) => void;
+  addFaq: () => void;
+  removeFaq: (i: number) => void;
+  setTimeline: (i: number, k: keyof TimelineItem, v: string) => void;
+  addTimeline: () => void;
+  removeTimeline: (i: number) => void;
+  setLink: (k: keyof SocialLinks, v: string) => void;
+}) {
+  const charCount = d.story.length;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Label htmlFor="story" required>Кампанийн тайлбар</Label>
+        <MarkdownEditor
+          id="story"
+          value={d.story}
+          onChange={v => set("story", v)}
+          placeholder="Энэ санаа хаанаас эхэлсэн, хэнд хэрэгтэй, дэмжлэг авснаар юу өөрчлөгдөхийг бичээрэй.&#10;&#10;**Тод бичих** — ## Гарчиг — - Жагсаалт"
+          error={e.story}
+        />
+        <div className="flex items-start justify-between mt-1.5">
+          <ErrMsg msg={e.story} />
+          <span className={cn("text-xs font-semibold ml-auto shrink-0", charCount >= 50 ? "text-emerald-600" : "text-slate-400")}>
+            {charCount} / 50+ тэмдэгт
+          </span>
+        </div>
+        {!e.story && <Hint>Toolbar ашиглан **bold**, ## гарчиг, - жагсаалт оруулж болно.</Hint>}
+      </div>
+
+      <StoryBlocksFields
+        blocks={d.storyBlocks}
+        errors={e}
+        setBlock={setBlock}
+        addBlock={addBlock}
+        removeBlock={removeBlock}
+        moveUp={moveBlockUp}
+        moveDown={moveBlockDown}
+      />
+
+      <FaqFields faq={d.faq} errors={e} setFaq={setFaq} addFaq={addFaq} removeFaq={removeFaq} />
+
+      <TimelineFields timeline={d.timeline} errors={e} setTimeline={setTimeline} addTimeline={addTimeline} removeTimeline={removeTimeline} />
+
+      <SocialLinksFields links={d.socialLinks} setLink={setLink} />
+    </div>
+  );
+}
+
+/* ── Step 4 — Медиа ─────────────────────────────────────────────────────── */
+
+function Step4({ d, set, e, projectImages, projectImagesUploading, onProjectImagesChange, onProjectImagesUploadingChange, projectDocuments, projectDocumentsUploading, onProjectDocumentsChange, onProjectDocumentsUploadingChange }: {
   d: FormValues;
   set: (k: StringKey, v: string) => void;
   e: ErrMap;
   projectImages: SelectedProjectImage[];
   projectImagesUploading: boolean;
   onProjectImagesChange: (images: SelectedProjectImage[]) => void;
-  onProjectImagesUploadingChange: (uploading: boolean) => void;
+  onProjectImagesUploadingChange: (v: boolean) => void;
   projectDocuments: SelectedProjectDocument[];
   projectDocumentsUploading: boolean;
-  onProjectDocumentsChange: (documents: SelectedProjectDocument[]) => void;
-  onProjectDocumentsUploadingChange: (uploading: boolean) => void;
-  setStoryBlock: (index: number, key: keyof StoryBlock, value: string) => void;
-  addStoryBlock: () => void;
-  removeStoryBlock: (index: number) => void;
+  onProjectDocumentsChange: (docs: SelectedProjectDocument[]) => void;
+  onProjectDocumentsUploadingChange: (v: boolean) => void;
 }) {
-  const charCount = d.story.length;
-  const charOk    = charCount >= 100;
-
   return (
     <div className="space-y-6">
       <div>
-        <Label htmlFor="story" required>Төслийн тухай дэлгэрэнгүй</Label>
-        <FTextarea id="story" value={d.story} onChange={v => set("story", v)}
-          placeholder="Энэ санаа хаанаас эхэлсэн, хэнд хэрэгтэй, дэмжлэг авснаар юу өөрчлөгдөхийг бичээрэй."
-          error={e.story} rows={9} />
-        <div className="flex items-start justify-between mt-1.5">
-          <ErrMsg msg={e.story} />
-          <span className={cn(
-            "text-xs font-semibold ml-auto shrink-0",
-            charOk ? "text-emerald-600" : "text-slate-400"
-          )}>
-            {charCount} / 100+ тэмдэгт
-          </span>
-        </div>
-        {!e.story && <Hint>Сайн түүх нь хүмүүсийг мөнгө өгөхөөс өмнө итгэх шалтгаантай болгодог.</Hint>}
-      </div>
-
-      <div>
-        <Label htmlFor="purpose" required>Төслийн зорилго</Label>
-        <FTextarea
-          id="purpose"
-          value={d.purpose}
-          onChange={v => set("purpose", v)}
-          placeholder="Төслийн эцсийн үр дүн юу вэ? Дэмжигчид амжилтыг юугаар хэмжих вэ?"
-          error={e.purpose}
-          rows={4}
-        />
-        <ErrMsg msg={e.purpose} />
-      </div>
-
-      <div>
-        <Label htmlFor="fundingUsage" required>Хөрөнгийн ашиглалт</Label>
-        <FTextarea
-          id="fundingUsage"
-          value={d.fundingUsage}
-          onChange={v => set("fundingUsage", v)}
-          placeholder="Жишээ: 60% үйлдвэрлэл, 20% маркетинг, 20% баг ба үйл ажиллагаа."
-          error={e.fundingUsage}
-          rows={4}
-        />
-        <ErrMsg msg={e.fundingUsage} />
-      </div>
-
-      <div>
-        <Label htmlFor="teamInfo" required>Багийн тухай</Label>
-        <FTextarea
-          id="teamInfo"
-          value={d.teamInfo}
-          onChange={v => set("teamInfo", v)}
-          placeholder="Багийн гишүүд, туршлага, энэ төслийг хийх чадвартай шалтгаанаа бичнэ үү."
-          error={e.teamInfo}
-          rows={4}
-        />
-        <ErrMsg msg={e.teamInfo} />
-      </div>
-
-      <div>
-        <Label htmlFor="risks" required>Эрсдэлүүд болон сорилтууд</Label>
-        <FTextarea
-          id="risks"
-          value={d.risks}
-          onChange={v => set("risks", v)}
-          placeholder="Хугацаа, нийлүүлэлт, зардал зэрэг эрсдэл гарвал ямар арга хэмжээ авах вэ?"
-          error={e.risks}
-          rows={4}
-        />
-        <ErrMsg msg={e.risks} />
-      </div>
-
-      <StoryMediaFields d={d} set={set} />
-
-      <StoryBlocksFields
-        blocks={d.storyBlocks}
-        errors={e}
-        setStoryBlock={setStoryBlock}
-        addStoryBlock={addStoryBlock}
-        removeStoryBlock={removeStoryBlock}
-      />
-
-      <div>
-        <Label htmlFor="videoUrl">Богино танилцуулга видео линк</Label>
-        <FInput
-          id="videoUrl"
-          value={d.videoUrl}
-          onChange={v => set("videoUrl", v)}
-          placeholder="https://youtube.com/watch?v=... эсвэл https://.../intro.mp4"
-          error={e.videoUrl}
-        />
-        <ErrMsg msg={e.videoUrl} />
-        <Hint>Заавал биш. Оруулбал төслийн дэлгэрэнгүй хуудасны медиа хэсгийн эхэнд видео болж харагдана.</Hint>
-      </div>
-
-      <div>
-        <Label htmlFor="coverImages" required>Кампанийн зураг / зургийн цомог</Label>
-        <ImageUpload
+        <Label htmlFor="galleryUpload" required>Кампанийн зургийн цомог</Label>
+        <GalleryUpload
           images={projectImages}
           error={e.coverImages}
           uploading={projectImagesUploading}
           onChange={onProjectImagesChange}
           onUploadingChange={onProjectImagesUploadingChange}
         />
-        <Hint>1-3 бодит зураг оруулна. Эхний зураг hero media болон project card-ийн cover болно.</Hint>
+        <Hint>1–{MAX_PROJECT_IMAGES} бодит зураг оруулна. Эхний зураг cover болон project card дээр харагдана.</Hint>
+      </div>
+
+      <div>
+        <Label htmlFor="videoUrl">Богино танилцуулга видео линк</Label>
+        <FInput id="videoUrl" value={d.videoUrl} onChange={v => set("videoUrl", v)}
+          placeholder="https://youtube.com/watch?v=... эсвэл https://.../intro.mp4"
+          error={e.videoUrl} />
+        <ErrMsg msg={e.videoUrl} />
+        <Hint>Заавал биш. YouTube, Vimeo, эсвэл шууд MP4/WEBM линк.</Hint>
       </div>
 
       <div>
@@ -1637,13 +1324,13 @@ function Step3({
   );
 }
 
-/* ── Step 4 — Урамшуулал ────────────────────────────────────────────────── */
+/* ── Step 5 — Урамшуулал ────────────────────────────────────────────────── */
 
-function Step4({ d, e, setReward, addReward, removeReward }: {
+function Step5({ d, e, setReward, addReward, removeReward }: {
   d: FormValues;
   e: ErrMap;
-  setReward:    (i: number, k: keyof RewardTier, v: string) => void;
-  addReward:    () => void;
+  setReward: (i: number, k: keyof RewardTier, v: string) => void;
+  addReward: () => void;
   removeReward: (i: number) => void;
 }) {
   return (
@@ -1651,93 +1338,59 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
       <p className="text-sm text-slate-500 leading-relaxed">
         Хүмүүс зөвхөн мөнгө өгөхөөс гадна таны ажилд оролцож байгаа мэдрэмж авахыг хүсдэг.{" "}
         <span className="text-slate-600 font-medium">Жишээ:</span>{" "}
-        10₮ → нэрээ талархлын жагсаалтад оруулах, 50₮ → урьдчилсан эрх авах.
+        10₮ → нэрийг талархлын жагсаалтад оруулах, 50₮ → урьдчилсан эрх авах.
       </p>
-
       <div className="space-y-4">
         {d.rewards.map((r, i) => (
-          <div key={r.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+          <div key={r.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
-              <div>
-                <span className="inline-flex text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">
-                  Урамшуулал #{i + 1}
-                </span>
-                <p className="mt-2 text-xs text-slate-500">Зурагтай урамшууллын карт нь төслийн дэлгэрэнгүй дээр илүү тод харагдана.</p>
-              </div>
+              <span className="inline-flex text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">Урамшуулал #{i + 1}</span>
               {d.rewards.length > 1 && (
-                <button type="button" onClick={() => removeReward(i)}
-                  className="text-xs text-red-400 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                <button type="button" onClick={() => removeReward(i)} className="text-xs text-red-400 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   Устгах
                 </button>
               )}
             </div>
-
-            <div className="grid gap-5 p-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="grid gap-5 p-5 lg:grid-cols-[200px_minmax(0,1fr)]">
               <div>
                 <Label htmlFor={`ri${i}`}>Урамшууллын зураг</Label>
-                <SingleImageUpload
-                  id={`ri${i}`}
-                  value={r.image}
-                  onChange={v => setReward(i, "image", v)}
-                  emptyLabel="Шагналын зураг оруулах"
-                  badgeLabel="Шагналын зураг"
-                />
-                <Hint>Шагналын бодит бүтээгдэхүүн, постер, teaser зураг оруулбал илүү итгэлтэй харагдана.</Hint>
+                <SingleImageUpload id={`ri${i}`} value={r.image} onChange={v => setReward(i, "image", v)} emptyLabel="Шагналын зураг оруулах" badgeLabel="Шагналын зураг" />
+                <Hint>Бодит бүтээгдэхүүн, postcard, teaser зураг оруулбал сайн.</Hint>
               </div>
-
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_150px]">
                   <div>
                     <Label htmlFor={`rt${i}`} required>Урамшууллын нэр</Label>
-                    <FInput id={`rt${i}`} value={r.title} onChange={v => setReward(i, "title", v)}
-                      placeholder="Жишээ: Эрт дэмжигч" error={e[`rt${i}`]} />
+                    <FInput id={`rt${i}`} value={r.title} onChange={v => setReward(i, "title", v)} placeholder="Жишээ: Эрт дэмжигч" error={e[`rt${i}`]} />
                     <ErrMsg msg={e[`rt${i}`]} />
                   </div>
-
                   <div>
                     <Label htmlFor={`ra${i}`} required>Дэмжлэгийн дүн</Label>
-                    <FInput id={`ra${i}`} type="number" value={r.amount}
-                      onChange={v => setReward(i, "amount", v)}
-                      placeholder="10" error={e[`ra${i}`]} prefix="₮" />
+                    <FInput id={`ra${i}`} type="number" value={r.amount} onChange={v => setReward(i, "amount", v)} placeholder="10" error={e[`ra${i}`]} prefix="₮" />
                     <ErrMsg msg={e[`ra${i}`]} />
                   </div>
                 </div>
-
                 <div>
                   <Label htmlFor={`rd${i}`} required>Урамшууллын тайлбар</Label>
-                  <FTextarea id={`rd${i}`} value={r.description}
-                    onChange={v => setReward(i, "description", v)}
-                    placeholder="Дэмжигч яг юу авах, хэзээ авахыг тодорхой бичнэ үү."
-                    error={e[`rd${i}`]} rows={4} />
+                  <FTextarea id={`rd${i}`} value={r.description} onChange={v => setReward(i, "description", v)} placeholder="Дэмжигч яг юу авах, хэзээ авахыг тодорхой бичнэ үү." error={e[`rd${i}`]} rows={4} />
                   <ErrMsg msg={e[`rd${i}`]} />
                 </div>
-
                 <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Харагдах байдал</p>
-                  <p className="mt-1 font-display text-xl font-bold text-slate-950">
-                    {r.amount ? `${r.amount}₮` : "Дүн"}
-                  </p>
+                  <p className="mt-1 font-display text-xl font-bold text-slate-950">{r.amount ? `${r.amount}₮` : "Дүн"}</p>
                   <p className="mt-1 text-sm font-semibold text-slate-800">{r.title || "Урамшууллын нэр"}</p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                    {r.description || "Дэмжигчид авах зүйлээ эндээс ойлгоно."}
-                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{r.description || "Дэмжигчид авах зүйлээ эндээс ойлгоно."}</p>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
-
       {d.rewards.length < 6 && (
         <button type="button" onClick={addReward}
           className="w-full border-2 border-dashed border-blue-200 rounded-2xl py-4 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 flex items-center justify-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           Урамшуулал нэмэх
         </button>
       )}
@@ -1745,66 +1398,47 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
   );
 }
 
-/* ── Success screen ─────────────────────────────────────────────────────── */
+/* ── Success Screen ─────────────────────────────────────────────────────── */
 
 function SuccessScreen({ title, editing }: { title: string; editing: boolean }) {
   return (
     <div className="text-center py-10 px-4 max-w-lg mx-auto">
-      {/* Pending icon — clock, not checkmark */}
       <div className="w-20 h-20 rounded-3xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center mx-auto mb-6">
         <svg className="w-10 h-10 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
         </svg>
       </div>
-
       <h2 className="font-display font-bold text-2xl text-slate-900 mb-3">
         {editing ? "Төсөл шинэчлэгдэж дахин илгээгдлээ!" : "Төсөл амжилттай илгээгдлээ!"}
       </h2>
-
       <p className="text-slate-600 text-sm leading-relaxed mb-1">
         <span className="font-semibold">&ldquo;{title}&rdquo;</span>{" "}
         {editing ? "төсөл дахин хянуулахаар илгээгдлээ." : "төсөл хянуулахаар илгээгдлээ."}
       </p>
-
-      {/* 24-48h review notice */}
       <div className="mt-5 mb-8 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-left space-y-2">
         <p className="text-sm font-bold text-amber-800">Дараагийн алхам</p>
-        <ul className="text-sm text-amber-700 space-y-1.5 list-none">
-          <li className="flex items-start gap-2">
-            <span className="mt-0.5 text-amber-500 font-bold">1.</span>
-            Манай админ баг таны мэдээллийг <span className="font-semibold">24–48 цагийн</span> дотор хянана.
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-0.5 text-amber-500 font-bold">2.</span>
-            Батлагдвал таны төсөл автоматаар нийтлэгдэж дэмжигчдэд харагдана.
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-0.5 text-amber-500 font-bold">3.</span>
-            Татгалзагдвал шалтгааныг мэдэгдэх тул засаад дахин илгээж болно.
-          </li>
+        <ul className="text-sm text-amber-700 space-y-1.5">
+          <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-500 font-bold">1.</span>Манай админ баг таны мэдээллийг <span className="font-semibold">24–48 цагийн</span> дотор хянана.</li>
+          <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-500 font-bold">2.</span>Батлагдвал таны төсөл автоматаар нийтлэгдэж дэмжигчдэд харагдана.</li>
+          <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-500 font-bold">3.</span>Татгалзагдвал шалтгааныг мэдэгдэх тул засаад дахин илгээж болно.</li>
         </ul>
       </div>
-
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Link href="/profile?tab=projects" className={buttonVariants({ variant: "primary", size: "lg" })}>
-          Миний төслүүд харах
-        </Link>
-        <Link href="/" className={buttonVariants({ variant: "secondary", size: "lg" })}>
-          Нүүр хуудас руу буцах
-        </Link>
+        <Link href="/profile?tab=projects" className={buttonVariants({ variant: "primary", size: "lg" })}>Миний төслүүд харах</Link>
+        <Link href="/" className={buttonVariants({ variant: "secondary", size: "lg" })}>Нүүр хуудас руу буцах</Link>
       </div>
     </div>
   );
 }
 
-/* ── Main export ────────────────────────────────────────────────────────── */
+/* ── Main Component ─────────────────────────────────────────────────────── */
 
 export function CreateProjectClient({ initialProject }: { initialProject?: EditableProjectSeed }) {
   const editing = Boolean(initialProject);
-  const [step,        setStep]        = useState(1);
-  const [data,        setData]        = useState<FormValues>(() => formValuesFromSeed(initialProject));
-  const [errors,      setErrors]      = useState<ErrMap>({});
-  const [submitted,  setSubmitted]  = useState(false);
+  const [step, setStep] = useState(1);
+  const [data, setData] = useState<FormValues>(() => formValuesFromSeed(initialProject));
+  const [errors, setErrors] = useState<ErrMap>({});
+  const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -1813,111 +1447,93 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
   const [projectDocuments, setProjectDocuments] = useState<SelectedProjectDocument[]>(() => documentsFromSeed(initialProject));
   const [projectDocumentsUploading, setProjectDocumentsUploading] = useState(false);
 
-  function handleProjectImagesChange(images: SelectedProjectImage[]) {
-    setProjectImages(images);
-    if (errors.coverImages) {
-      setErrors((e) => {
-        const n = { ...e };
-        delete n.coverImages;
-        return n;
-      });
-    }
-  }
-
-  function handleProjectDocumentsChange(documents: SelectedProjectDocument[]) {
-    setProjectDocuments(documents);
-    if (errors.documents) {
-      setErrors((e) => {
-        const n = { ...e };
-        delete n.documents;
-        return n;
-      });
-    }
-  }
-
-  /* Field setters */
   function set(k: StringKey, v: string) {
     setData(d => ({ ...d, [k]: v }));
     if (errors[k]) setErrors(e => { const n = { ...e }; delete n[k]; return n; });
   }
 
+  function setLink(k: keyof SocialLinks, v: string) {
+    setData(d => ({ ...d, socialLinks: { ...d.socialLinks, [k]: v } }));
+  }
+
+  /* Story blocks */
+  function setBlock(i: number, k: keyof StoryBlock, v: string) {
+    setData(d => ({ ...d, storyBlocks: d.storyBlocks.map((b, ci) => ci === i ? { ...b, [k]: v } : b) }));
+    const ek = k === "image" ? `sbImage${i}` : k === "title" ? `sbTitle${i}` : k === "body" ? `sbBody${i}` : "";
+    if (ek && errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
+  }
+  function addBlock() {
+    setData(d => ({ ...d, storyBlocks: [...d.storyBlocks, emptyStoryBlock(d.storyBlocks.length)] }));
+  }
+  function removeBlock(i: number) {
+    setData(d => ({ ...d, storyBlocks: d.storyBlocks.filter((_, ci) => ci !== i) }));
+  }
+  function moveBlockUp(i: number) {
+    if (i <= 0) return;
+    setData(d => {
+      const next = [...d.storyBlocks];
+      [next[i - 1], next[i]] = [next[i], next[i - 1]];
+      return { ...d, storyBlocks: next };
+    });
+  }
+  function moveBlockDown(i: number) {
+    setData(d => {
+      if (i >= d.storyBlocks.length - 1) return d;
+      const next = [...d.storyBlocks];
+      [next[i], next[i + 1]] = [next[i + 1], next[i]];
+      return { ...d, storyBlocks: next };
+    });
+  }
+
+  /* FAQ */
+  function setFaq(i: number, k: keyof FaqItem, v: string) {
+    setData(d => ({ ...d, faq: d.faq.map((f, ci) => ci === i ? { ...f, [k]: v } : f) }));
+    const ek = k === "question" ? `faqQ${i}` : k === "answer" ? `faqA${i}` : "";
+    if (ek && errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
+  }
+  function addFaq() {
+    setData(d => ({ ...d, faq: [...d.faq, emptyFaqItem(d.faq.length)] }));
+  }
+  function removeFaq(i: number) {
+    setData(d => ({ ...d, faq: d.faq.filter((_, ci) => ci !== i) }));
+  }
+
+  /* Timeline */
+  function setTimeline(i: number, k: keyof TimelineItem, v: string) {
+    setData(d => ({ ...d, timeline: d.timeline.map((t, ci) => ci === i ? { ...t, [k]: v } : t) }));
+    const ek = k === "title" ? `tlTitle${i}` : "";
+    if (ek && errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
+  }
+  function addTimeline() {
+    setData(d => ({ ...d, timeline: [...d.timeline, emptyTimelineItem(d.timeline.length)] }));
+  }
+  function removeTimeline(i: number) {
+    setData(d => ({ ...d, timeline: d.timeline.filter((_, ci) => ci !== i) }));
+  }
+
+  /* Rewards */
   function setReward(i: number, k: keyof RewardTier, v: string) {
-    setData(d => ({ ...d, rewards: d.rewards.map((r, idx) => idx === i ? { ...r, [k]: v } : r) }));
-    const ek =
-      k === "title" ? `rt${i}` :
-      k === "amount" ? `ra${i}` :
-      k === "description" ? `rd${i}` :
-      "";
-    if (errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
+    setData(d => ({ ...d, rewards: d.rewards.map((r, ci) => ci === i ? { ...r, [k]: v } : r) }));
+    const ek = k === "title" ? `rt${i}` : k === "amount" ? `ra${i}` : k === "description" ? `rd${i}` : "";
+    if (ek && errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
   }
-
   function addReward() {
-    setData(d => ({
-      ...d,
-      rewards: [...d.rewards, { id: String(Date.now()), title: "", amount: "", description: "", image: "" }],
-    }));
+    setData(d => ({ ...d, rewards: [...d.rewards, { id: String(Date.now()), title: "", amount: "", description: "", image: "" }] }));
   }
-
   function removeReward(i: number) {
-    setData(d => ({ ...d, rewards: d.rewards.filter((_, idx) => idx !== i) }));
+    setData(d => ({ ...d, rewards: d.rewards.filter((_, ci) => ci !== i) }));
   }
 
-  function setStoryBlock(index: number, key: keyof StoryBlock, value: string) {
-    setData(d => ({
-      ...d,
-      storyBlocks: d.storyBlocks.map((block, currentIndex) => (
-        currentIndex === index ? { ...block, [key]: value } : block
-      )),
-    }));
-
-    const errorKey =
-      key === "image" ? `sbImage${index}` :
-      key === "title" ? `sbTitle${index}` :
-      key === "body" ? `sbBody${index}` :
-      "";
-    if (errorKey && errors[errorKey]) {
-      setErrors((e) => {
-        const next = { ...e };
-        delete next[errorKey];
-        return next;
-      });
-    }
+  function handleProjectImagesChange(images: SelectedProjectImage[]) {
+    setProjectImages(images);
+    if (errors.coverImages) setErrors(e => { const n = { ...e }; delete n.coverImages; return n; });
   }
 
-  function addStoryBlock() {
-    setData(d => {
-      if (d.storyBlocks.length >= MAX_STORY_BLOCKS) return d;
-      return {
-        ...d,
-        storyBlocks: [...d.storyBlocks, emptyStoryBlock(d.storyBlocks.length)],
-      };
-    });
-  }
-
-  function removeStoryBlock(index: number) {
-    setData(d => {
-      if (d.storyBlocks.length <= MIN_STORY_BLOCKS) return d;
-      return {
-        ...d,
-        storyBlocks: d.storyBlocks.filter((_, currentIndex) => currentIndex !== index),
-      };
-    });
-  }
-
-  /* Navigation */
   async function handleNext() {
     if (submitting) return;
-
-    const errs = validate(step, data);
-    if (step === 3 && projectImages.length === 0) {
-      errs.coverImages = "1-3 зураг оруулна уу";
-    }
-    if (step === 3 && projectImagesUploading) {
-      errs.coverImages = "Зураг upload хийж байна. Түр хүлээнэ үү.";
-    }
-    if (step === 3 && projectDocumentsUploading) {
-      errs.documents = "Баримт upload хийж байна. Түр хүлээнэ үү.";
-    }
+    const errs = validate(step, data, projectImages);
+    if (step === 4 && projectImagesUploading) errs.coverImages = "Зураг upload хийж байна. Түр хүлээнэ үү.";
+    if (step === 4 && projectDocumentsUploading) errs.documents = "Баримт upload хийж байна. Түр хүлээнэ үү.";
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1926,65 +1542,42 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     setErrors({});
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    if (step < 4) {
+    if (step < STEPS.length) {
       setStep(s => s + 1);
       return;
     }
 
     setSubmitting(true);
-
-    const uploadedImages = projectImages
-      .map((image) => image.url)
-      .filter((url): url is string => Boolean(url));
-    const uploadedDocuments = projectDocuments
-      .map((document) => document.url)
-      .filter((url): url is string => Boolean(url));
+    const uploadedImages = projectImages.map(img => img.url).filter(Boolean);
+    const uploadedDocuments = projectDocuments.map(doc => doc.url).filter(Boolean);
 
     if (uploadedImages.length === 0) {
       setSubmitting(false);
-      setErrors({ submit: "Зураг upload хийгдээгүй байна. Дахин зураг сонгоно уу." });
+      setErrors({ submit: "Зураг upload хийгдээгүй байна. Медиа хэсэгт дахин зураг сонгоно уу." });
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
     const payload = {
-      title:           data.title,
-      blurb:           data.blurb,
-      category:        data.category,
-      location:        data.location,
-      goal:            Number(data.goal),
-      duration:        Number(data.duration),
-      bankName:        data.bankName,
-      bankAccount:     data.bankAccount,
+      title: data.title,
+      blurb: data.blurb,
+      category: data.category,
+      location: data.location,
+      goal: Number(data.goal),
+      duration: Number(data.duration),
+      bankName: data.bankName,
+      bankAccount: data.bankAccount,
       bankAccountName: data.bankAccountName,
-      story:           data.story,
-      purpose:         data.purpose,
-      fundingUsage:    data.fundingUsage,
-      teamInfo:        data.teamInfo,
-      risks:           data.risks,
-      videoUrl:        data.videoUrl,
-      coverImage:      uploadedImages[0],
-      galleryImages:   uploadedImages,
-      documents:       uploadedDocuments,
-      storyMedia:      STORY_MEDIA_CONFIGS.map((config) => ({
-        section: config.section,
-        image:   data[config.imageKey],
-        label:   data[config.labelKey],
-        caption: data[config.captionKey],
-      })),
-      storyBlocks:     data.storyBlocks.map((block) => ({
-        id:      block.id,
-        title:   block.title,
-        body:    block.body,
-        image:   block.image,
-        caption: block.caption,
-      })),
-      rewards:         data.rewards.map(r => ({
-        title:       r.title,
-        amount:      Number(r.amount),
-        description: r.description,
-        image:       r.image,
-      })),
+      story: data.story,
+      videoUrl: data.videoUrl,
+      coverImage: uploadedImages[0],
+      galleryImages: uploadedImages,
+      documents: uploadedDocuments,
+      storyBlocks: data.storyBlocks.map(b => ({ id: b.id, title: b.title, body: b.body, image: b.image, caption: b.caption })),
+      faq: data.faq.map(f => ({ id: f.id, question: f.question, answer: f.answer })),
+      timeline: data.timeline.map(t => ({ id: t.id, title: t.title, date: t.date, description: t.description })),
+      socialLinks: data.socialLinks,
+      rewards: data.rewards.map(r => ({ title: r.title, amount: Number(r.amount), description: r.description, image: r.image })),
     };
 
     const result = editing && initialProject
@@ -2005,19 +1598,24 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const stepHeadings = ["Кампанийн нүүрээ бэлдэх", "Санхүүжилтээ тодорхойлох", "Видео, зураг, түүхээ оруулах", "Дэмжигчдэд өгөх үнэ цэн"];
+  const stepHeadings = [
+    "Кампанийн нүүрээ бэлдэх",
+    "Санхүүжилтээ тодорхойлох",
+    "Түүх, story blocks, FAQ, timeline",
+    "Видео, зураг, баримт",
+    "Дэмжигчдэд өгөх үнэ цэн",
+  ];
   const stepDescriptions = [
     "Гарчиг, tagline, ангилал нь project card болон detail hero дээр шууд харагдана.",
     "Зорилтот дүн, хугацаа, банкны мэдээлэл тодорхой байх тусам баталгаажуулалт хурдан явна.",
-    "Видео, зургийн цомог, түүх нь төслийн дэлгэрэнгүй хуудасны медиа хэсэг болон доорх агуулгад харагдана.",
+    "Markdown тайлбар, story blocks, FAQ, timeline болон социал холбоосоо нэмнэ.",
+    "Кампанийн зургийн цомог, танилцуулга видео болон баримт бичгийг хавсаргана.",
     "Сайн урамшуулал нь дэмжигчид оролцож байгаа мэдрэмж өгдөг.",
   ];
 
   return (
     <>
       <main className="min-h-screen bg-slate-50 pt-16">
-
-        {/* ── Page hero ─────────────────────────────── */}
         <div className="gradient-brand-hero py-10 sm:py-14">
           <div className="container-page text-center">
             <span className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
@@ -2027,17 +1625,13 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
               {editing ? "Төслөө илүү тодорхой болгох" : "Төслөө эхлүүлэх"}
             </h1>
             <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
-              {editing
-                ? "Зассан мэдээллээ илгээгээд админаар дахин хянуулна."
-                : "Видео, зураг, funding summary, түүхээ нэг дор цэгцлээд campaign page-ээ бэлдэнэ."}
+              {editing ? "Зассан мэдээллээ илгээгээд админаар дахин хянуулна." : "Кампанийн бүх мэдээллийг алхам алхмаар бөглөнө үү."}
             </p>
           </div>
         </div>
 
-        {/* ── Form area ─────────────────────────────── */}
         <div ref={topRef} className="container-page py-8 lg:py-12">
           <div className="max-w-2xl mx-auto">
-
             {submitted ? (
               <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 animate-fade-up">
                 <SuccessScreen title={data.title} editing={editing} />
@@ -2047,25 +1641,26 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
                 <Stepper current={step} />
 
                 <div key={step} className="bg-white rounded-2xl shadow-card p-6 sm:p-8 animate-fade-up">
-
-                  {/* Step heading */}
                   <div className="mb-6 pb-5 border-b border-slate-100">
-                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">
-                      Алхам {step} / {STEPS.length}
-                    </p>
-                    <h2 className="font-display font-bold text-xl text-slate-900">
-                      {stepHeadings[step - 1]}
-                    </h2>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                      {stepDescriptions[step - 1]}
-                    </p>
+                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Алхам {step} / {STEPS.length}</p>
+                    <h2 className="font-display font-bold text-xl text-slate-900">{stepHeadings[step - 1]}</h2>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{stepDescriptions[step - 1]}</p>
                   </div>
 
-                  {/* Step content */}
                   {step === 1 && <Step1 d={data} set={set} e={errors} />}
                   {step === 2 && <Step2 d={data} set={set} e={errors} />}
                   {step === 3 && (
                     <Step3
+                      d={data} set={set} e={errors}
+                      setBlock={setBlock} addBlock={addBlock} removeBlock={removeBlock}
+                      moveBlockUp={moveBlockUp} moveBlockDown={moveBlockDown}
+                      setFaq={setFaq} addFaq={addFaq} removeFaq={removeFaq}
+                      setTimeline={setTimeline} addTimeline={addTimeline} removeTimeline={removeTimeline}
+                      setLink={setLink}
+                    />
+                  )}
+                  {step === 4 && (
+                    <Step4
                       d={data} set={set} e={errors}
                       projectImages={projectImages}
                       projectImagesUploading={projectImagesUploading}
@@ -2073,16 +1668,12 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
                       onProjectImagesUploadingChange={setProjectImagesUploading}
                       projectDocuments={projectDocuments}
                       projectDocumentsUploading={projectDocumentsUploading}
-                      onProjectDocumentsChange={handleProjectDocumentsChange}
+                      onProjectDocumentsChange={setProjectDocuments}
                       onProjectDocumentsUploadingChange={setProjectDocumentsUploading}
-                      setStoryBlock={setStoryBlock}
-                      addStoryBlock={addStoryBlock}
-                      removeStoryBlock={removeStoryBlock}
                     />
                   )}
-                  {step === 4 && (
-                    <Step4 d={data} e={errors}
-                      setReward={setReward} addReward={addReward} removeReward={removeReward} />
+                  {step === 5 && (
+                    <Step5 d={data} e={errors} setReward={setReward} addReward={addReward} removeReward={removeReward} />
                   )}
 
                   {errors.submit && (
@@ -2091,64 +1682,32 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
                     </div>
                   )}
 
-                  {/* Navigation row */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100 gap-3">
                     <div>
                       {step > 1 && (
-                        <button type="button" onClick={handleBack}
-                          className={buttonVariants({ variant: "secondary", size: "md" })}>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 20 20">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M15 10H5m5 5l-5-5 5-5" stroke="currentColor" />
-                          </svg>
-                          Өмнөх
+                        <button type="button" onClick={handleBack} className={buttonVariants({ variant: "secondary", size: "md" })}>
+                          ← Буцах
                         </button>
                       )}
                     </div>
-
-                    <button type="button" onClick={handleNext} disabled={submitting || projectImagesUploading || projectDocumentsUploading}
-                      className={cn(
-                        buttonVariants({ variant: "primary", size: "md" }),
-                        (submitting || projectImagesUploading || projectDocumentsUploading) && "opacity-70 cursor-wait pointer-events-none"
-                      )}>
-                      {step < 4 ? (
-                        <>
-                          Дараах
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 20 20">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M5 10h10m-5-5l5 5-5 5" stroke="currentColor" />
+                    <button type="button" onClick={handleNext} disabled={submitting}
+                      className={cn(buttonVariants({ variant: "primary", size: "md" }), "min-w-[120px]")}>
+                      {submitting ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
-                        </>
-                      ) : (
-                        <>
-                          {submitting ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3V4a8 8 0 00-8 8h4z" />
-                              </svg>
-                              {editing ? "Хадгалж байна..." : "Нийтэлж байна..."}
-                            </>
-                          ) : (
-                            <>
-                              {editing ? "Өөрчлөлт хадгалах" : "Төслийг илгээх"}
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                              </svg>
-                            </>
-                          )}
-                        </>
-                      )}
+                          Илгээж байна...
+                        </span>
+                      ) : step === STEPS.length ? (editing ? "Шинэчлэн илгээх" : "Илгээх") : "Үргэлжлэх →"}
                     </button>
                   </div>
-
                 </div>
               </>
             )}
           </div>
         </div>
-
       </main>
       <Footer />
     </>
