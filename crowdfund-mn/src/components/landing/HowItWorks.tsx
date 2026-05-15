@@ -1,34 +1,28 @@
-"use client";
-
-import { motion } from "framer-motion";
-
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
 const STEPS = [
   {
     step: "01",
-    emoji: "💡",
+    icon: "💡",
     title: "Санаагаа тодорхойлно",
     description:
       "Зорилго, баг, төсөв, эрсдэлээ нэг дор бичиж дэмжигчдэд ойлгомжтой танилцуулна.",
   },
   {
     step: "02",
-    emoji: "🚀",
+    icon: "🚀",
     title: "Хянуулаад нийтэлнэ",
     description:
       "Админ баг мэдээллийг шалгаад баталсны дараа төсөл олон нийтэд нээлттэй харагдана.",
   },
   {
     step: "03",
-    emoji: "❤️",
+    icon: "❤️",
     title: "Дэмжлэгээ авна",
     description:
       "Дэмжигчид QPay-аар төлж, төлбөр баталгаажмагц төслийн дүнд автоматаар нэмэгдэнэ.",
   },
   {
     step: "04",
-    emoji: "🎉",
+    icon: "🎉",
     title: "Амлалтаа биелүүлнэ",
     description:
       "Санхүүжилтээ авсны дараа явцаа шинэчилж, дэмжигчдэдээ амласан үр дүнгээ хүргэнэ.",
@@ -37,74 +31,57 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section className="py-24 bg-white border-t border-gray-100">
-      <div className="container-page">
+    <section className="py-20 gradient-brand-hero relative overflow-hidden">
+      {/* subtle grid */}
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
 
-        {/* ── Header ── */}
-        <motion.div
-          className="mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.55, ease: EASE }}
-        >
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
+      <div className="container-page relative z-10">
+        <div className="text-center mb-14">
+          <p className="text-blue-200 font-semibold text-sm uppercase tracking-widest mb-2">
             Хэрхэн ажилладаг
           </p>
-          <h2 className="font-display font-black text-3xl sm:text-4xl text-gray-950 tracking-tight leading-tight">
-            Санаанаас санхүүжилт хүртэл<br />
-            <span className="text-blue-800">4 алхам</span>
+          <h2 className="text-2xl sm:text-3xl font-bold font-display text-white tracking-tight mb-3">
+            Санаанаас санхүүжилт хүртэл 4 алхам
           </h2>
-        </motion.div>
+          <p className="text-blue-200 text-base max-w-xl mx-auto">
+            Бүтээгчид ойлгомжтой танилцуулж, дэмжигчид итгэлтэй шийдвэр гаргана.
+          </p>
+        </div>
 
-        {/* ── Steps ── */}
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {STEPS.map((step, i) => (
-            <motion.div
-              key={step.step}
-              variants={{
-                hidden: { opacity: 0, y: 24 },
-                show:   { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
-              }}
-              className="relative group"
-            >
-              {/* Connector line (desktop only, not last) */}
+            <div key={step.step} className="relative flex flex-col">
+              {/* Connector line (desktop only) */}
               {i < STEPS.length - 1 && (
                 <div
                   aria-hidden
-                  className="hidden lg:block absolute top-5 left-[calc(100%+12px)] w-[calc(100%-24px)] h-px border-t border-dashed border-gray-200 z-0"
+                  className="hidden lg:block absolute top-10 left-[calc(100%-24px)] w-full h-px border-t-2 border-dashed border-blue-400/40 z-0"
                 />
               )}
 
-              <div className="relative z-10 flex flex-col h-full border border-gray-200 rounded-2xl p-6 bg-white group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-all duration-300">
-
-                {/* Step number */}
-                <div className="flex items-center justify-between mb-5">
-                  <span className="font-display font-black text-3xl text-gray-100 leading-none select-none">
+              <div className="relative z-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 flex flex-col gap-4 hover:bg-white/15 transition-colors duration-200">
+                <div className="flex items-center gap-3">
+                  <span className="w-9 h-9 rounded-full gradient-brand flex items-center justify-center text-white text-xs font-black border-2 border-white/20 shadow">
                     {step.step}
                   </span>
-                  <span className="text-2xl" role="img" aria-label={step.title}>
-                    {step.emoji}
-                  </span>
+                  <span className="text-2xl">{step.icon}</span>
                 </div>
-
-                <h3 className="font-display font-bold text-gray-950 text-[15px] mb-2.5 leading-snug">
+                <h3 className="font-display font-bold text-white text-base">
                   {step.title}
                 </h3>
-                <p className="text-gray-400 text-sm leading-relaxed flex-1">
-                  {step.description}
-                </p>
+                <p className="text-blue-100 text-sm leading-relaxed">{step.description}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
-
+        </div>
       </div>
     </section>
   );
