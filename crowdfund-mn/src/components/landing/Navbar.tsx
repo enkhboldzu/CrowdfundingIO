@@ -33,7 +33,7 @@ function Divider({ scrolled }: { scrolled: boolean }) {
 }
 
 /* Desktop nav link with animated underline */
-function NavLink({ href, label, scrolled }: { href: string; label: string; scrolled: boolean }) {
+function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
   const isActive = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
@@ -137,7 +137,7 @@ export function Navbar() {
           <LayoutGroup>
             <div className="hidden md:flex flex-1 justify-center items-center gap-12">
               {NAV_LINKS.map(link => (
-                <NavLink key={link.href} href={link.href} label={link.label} scrolled={hasBg} />
+                <NavLink key={link.href} href={link.href} label={link.label} />
               ))}
             </div>
           </LayoutGroup>
