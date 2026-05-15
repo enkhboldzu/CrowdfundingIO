@@ -180,7 +180,7 @@ export function UserDropdown({ scrolled }: Props) {
             "w-60",
             "bg-white rounded-2xl border border-slate-100",
             "shadow-xl shadow-slate-200/60",
-            "animate-fade-up overflow-hidden"
+            "animate-fade-down overflow-hidden"
           )}
           role="menu"
           aria-label="Хэрэглэгчийн цэс"

@@ -521,7 +521,7 @@ function SupportModal({
               )}
 
               {invoice.urls.length > 0 && (
-                <div>
+                <div className="md:hidden">
                   <p className="mb-2 text-sm font-bold text-slate-800">Төлөх апп аа сонгоно уу</p>
                   <div className="max-h-44 overflow-y-auto pr-1 grid grid-cols-2 gap-2">
                     {invoice.urls.map((url) => (
@@ -549,8 +549,11 @@ function SupportModal({
                 </a>
               )}
 
-              <p className="text-center text-xs font-medium text-slate-500">
+              <p className="text-center text-xs font-medium text-slate-500 md:hidden">
                 QR уншуулж эсвэл апп сонгоод төлнө үү. Төлбөр баталгаажмагц дэмжлэг шууд бүртгэгдэнэ.
+              </p>
+              <p className="hidden text-center text-xs font-medium text-slate-500 md:block">
+                QR уншуулж төлнө үү. Төлбөр баталгаажмагц дэмжлэг шууд бүртгэгдэнэ.
               </p>
             </div>
           ) : (
@@ -633,14 +636,6 @@ function SupportModal({
               ))}
             </div>
           </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-800">Төлбөрийн хэлбэр</label>
-            <div className="rounded-xl border border-blue-700 bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm">
-              QPay
-            </div>
-            <p className="mt-2 text-xs font-medium text-slate-400">Төлбөр баталгаажсаны дараа л дэмжлэгийн дүнд нэмэгдэнэ.</p>
-          </div>
             </>
           )}
 
@@ -678,7 +673,7 @@ function AboutTab({ project }: { project: Project }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-slate-600 text-base leading-relaxed">{project.description}</p>
+        <p className="project-copy">{project.description}</p>
       </div>
 
       <div className="h-px bg-slate-100" />
@@ -699,7 +694,7 @@ function ProjectTextSection({ title, content }: { title: string; content?: strin
     <div>
       <h3 className="font-display font-bold text-slate-900 text-lg mb-3">{title}</h3>
       {text ? (
-        <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
+        <p className="project-copy project-copy-preserve">{text}</p>
       ) : (
         <p className="text-slate-400 text-sm italic">Бүтээгч энэ хэсгийг хараахан бөглөөгүй байна.</p>
       )}

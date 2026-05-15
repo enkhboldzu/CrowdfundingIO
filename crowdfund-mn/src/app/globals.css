@@ -24,6 +24,11 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes shimmer {
   100% { transform: translateX(100%); }
 }
@@ -92,6 +97,25 @@
   .shadow-cta {
     box-shadow: 0 4px 14px 0 rgb(30 64 175 / 0.35);
   }
+
+  .project-copy {
+    color: #475569;
+    font-size: 0.9375rem;
+    line-height: 1.75rem;
+    text-align: justify;
+    text-align-last: left;
+    text-justify: inter-word;
+  }
+
+  @media (min-width: 640px) {
+    .project-copy {
+      font-size: 1rem;
+    }
+  }
+
+  .project-copy-preserve {
+    white-space: pre-line;
+  }
 }
 
 /* ─── Utilities ──────────────────────────────────────────────── */
@@ -110,6 +134,10 @@
 
   .animate-fade-up {
     animation: fade-up 0.5s ease-out forwards;
+  }
+
+  .animate-fade-down {
+    animation: fade-down 0.18s ease-out forwards;
   }
 
   .animate-shimmer {

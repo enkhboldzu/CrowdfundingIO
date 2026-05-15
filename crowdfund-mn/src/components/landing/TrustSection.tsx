@@ -78,30 +78,6 @@ export function TrustSection() {
             </div>
           ))}
         </div>
-
-        {/* Payment trust bar */}
-        <div className="mt-16 p-8 rounded-3xl bg-slate-50 border border-slate-100">
-          <p className="text-center text-slate-500 text-sm font-medium mb-6 uppercase tracking-widest">
-            Одоогоор дэмждэг төлбөрийн систем
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-8">
-            {/* QPay */}
-            <div className="flex items-center gap-2 px-5 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-              <div className="w-6 h-6 rounded bg-blue-700 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">Q</span>
-              </div>
-              <span className="font-bold text-slate-700 text-sm">QPay</span>
-            </div>
-
-            {/* SSL badge */}
-            <div className="flex items-center gap-2 px-5 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-              <svg className="w-4 h-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-              </svg>
-              <span className="font-bold text-green-700 text-sm">256-bit SSL</span>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
