@@ -42,6 +42,23 @@ interface SelectedProjectDocument {
   url:  string;
 }
 
+type StoryMediaSectionKey = "story" | "problem" | "solution" | "funding" | "team" | "risks";
+
+interface ProjectStoryMediaSeed {
+  section: StoryMediaSectionKey;
+  image?: string | null;
+  label?: string | null;
+  caption?: string | null;
+}
+
+interface StoryBlock {
+  id: string;
+  title: string;
+  body: string;
+  image: string;
+  caption: string;
+}
+
 export interface EditableProjectSeed {
   id:              string;
   slug:            string;
@@ -62,6 +79,14 @@ export interface EditableProjectSeed {
   images:          string[];
   videoUrl?:       string | null;
   documents:       string[];
+  storyMedia?:     ProjectStoryMediaSeed[];
+  storyBlocks?:    Array<{
+    id?:      string | null;
+    title:   string;
+    body:    string;
+    image?:  string | null;
+    caption?: string | null;
+  }>;
   rewards:         Array<{
     id:          string;
     title:       string;
@@ -87,15 +112,36 @@ interface FormValues {
   teamInfo:        string;
   risks:           string;
   videoUrl:        string;
+  storyImage:      string;
+  storyImageLabel: string;
+  storyImageCaption: string;
+  problemImage:      string;
+  problemImageLabel: string;
+  problemImageCaption: string;
+  purposeImage:      string;
+  purposeImageLabel: string;
+  purposeImageCaption: string;
+  fundingUsageImage:      string;
+  fundingUsageImageLabel: string;
+  fundingUsageImageCaption: string;
+  teamInfoImage:      string;
+  teamInfoImageLabel: string;
+  teamInfoImageCaption: string;
+  risksImage:      string;
+  risksImageLabel: string;
+  risksImageCaption: string;
   coverImageName:  string;
   rewards:         RewardTier[];
+  storyBlocks:     StoryBlock[];
 }
 
-type StringKey = keyof Omit<FormValues, "rewards">;
+type StringKey = keyof Omit<FormValues, "rewards" | "storyBlocks">;
 type ErrMap    = Record<string, string>;
 
 const MAX_PROJECT_IMAGES = 3;
 const MAX_PROJECT_DOCUMENTS = 5;
+const MIN_STORY_BLOCKS = 4;
+const MAX_STORY_BLOCKS = 10;
 const MIN_PROJECT_GOAL = 10;
 const MIN_REWARD_AMOUNT = 10;
 
@@ -166,15 +212,106 @@ const STEPS = [
   { num: 4, label: "Урамшуулал" },
 ];
 
+interface StoryMediaConfig {
+  section: StoryMediaSectionKey;
+  title: string;
+  description: string;
+  imageKey: StringKey;
+  labelKey: StringKey;
+  captionKey: StringKey;
+}
+
+const STORY_MEDIA_CONFIGS: StoryMediaConfig[] = [
+  {
+    section: "story",
+    title: "Төслийн түүх",
+    description: "Төслийн ерөнхий түүх дээр гарах зураг, зураг дээрх богино тайлбар.",
+    imageKey: "storyImage",
+    labelKey: "storyImageLabel",
+    captionKey: "storyImageCaption",
+  },
+  {
+    section: "problem",
+    title: "Асуудал",
+    description: "Ямар асуудал шийдэхийг харуулах зураг, тайлбар.",
+    imageKey: "problemImage",
+    labelKey: "problemImageLabel",
+    captionKey: "problemImageCaption",
+  },
+  {
+    section: "solution",
+    title: "Шийдэл",
+    description: "Шийдэл ба зорилгын хэсэгт тохирох зураг, тайлбар.",
+    imageKey: "purposeImage",
+    labelKey: "purposeImageLabel",
+    captionKey: "purposeImageCaption",
+  },
+  {
+    section: "funding",
+    title: "Хөрөнгийн ашиглалт",
+    description: "Хөрөнгө хаашаа зарцуулагдахыг илүү ойлгомжтой болгох зураг.",
+    imageKey: "fundingUsageImage",
+    labelKey: "fundingUsageImageLabel",
+    captionKey: "fundingUsageImageCaption",
+  },
+  {
+    section: "team",
+    title: "Багийн тухай",
+    description: "Баг, ажлын процесс, studio эсвэл behind-the-scenes зураг.",
+    imageKey: "teamInfoImage",
+    labelKey: "teamInfoImageLabel",
+    captionKey: "teamInfoImageCaption",
+  },
+  {
+    section: "risks",
+    title: "Эрсдэл",
+    description: "Эрсдэл, төлөвлөгөө, timeline эсвэл баталгаажуулах зураг.",
+    imageKey: "risksImage",
+    labelKey: "risksImageLabel",
+    captionKey: "risksImageCaption",
+  },
+];
+
+function emptyStoryBlock(index: number): StoryBlock {
+  return {
+    id: `story-block-${index + 1}-${Date.now()}`,
+    title: "",
+    body: "",
+    image: "",
+    caption: "",
+  };
+}
+
+function initialStoryBlocks(): StoryBlock[] {
+  return Array.from({ length: MIN_STORY_BLOCKS }, (_, index) => emptyStoryBlock(index));
+}
+
 const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
   story: "", purpose: "", fundingUsage: "", teamInfo: "", risks: "", videoUrl: "", coverImageName: "",
+  storyImage: "", storyImageLabel: "", storyImageCaption: "",
+  problemImage: "", problemImageLabel: "", problemImageCaption: "",
+  purposeImage: "", purposeImageLabel: "", purposeImageCaption: "",
+  fundingUsageImage: "", fundingUsageImageLabel: "", fundingUsageImageCaption: "",
+  teamInfoImage: "", teamInfoImageLabel: "", teamInfoImageCaption: "",
+  risksImage: "", risksImageLabel: "", risksImageCaption: "",
   rewards: [{ id: "r1", title: "", amount: "", description: "", image: "" }],
+  storyBlocks: initialStoryBlocks(),
 };
 
 function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
   if (!seed) return EMPTY;
+  const mediaBySection = new Map((seed.storyMedia ?? []).map((item) => [item.section, item]));
+  const storyBlocks = seed.storyBlocks?.length
+    ? seed.storyBlocks.map((block, index) => ({
+        id:      block.id || `story-block-${index + 1}`,
+        title:   block.title,
+        body:    block.body,
+        image:   block.image ?? "",
+        caption: block.caption ?? "",
+      }))
+    : initialStoryBlocks();
 
   return {
     title:           seed.title,
@@ -192,6 +329,24 @@ function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
     teamInfo:        seed.teamInfo,
     risks:           seed.risks,
     videoUrl:        seed.videoUrl ?? "",
+    storyImage:      mediaBySection.get("story")?.image ?? "",
+    storyImageLabel: mediaBySection.get("story")?.label ?? "",
+    storyImageCaption: mediaBySection.get("story")?.caption ?? "",
+    problemImage:      mediaBySection.get("problem")?.image ?? "",
+    problemImageLabel: mediaBySection.get("problem")?.label ?? "",
+    problemImageCaption: mediaBySection.get("problem")?.caption ?? "",
+    purposeImage:      mediaBySection.get("solution")?.image ?? "",
+    purposeImageLabel: mediaBySection.get("solution")?.label ?? "",
+    purposeImageCaption: mediaBySection.get("solution")?.caption ?? "",
+    fundingUsageImage:      mediaBySection.get("funding")?.image ?? "",
+    fundingUsageImageLabel: mediaBySection.get("funding")?.label ?? "",
+    fundingUsageImageCaption: mediaBySection.get("funding")?.caption ?? "",
+    teamInfoImage:      mediaBySection.get("team")?.image ?? "",
+    teamInfoImageLabel: mediaBySection.get("team")?.label ?? "",
+    teamInfoImageCaption: mediaBySection.get("team")?.caption ?? "",
+    risksImage:      mediaBySection.get("risks")?.image ?? "",
+    risksImageLabel: mediaBySection.get("risks")?.label ?? "",
+    risksImageCaption: mediaBySection.get("risks")?.caption ?? "",
     coverImageName:  "",
     rewards:         seed.rewards.length > 0
       ? seed.rewards.map((reward) => ({
@@ -202,6 +357,7 @@ function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
           image:       reward.image ?? "",
         }))
       : EMPTY.rewards,
+    storyBlocks,
   };
 }
 
@@ -272,6 +428,20 @@ function validate(step: number, d: FormValues): ErrMap {
     else if (d.risks.trim().length < 20)                    e.risks = "Эрсдэлийн хэсгийг арай дэлгэрэнгүй бичнэ үү";
     if (d.videoUrl.trim() && !isSupportedVideoUrl(d.videoUrl))
                                                             e.videoUrl = "YouTube, Vimeo эсвэл шууд MP4/WEBM видео линк оруулна уу";
+
+    if (d.storyBlocks.length < MIN_STORY_BLOCKS) {
+      e.storyBlocks = `Хамгийн багадаа ${MIN_STORY_BLOCKS} дэлгэрэнгүй блок оруулна уу`;
+    }
+    if (d.storyBlocks.length > MAX_STORY_BLOCKS) {
+      e.storyBlocks = `Хамгийн ихдээ ${MAX_STORY_BLOCKS} дэлгэрэнгүй блок оруулна уу`;
+    }
+    d.storyBlocks.forEach((block, index) => {
+      if (!block.image.trim()) e[`sbImage${index}`] = "Зураг оруулна уу";
+      if (!block.title.trim()) e[`sbTitle${index}`] = "Гарчиг оруулна уу";
+      else if (block.title.trim().length < 3) e[`sbTitle${index}`] = "Гарчиг арай богино байна";
+      if (!block.body.trim()) e[`sbBody${index}`] = "Мэдээлэл оруулна уу";
+      else if (block.body.trim().length < 20) e[`sbBody${index}`] = "Мэдээллээ арай дэлгэрэнгүй бичнэ үү";
+    });
   }
 
   if (step === 4) {
@@ -654,10 +824,12 @@ function ImageUpload({ images, error, uploading, onChange, onUploadingChange }: 
   );
 }
 
-function RewardImageUpload({ id, value, onChange }: {
+function SingleImageUpload({ id, value, onChange, emptyLabel = "Зураг оруулах", badgeLabel = "Зураг" }: {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  emptyLabel?: string;
+  badgeLabel?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -722,7 +894,7 @@ function RewardImageUpload({ id, value, onChange }: {
             <img src={value} alt="" className="h-full w-full object-cover" />
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-slate-950/85 to-transparent p-3">
               <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">
-                Шагналын зураг
+                {badgeLabel}
               </span>
               <div className="flex gap-1.5">
                 <button
@@ -760,7 +932,7 @@ function RewardImageUpload({ id, value, onChange }: {
               </svg>
             </span>
             <span className="block text-sm font-bold text-slate-700">
-              {uploading ? "Зураг хуулж байна..." : "Шагналын зураг оруулах"}
+              {uploading ? "Зураг хуулж байна..." : emptyLabel}
             </span>
             <span className="mt-1 block text-xs text-slate-400">PNG, JPG, WEBP</span>
           </span>
@@ -1135,12 +1307,196 @@ function Step2({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
   );
 }
 
+function StoryMediaFields({ d, set }: {
+  d: FormValues;
+  set: (k: StringKey, v: string) => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
+      <div className="mb-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Түүхийн зураг</p>
+        <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Хэсэг бүрийн зураг, тайлбар</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Эдгээр зураг, богино гарчиг, тайлбар нь төслийн дэлгэрэнгүй хуудсанд тухайн хэсэгтээ таарч харагдана.
+          Зургийн цомгоос автоматаар сонгохгүй, бүтээгч өөрөө эндээс удирдана.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {STORY_MEDIA_CONFIGS.map((config) => (
+          <div key={config.section} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+            <div className="mb-3">
+              <p className="font-display text-base font-bold text-slate-900">{config.title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{config.description}</p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div>
+                <Label htmlFor={`${config.section}-image`}>Зураг</Label>
+                <SingleImageUpload
+                  id={`${config.section}-image`}
+                  value={d[config.imageKey]}
+                  onChange={(value) => set(config.imageKey, value)}
+                  emptyLabel="Хэсгийн зураг оруулах"
+                  badgeLabel="Хэсгийн зураг"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor={`${config.section}-label`}>Зураг дээрх богино гарчиг</Label>
+                  <FInput
+                    id={`${config.section}-label`}
+                    value={d[config.labelKey]}
+                    onChange={(value) => set(config.labelKey, value)}
+                    placeholder={config.title}
+                  />
+                  <Hint>Жишээ: “Шийдэл”, “Багийн ажил”, “Хөрөнгийн төлөвлөгөө”.</Hint>
+                </div>
+
+                <div>
+                  <Label htmlFor={`${config.section}-caption`}>Зураг дээрх богино тайлбар</Label>
+                  <FTextarea
+                    id={`${config.section}-caption`}
+                    value={d[config.captionKey]}
+                    onChange={(value) => set(config.captionKey, value)}
+                    placeholder="Энэ зураг тухайн хэсгийг ямар утгаар тайлбарлаж байгааг 1-2 өгүүлбэрээр бичнэ үү."
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StoryBlocksFields({
+  blocks,
+  errors,
+  setStoryBlock,
+  addStoryBlock,
+  removeStoryBlock,
+}: {
+  blocks: StoryBlock[];
+  errors: ErrMap;
+  setStoryBlock: (index: number, key: keyof StoryBlock, value: string) => void;
+  addStoryBlock: () => void;
+  removeStoryBlock: (index: number) => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Дэлгэрэнгүй story</p>
+          <h3 className="mt-1 font-display text-xl font-bold text-slate-950">4-10 зурагтай мэдээллийн блок</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Эдгээр блок доошоо дарааллаараа гарч, campaign story-г илүү баялаг болгоно.
+            Блок бүр зураг, гарчиг, мэдээлэлтэй байна.
+          </p>
+        </div>
+        <span className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-500">
+          {blocks.length} / {MAX_STORY_BLOCKS}
+        </span>
+      </div>
+
+      <ErrMsg msg={errors.storyBlocks} />
+
+      <div className="space-y-5">
+        {blocks.map((block, index) => (
+          <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3">
+              <span className="text-xs font-bold text-blue-700">Блок #{index + 1}</span>
+              {blocks.length > MIN_STORY_BLOCKS && (
+                <button
+                  type="button"
+                  onClick={() => removeStoryBlock(index)}
+                  className="text-xs font-bold text-red-500 transition hover:text-red-700"
+                >
+                  Устгах
+                </button>
+              )}
+            </div>
+
+            <div className="grid gap-4 p-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+              <div>
+                <Label htmlFor={`storyBlockImage${index}`} required>Зураг</Label>
+                <SingleImageUpload
+                  id={`storyBlockImage${index}`}
+                  value={block.image}
+                  onChange={(value) => setStoryBlock(index, "image", value)}
+                  emptyLabel="Story зураг оруулах"
+                  badgeLabel="Story зураг"
+                />
+                <ErrMsg msg={errors[`sbImage${index}`]} />
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor={`storyBlockTitle${index}`} required>Гарчиг</Label>
+                  <FInput
+                    id={`storyBlockTitle${index}`}
+                    value={block.title}
+                    onChange={(value) => setStoryBlock(index, "title", value)}
+                    placeholder="Жишээ: Туршилтын явц, эхний загвар, хэрэглэгчийн үр дүн..."
+                    error={errors[`sbTitle${index}`]}
+                  />
+                  <ErrMsg msg={errors[`sbTitle${index}`]} />
+                </div>
+
+                <div>
+                  <Label htmlFor={`storyBlockBody${index}`} required>Мэдээлэл</Label>
+                  <FTextarea
+                    id={`storyBlockBody${index}`}
+                    value={block.body}
+                    onChange={(value) => setStoryBlock(index, "body", value)}
+                    placeholder="Энэ зурагтай холбоотой дэлгэрэнгүй мэдээллээ бичнэ үү."
+                    error={errors[`sbBody${index}`]}
+                    rows={4}
+                  />
+                  <ErrMsg msg={errors[`sbBody${index}`]} />
+                </div>
+
+                <div>
+                  <Label htmlFor={`storyBlockCaption${index}`}>Зураг дээрх богино тайлбар</Label>
+                  <FInput
+                    id={`storyBlockCaption${index}`}
+                    value={block.caption}
+                    onChange={(value) => setStoryBlock(index, "caption", value)}
+                    placeholder="Заавал биш. Зураг дээр давхар харагдах 1 богино өгүүлбэр."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {blocks.length < MAX_STORY_BLOCKS && (
+        <button
+          type="button"
+          onClick={addStoryBlock}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 py-4 text-sm font-bold text-blue-700 transition hover:border-blue-400 hover:bg-blue-50"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Дэлгэрэнгүй блок нэмэх
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ── Step 3 — Агуулга ───────────────────────────────────────────────────── */
 
 function Step3({
   d, set, e,
   projectImages, projectImagesUploading, onProjectImagesChange, onProjectImagesUploadingChange,
   projectDocuments, projectDocumentsUploading, onProjectDocumentsChange, onProjectDocumentsUploadingChange,
+  setStoryBlock, addStoryBlock, removeStoryBlock,
 }: {
   d: FormValues;
   set: (k: StringKey, v: string) => void;
@@ -1153,6 +1509,9 @@ function Step3({
   projectDocumentsUploading: boolean;
   onProjectDocumentsChange: (documents: SelectedProjectDocument[]) => void;
   onProjectDocumentsUploadingChange: (uploading: boolean) => void;
+  setStoryBlock: (index: number, key: keyof StoryBlock, value: string) => void;
+  addStoryBlock: () => void;
+  removeStoryBlock: (index: number) => void;
 }) {
   const charCount = d.story.length;
   const charOk    = charCount >= 100;
@@ -1228,8 +1587,18 @@ function Step3({
         <ErrMsg msg={e.risks} />
       </div>
 
+      <StoryMediaFields d={d} set={set} />
+
+      <StoryBlocksFields
+        blocks={d.storyBlocks}
+        errors={e}
+        setStoryBlock={setStoryBlock}
+        addStoryBlock={addStoryBlock}
+        removeStoryBlock={removeStoryBlock}
+      />
+
       <div>
-        <Label htmlFor="videoUrl">Pitch video / богино видео линк</Label>
+        <Label htmlFor="videoUrl">Богино танилцуулга видео линк</Label>
         <FInput
           id="videoUrl"
           value={d.videoUrl}
@@ -1238,11 +1607,11 @@ function Step3({
           error={e.videoUrl}
         />
         <ErrMsg msg={e.videoUrl} />
-        <Hint>Заавал биш. Оруулбал project detail-ийн media carousel эхэнд video болж харагдана.</Hint>
+        <Hint>Заавал биш. Оруулбал төслийн дэлгэрэнгүй хуудасны медиа хэсгийн эхэнд видео болж харагдана.</Hint>
       </div>
 
       <div>
-        <Label htmlFor="coverImages" required>Campaign зураг / gallery</Label>
+        <Label htmlFor="coverImages" required>Кампанийн зураг / зургийн цомог</Label>
         <ImageUpload
           images={projectImages}
           error={e.coverImages}
@@ -1293,7 +1662,7 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
                 <span className="inline-flex text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">
                   Урамшуулал #{i + 1}
                 </span>
-                <p className="mt-2 text-xs text-slate-500">Зурагтай reward card нь project detail дээр илүү тод харагдана.</p>
+                <p className="mt-2 text-xs text-slate-500">Зурагтай урамшууллын карт нь төслийн дэлгэрэнгүй дээр илүү тод харагдана.</p>
               </div>
               {d.rewards.length > 1 && (
                 <button type="button" onClick={() => removeReward(i)}
@@ -1310,7 +1679,13 @@ function Step4({ d, e, setReward, addReward, removeReward }: {
             <div className="grid gap-5 p-5 lg:grid-cols-[220px_minmax(0,1fr)]">
               <div>
                 <Label htmlFor={`ri${i}`}>Урамшууллын зураг</Label>
-                <RewardImageUpload id={`ri${i}`} value={r.image} onChange={v => setReward(i, "image", v)} />
+                <SingleImageUpload
+                  id={`ri${i}`}
+                  value={r.image}
+                  onChange={v => setReward(i, "image", v)}
+                  emptyLabel="Шагналын зураг оруулах"
+                  badgeLabel="Шагналын зураг"
+                />
                 <Hint>Шагналын бодит бүтээгдэхүүн, постер, teaser зураг оруулбал илүү итгэлтэй харагдана.</Hint>
               </div>
 
@@ -1487,6 +1862,48 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     setData(d => ({ ...d, rewards: d.rewards.filter((_, idx) => idx !== i) }));
   }
 
+  function setStoryBlock(index: number, key: keyof StoryBlock, value: string) {
+    setData(d => ({
+      ...d,
+      storyBlocks: d.storyBlocks.map((block, currentIndex) => (
+        currentIndex === index ? { ...block, [key]: value } : block
+      )),
+    }));
+
+    const errorKey =
+      key === "image" ? `sbImage${index}` :
+      key === "title" ? `sbTitle${index}` :
+      key === "body" ? `sbBody${index}` :
+      "";
+    if (errorKey && errors[errorKey]) {
+      setErrors((e) => {
+        const next = { ...e };
+        delete next[errorKey];
+        return next;
+      });
+    }
+  }
+
+  function addStoryBlock() {
+    setData(d => {
+      if (d.storyBlocks.length >= MAX_STORY_BLOCKS) return d;
+      return {
+        ...d,
+        storyBlocks: [...d.storyBlocks, emptyStoryBlock(d.storyBlocks.length)],
+      };
+    });
+  }
+
+  function removeStoryBlock(index: number) {
+    setData(d => {
+      if (d.storyBlocks.length <= MIN_STORY_BLOCKS) return d;
+      return {
+        ...d,
+        storyBlocks: d.storyBlocks.filter((_, currentIndex) => currentIndex !== index),
+      };
+    });
+  }
+
   /* Navigation */
   async function handleNext() {
     if (submitting) return;
@@ -1549,6 +1966,19 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
       coverImage:      uploadedImages[0],
       galleryImages:   uploadedImages,
       documents:       uploadedDocuments,
+      storyMedia:      STORY_MEDIA_CONFIGS.map((config) => ({
+        section: config.section,
+        image:   data[config.imageKey],
+        label:   data[config.labelKey],
+        caption: data[config.captionKey],
+      })),
+      storyBlocks:     data.storyBlocks.map((block) => ({
+        id:      block.id,
+        title:   block.title,
+        body:    block.body,
+        image:   block.image,
+        caption: block.caption,
+      })),
       rewards:         data.rewards.map(r => ({
         title:       r.title,
         amount:      Number(r.amount),
@@ -1579,7 +2009,7 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
   const stepDescriptions = [
     "Гарчиг, tagline, ангилал нь project card болон detail hero дээр шууд харагдана.",
     "Зорилтот дүн, хугацаа, банкны мэдээлэл тодорхой байх тусам баталгаажуулалт хурдан явна.",
-    "Pitch video, gallery зураг, түүх нь project detail-ийн media showcase болон доорх content-д харагдана.",
+    "Видео, зургийн цомог, түүх нь төслийн дэлгэрэнгүй хуудасны медиа хэсэг болон доорх агуулгад харагдана.",
     "Сайн урамшуулал нь дэмжигчид оролцож байгаа мэдрэмж өгдөг.",
   ];
 
@@ -1645,6 +2075,9 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
                       projectDocumentsUploading={projectDocumentsUploading}
                       onProjectDocumentsChange={handleProjectDocumentsChange}
                       onProjectDocumentsUploadingChange={setProjectDocumentsUploading}
+                      setStoryBlock={setStoryBlock}
+                      addStoryBlock={addStoryBlock}
+                      removeStoryBlock={removeStoryBlock}
                     />
                   )}
                   {step === 4 && (

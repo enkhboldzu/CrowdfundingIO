@@ -16,6 +16,23 @@ export type Category =
 
 export type ProjectStatus = "PENDING" | "ACTIVE" | "FUNDED" | "FAILED" | "CANCELLED" | "REJECTED";
 
+export type ProjectStorySectionKey = "story" | "problem" | "solution" | "funding" | "team" | "risks";
+
+export interface ProjectStoryMedia {
+  section: ProjectStorySectionKey;
+  image?: string | null;
+  label?: string | null;
+  caption?: string | null;
+}
+
+export interface ProjectStoryBlock {
+  id: string;
+  title: string;
+  body: string;
+  image: string;
+  caption?: string | null;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -30,6 +47,8 @@ export interface Project {
   coverImage: string;
   galleryImages?: string[];
   videoUrl?: string | null;
+  storyMedia?: ProjectStoryMedia[];
+  storyBlocks?: ProjectStoryBlock[];
   creator: Creator;
   goal: number;
   raised: number;

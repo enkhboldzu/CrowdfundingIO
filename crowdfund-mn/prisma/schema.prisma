@@ -74,6 +74,8 @@ model Project {
   galleryImages   String[]        @default([])
   videoUrl        String?
   documents       String[]        @default([])
+  storyMedia      Json?
+  storyBlocks     Json?
   goal            Int
   raised          Int             @default(0)
   backers         Int             @default(0)

@@ -1,4 +1,12 @@
-import type { Project, RewardTier, FundingUpdate, ProjectStatus } from "@/types";
+import type {
+  Project,
+  RewardTier,
+  FundingUpdate,
+  ProjectStatus,
+  ProjectStoryMedia,
+  ProjectStorySectionKey,
+  ProjectStoryBlock,
+} from "@/types";
 import {
   imageSrcOrFallback,
   normalizeImageList,
@@ -27,6 +35,8 @@ interface DBProject {
   coverImage: string | null;
   galleryImages?: string[];
   videoUrl?: string | null;
+  storyMedia?: unknown;
+  storyBlocks?: unknown;
   goal: number;
   raised: number;
   backers: number;
@@ -42,6 +52,67 @@ interface DBProject {
   location?: string;
   createdAt?: Date;
   creator: DBUser;
+}
+
+const STORY_MEDIA_SECTIONS = new Set<ProjectStorySectionKey>([
+  "story",
+  "problem",
+  "solution",
+  "funding",
+  "team",
+  "risks",
+]);
+
+function normalizeStoryMedia(value: unknown): ProjectStoryMedia[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item): ProjectStoryMedia[] => {
+    if (!item || typeof item !== "object") return [];
+
+    const row = item as Record<string, unknown>;
+    const section = typeof row.section === "string" ? row.section : "";
+    if (!STORY_MEDIA_SECTIONS.has(section as ProjectStorySectionKey)) return [];
+
+    const image = normalizeImageSrc(typeof row.image === "string" ? row.image : null);
+    const label = typeof row.label === "string" ? row.label.trim() : "";
+    const caption = typeof row.caption === "string" ? row.caption.trim() : "";
+
+    if (!image && !label && !caption) return [];
+
+    return [{
+      section: section as ProjectStorySectionKey,
+      image,
+      label: label || null,
+      caption: caption || null,
+    }];
+  });
+}
+
+function normalizeStoryBlocks(value: unknown): ProjectStoryBlock[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.slice(0, 10).flatMap((item, index): ProjectStoryBlock[] => {
+    if (!item || typeof item !== "object") return [];
+
+    const row = item as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    const body = typeof row.body === "string" ? row.body.trim() : "";
+    const image = normalizeImageSrc(typeof row.image === "string" ? row.image : null);
+    const caption = typeof row.caption === "string" ? row.caption.trim() : "";
+    const id = typeof row.id === "string" && row.id.trim()
+      ? row.id.trim()
+      : `story-block-${index + 1}`;
+
+    if (!title || !body || !image) return [];
+
+    return [{
+      id,
+      title,
+      body,
+      image,
+      caption: caption || null,
+    }];
+  });
 }
 
 interface DBRewardTier {
@@ -84,6 +155,8 @@ export function toProject(p: DBProject): Project {
     coverImage:      imageSrcOrFallback(p.coverImage),
     galleryImages:   normalizeImageList(p.galleryImages).slice(0, 3),
     videoUrl:        p.videoUrl?.trim() || null,
+    storyMedia:      normalizeStoryMedia(p.storyMedia),
+    storyBlocks:     normalizeStoryBlocks(p.storyBlocks),
     goal:            p.goal,
     raised:          p.raised,
     backers:         p.backers,

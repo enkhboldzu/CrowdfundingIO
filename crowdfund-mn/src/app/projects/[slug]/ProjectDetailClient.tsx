@@ -195,62 +195,73 @@ interface CampaignStorySection {
   content?: string | null;
   image?: string;
   imageLabel?: string;
+  imageCaption?: string;
 }
 
 function campaignStorySections(project: Project): CampaignStorySection[] {
-  const images = uniqueProjectImages(project);
+  const mediaBySection = new Map((project.storyMedia ?? []).map((media) => [media.section, media]));
 
   return [
     {
       id: "project-story",
-      navLabel: "Project story",
+      navLabel: "Төслийн түүх",
       title: "Төслийн түүх",
       content: project.story,
-      image: images[0],
-      imageLabel: "Campaign cover",
+      image: mediaBySection.get("story")?.image ?? undefined,
+      imageLabel: mediaBySection.get("story")?.label ?? "Төслийн түүх",
+      imageCaption: mediaBySection.get("story")?.caption ?? undefined,
     },
     {
       id: "problem",
-      navLabel: "Problem",
+      navLabel: "Асуудал",
       title: "Ямар асуудлыг шийдэх вэ?",
       content: project.description,
-      image: images[1],
-      imageLabel: "Problem visual",
+      image: mediaBySection.get("problem")?.image ?? undefined,
+      imageLabel: mediaBySection.get("problem")?.label ?? "Асуудал",
+      imageCaption: mediaBySection.get("problem")?.caption ?? undefined,
     },
     {
       id: "solution",
-      navLabel: "Solution",
+      navLabel: "Шийдэл",
       title: "Шийдэл ба зорилго",
       content: project.purpose,
-      image: images[2],
-      imageLabel: "Solution visual",
+      image: mediaBySection.get("solution")?.image ?? undefined,
+      imageLabel: mediaBySection.get("solution")?.label ?? "Шийдэл",
+      imageCaption: mediaBySection.get("solution")?.caption ?? undefined,
     },
     {
       id: "funding-usage",
-      navLabel: "Funding use",
+      navLabel: "Хөрөнгийн ашиглалт",
       title: "Хөрөнгийн ашиглалт",
       content: project.fundingUsage,
-      image: images[3],
-      imageLabel: "Funding visual",
+      image: mediaBySection.get("funding")?.image ?? undefined,
+      imageLabel: mediaBySection.get("funding")?.label ?? "Хөрөнгийн ашиглалт",
+      imageCaption: mediaBySection.get("funding")?.caption ?? undefined,
     },
     {
       id: "team",
-      navLabel: "Who we are",
+      navLabel: "Бидний тухай",
       title: "Багийн тухай",
       content: project.teamInfo,
+      image: mediaBySection.get("team")?.image ?? undefined,
+      imageLabel: mediaBySection.get("team")?.label ?? "Багийн тухай",
+      imageCaption: mediaBySection.get("team")?.caption ?? undefined,
     },
     {
       id: "risks",
-      navLabel: "Risks",
+      navLabel: "Эрсдэл",
       title: "Эрсдэлүүд болон сорилтууд",
       content: project.risks,
+      image: mediaBySection.get("risks")?.image ?? undefined,
+      imageLabel: mediaBySection.get("risks")?.label ?? "Эрсдэл",
+      imageCaption: mediaBySection.get("risks")?.caption ?? undefined,
     },
   ].filter((section) => Boolean(section.content?.trim()) || Boolean(section.image));
 }
 
-function sectionSummary(text?: string | null) {
-  const clean = text?.replace(/\s+/g, " ").trim();
-  if (!clean) return "Энэ зураг нь campaign story-ийн тухайн хэсгийг визуалаар тайлбарлана.";
+function sectionSummary(caption?: string | null, text?: string | null) {
+  const clean = (caption || text)?.replace(/\s+/g, " ").trim();
+  if (!clean) return "Энэ зураг тухайн хэсгийн утгыг товч харуулна.";
   return clean.length > 150 ? `${clean.slice(0, 150).trim()}...` : clean;
 }
 
@@ -264,6 +275,7 @@ function CampaignSideNav({
   updates: FundingUpdate[];
 }) {
   const sections = campaignStorySections(project);
+  const storyBlocks = project.storyBlocks ?? [];
 
   return (
     <aside className="hidden lg:block">
@@ -282,8 +294,27 @@ function CampaignSideNav({
             </a>
           ))}
 
+          {storyBlocks.length > 0 && (
+            <>
+              <a href="#story-blocks" className="block font-medium transition-colors hover:text-blue-800">
+                Дэлгэрэнгүй story
+              </a>
+              <div className="space-y-2 border-l border-dashed border-slate-300 pl-4">
+                {storyBlocks.slice(0, 6).map((block, index) => (
+                  <a
+                    key={block.id}
+                    href={`#story-block-${index + 1}`}
+                    className="block truncate text-xs font-medium text-slate-500 transition-colors hover:text-blue-800"
+                  >
+                    {block.title}
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
+
           <a href="#rewards" className="block font-medium transition-colors hover:text-blue-800">
-            Rewards
+            Урамшуулал
           </a>
           {tiers.length > 0 && (
             <div className="space-y-2 border-l border-dashed border-slate-300 pl-4">
@@ -301,11 +332,11 @@ function CampaignSideNav({
 
           {updates.length > 0 && (
             <a href="#updates" className="block font-medium transition-colors hover:text-blue-800">
-              Updates
+              Шинэчлэлт
             </a>
           )}
           <a href="#timeline" className="block font-medium transition-colors hover:text-blue-800">
-            Timeline
+            Хугацаа
           </a>
         </div>
       </nav>
@@ -325,6 +356,7 @@ function CampaignStory({
   onSelectTier: (tier: RewardTier) => void;
 }) {
   const sections = campaignStorySections(project);
+  const storyBlocks = project.storyBlocks ?? [];
 
   return (
     <article className="min-w-0 space-y-10">
@@ -358,8 +390,8 @@ function CampaignStory({
             <StoryMediaFigure
               image={section.image}
               title={section.title}
-              label={section.imageLabel ?? `Campaign image ${index + 1}`}
-              summary={sectionSummary(section.content)}
+              label={section.imageLabel ?? `Кампанийн зураг ${index + 1}`}
+              summary={sectionSummary(section.imageCaption, section.content)}
             />
           )}
 
@@ -371,9 +403,21 @@ function CampaignStory({
         </section>
       ))}
 
+      {storyBlocks.length > 0 && (
+        <section id="story-blocks" className="scroll-mt-28 space-y-6">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Дэлгэрэнгүй story</p>
+            <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Зурагтай дэлгэрэнгүй мэдээлэл</h2>
+          </div>
+          {storyBlocks.map((block, index) => (
+            <StoryBlockSection key={block.id} block={block} index={index} />
+          ))}
+        </section>
+      )}
+
       <section id="rewards" className="scroll-mt-28">
         <div className="mb-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Rewards</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Урамшуулал</p>
           <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Урамшуулал</h2>
         </div>
         <RewardsTab tiers={tiers} onSelectTier={onSelectTier} />
@@ -382,7 +426,7 @@ function CampaignStory({
       {updates.length > 0 && (
         <section id="updates" className="scroll-mt-28">
           <div className="mb-4">
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Updates</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Шинэчлэлт</p>
             <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Шинэчлэлтүүд</h2>
           </div>
           <UpdatesTab updates={updates} />
@@ -390,6 +434,44 @@ function CampaignStory({
       )}
 
       <CampaignTimeline project={project} />
+    </article>
+  );
+}
+
+function StoryBlockSection({
+  block,
+  index,
+}: {
+  block: NonNullable<Project["storyBlocks"]>[number];
+  index: number;
+}) {
+  return (
+    <article
+      id={`story-block-${index + 1}`}
+      className="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card"
+    >
+      <div className="relative aspect-[16/9] min-h-[260px] bg-slate-100">
+        <Image
+          src={block.image}
+          alt={block.title}
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 760px"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-transparent p-5 text-white sm:p-6">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-200">
+            Дэлгэрэнгүй #{index + 1}
+          </p>
+          <h3 className="font-display text-xl font-bold sm:text-2xl">{block.title}</h3>
+          {block.caption && (
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200">{block.caption}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-7">
+        <p className="project-copy project-copy-preserve">{block.body}</p>
+      </div>
     </article>
   );
 }
@@ -432,77 +514,113 @@ function CampaignRewardRail({
   tiers: RewardTier[];
   onSelectTier: (tier: RewardTier) => void;
 }) {
-  const featuredTier = tiers[0];
-
-  if (!featuredTier) return null;
+  if (tiers.length === 0) return null;
 
   return (
     <aside className="hidden xl:block">
-      <div className="sticky top-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
-        {featuredTier.image ? (
-          <div className="relative aspect-[4/3] bg-slate-100">
-            <Image
-              src={featuredTier.image}
-              alt={featuredTier.title}
-              fill
-              className="object-cover"
-              sizes="320px"
-            />
-            <div className="absolute left-4 top-4 rounded-full bg-pink-600 px-2.5 py-1 text-[10px] font-bold uppercase text-white shadow-sm">
-              Онцлох
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-br from-blue-50 to-slate-100 p-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Онцлох шагнал</p>
-            <p className="mt-2 font-display text-3xl font-bold text-slate-950">{formatMNT(featuredTier.amount)}</p>
-          </div>
-        )}
-
-        <div className="p-5">
-          {featuredTier.image && (
-            <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-700">
-              Онцлох шагнал
-            </span>
-          )}
-          <p className="mt-3 font-display text-3xl font-bold text-slate-950">{formatMNT(featuredTier.amount)}</p>
-          <h3 className="mt-2 font-display text-lg font-bold text-slate-900">{featuredTier.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{featuredTier.description}</p>
-
-          <button
-            type="button"
-            onClick={() => onSelectTier(featuredTier)}
-            className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
-          >
-            Энэ шагналыг сонгох
-          </button>
-
-          {tiers.length > 1 && (
-            <a
-              href="#rewards"
-              className="mt-3 flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
-            >
-              Бүх урамшуулал харах
-            </a>
-          )}
+      <div className="sticky top-28 space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Урамшуулал</p>
+          <p className="mt-1 text-sm font-semibold text-slate-700">{tiers.length} сонголт байна</p>
         </div>
+
+        {tiers.map((tier, index) => (
+          <RewardRailCard
+            key={tier.id}
+            tier={tier}
+            featured={index === 0}
+            onSelect={() => onSelectTier(tier)}
+          />
+        ))}
       </div>
     </aside>
   );
 }
 
+function RewardRailCard({
+  tier,
+  featured,
+  onSelect,
+}: {
+  tier: RewardTier;
+  featured: boolean;
+  onSelect: () => void;
+}) {
+  const isSoldOut = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 0;
+  const shortDescription = tier.description.length > 118
+    ? `${tier.description.slice(0, 118).trim()}...`
+    : tier.description;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+      {tier.image && (
+        <div className="relative aspect-[16/8] bg-slate-100">
+          <Image
+            src={tier.image}
+            alt={tier.title}
+            fill
+            className="object-cover"
+            sizes="320px"
+          />
+          {featured && (
+            <span className="absolute left-3 top-3 rounded-full bg-pink-600 px-2.5 py-1 text-[10px] font-bold uppercase text-white shadow-sm">
+              Онцлох
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="p-4">
+        {!tier.image && featured && (
+          <span className="mb-2 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-700">
+            Онцлох
+          </span>
+        )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-display text-2xl font-bold text-slate-950">{formatMNT(tier.amount)}</p>
+            <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-slate-900">{tier.title}</h3>
+          </div>
+          <span className="shrink-0 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-500">
+            {tier.backerCount} хүн
+          </span>
+        </div>
+
+        <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">{shortDescription}</p>
+
+        <button
+          type="button"
+          onClick={onSelect}
+          disabled={isSoldOut}
+          className="mt-3 w-full rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+        >
+          {isSoldOut ? "Дууссан" : "Сонгох"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CampaignTimeline({ project }: { project: Project }) {
   const start = project.publishedAt ?? project.createdAt;
+  const statusLabels: Record<string, string> = {
+    PENDING: "Хянагдаж байна",
+    ACTIVE: "Идэвхтэй",
+    FUNDED: "Амжилттай санхүүжсэн",
+    FAILED: "Амжилтгүй",
+    CANCELLED: "Цуцлагдсан",
+    REJECTED: "Татгалзсан",
+  };
   const timeline = [
     { label: "Кампан эхэлсэн", value: start ? new Date(start).toLocaleDateString("mn-MN") : "Тун удахгүй" },
     { label: "Дэмжлэг авах хугацаа", value: project.endsAt ? new Date(project.endsAt).toLocaleDateString("mn-MN") : daysLeftLabel(project.daysLeft) },
-    { label: "Одоогийн төлөв", value: project.status ?? "ACTIVE" },
+    { label: "Одоогийн төлөв", value: statusLabels[project.status ?? "ACTIVE"] ?? "Идэвхтэй" },
   ];
 
   return (
     <section id="timeline" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7">
-      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Timeline</p>
-      <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Project timeline</h2>
+      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Хугацаа</p>
+      <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Төслийн хугацаа</h2>
       <div className="mt-6 space-y-4">
         {timeline.map((item, index) => (
           <div key={item.label} className="flex gap-4">
@@ -563,7 +681,7 @@ function ProjectShowcase({
             {project.title}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-blue-100">
-            <span>by {project.creator.name}</span>
+            <span>Бүтээгч: {project.creator.name}</span>
             <span className="hidden h-1 w-1 rounded-full bg-blue-200/60 sm:block" />
             <span>{project.creator.projectCount} төсөл байршуулсан</span>
           </div>

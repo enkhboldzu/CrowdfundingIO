@@ -8,6 +8,21 @@ import { projectCreatorInclude } from "@/lib/db/queries";
 import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
 import { normalizeDocumentList } from "@/lib/document-src";
 
+type ProjectStoryMediaInput = {
+  section: string;
+  image?: string;
+  label?: string;
+  caption?: string;
+};
+
+type ProjectStoryBlockInput = {
+  id?: string;
+  title: string;
+  body: string;
+  image: string;
+  caption?: string;
+};
+
 function makeSlug(title: string): string {
   const base = title
     .toLowerCase()
@@ -53,6 +68,47 @@ function toStoredVideoUrl(videoUrl?: string): string | null {
   }
 }
 
+const STORY_MEDIA_SECTIONS = new Set(["story", "problem", "solution", "funding", "team", "risks"]);
+
+function toStoredStoryMedia(media?: ProjectStoryMediaInput[]): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  const rows = (media ?? []).flatMap((item) => {
+    if (!STORY_MEDIA_SECTIONS.has(item.section)) return [];
+
+    const image = toStoredImage(item.image);
+    const label = item.label?.trim() ?? "";
+    const caption = item.caption?.trim() ?? "";
+    if (!image && !label && !caption) return [];
+
+    return [{
+      section: item.section,
+      image,
+      label: label || null,
+      caption: caption || null,
+    }];
+  });
+
+  return rows.length ? rows : Prisma.JsonNull;
+}
+
+function toStoredStoryBlocks(blocks?: ProjectStoryBlockInput[]): Prisma.InputJsonObject[] {
+  return (blocks ?? []).flatMap((block, index): Prisma.InputJsonObject[] => {
+    const title = block.title.trim();
+    const body = block.body.trim();
+    const image = toStoredImage(block.image);
+    const caption = block.caption?.trim() ?? "";
+
+    if (!title || !body || !image) return [];
+
+    return [{
+      id: block.id?.trim() || `story-block-${index + 1}`,
+      title,
+      body,
+      image,
+      caption: caption || null,
+    }];
+  }).slice(0, 10);
+}
+
 const OWNER_EDITABLE_STATUSES = new Set(["PENDING", "REJECTED", "ACTIVE"]);
 
 function createProjectErrorMessage(err: unknown) {
@@ -94,6 +150,8 @@ export async function createProject(data: {
   galleryImages?: string[];
   videoUrl?: string;
   documents?: string[];
+  storyMedia?: ProjectStoryMediaInput[];
+  storyBlocks?: ProjectStoryBlockInput[];
   rewards: Array<{ title: string; amount: number; description: string; image?: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
@@ -109,6 +167,12 @@ export async function createProject(data: {
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
     const videoUrl = toStoredVideoUrl(data.videoUrl);
     const documents = toStoredDocuments(data.documents);
+    const storyMedia = toStoredStoryMedia(data.storyMedia);
+    const storyBlocks = toStoredStoryBlocks(data.storyBlocks);
+
+    if (storyBlocks.length < 4) {
+      return { success: false, error: "Дэлгэрэнгүй story хэсэгт хамгийн багадаа 4 зурагтай мэдээлэл оруулна уу." };
+    }
 
     const project = await prisma.project.create({
       data: {
@@ -125,6 +189,8 @@ export async function createProject(data: {
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
         videoUrl,
         documents,
+        storyMedia,
+        storyBlocks,
         goal:            data.goal,
         location:        data.location.trim(),
         bankName:        data.bankName,
@@ -177,6 +243,8 @@ export async function updateOwnProject(data: {
   galleryImages?: string[];
   videoUrl?: string;
   documents?: string[];
+  storyMedia?: ProjectStoryMediaInput[];
+  storyBlocks?: ProjectStoryBlockInput[];
   rewards: Array<{ title: string; amount: number; description: string; image?: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
   const session = await getSession();
@@ -214,6 +282,12 @@ export async function updateOwnProject(data: {
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
     const videoUrl = toStoredVideoUrl(data.videoUrl);
     const documents = toStoredDocuments(data.documents);
+    const storyMedia = toStoredStoryMedia(data.storyMedia);
+    const storyBlocks = toStoredStoryBlocks(data.storyBlocks);
+
+    if (storyBlocks.length < 4) {
+      return { success: false, error: "Дэлгэрэнгүй story хэсэгт хамгийн багадаа 4 зурагтай мэдээлэл оруулна уу." };
+    }
 
     const project = await prisma.project.update({
       where: { id: existing.id },
@@ -230,6 +304,8 @@ export async function updateOwnProject(data: {
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
         videoUrl,
         documents,
+        storyMedia,
+        storyBlocks,
         goal:            data.goal,
         location:        data.location.trim(),
         bankName:        data.bankName,
