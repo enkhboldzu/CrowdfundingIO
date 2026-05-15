@@ -25,7 +25,7 @@ function Divider() {
 }
 
 /* Desktop nav link with animated underline */
-function NavLink({ href, label, scrolled }: { href: string; label: string; scrolled: boolean }) {
+function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
   const isActive = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
@@ -80,7 +80,7 @@ function MobileNavLink({ href, label, onClick }: { href: string; label: string; 
 }
 
 export function Navbar() {
-  const { isLoggedIn, role, user, logout } = useAuth();
+  const { isLoggedIn, role, logout } = useAuth();
   const pathname               = usePathname();
   const [scrolled,   setScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -98,9 +98,6 @@ export function Navbar() {
   }, [pathname]);
 
   const closeMobile = () => setMobileOpen(false);
-
-  /* Frosted glass on scroll; transparent at top (hero is white so text stays dark) */
-  const hasBg = scrolled || pathname !== "/";
 
   const ghostLink = cn(
     "text-[15px] font-semibold px-4 py-2.5 rounded-xl transition-colors duration-200",
@@ -133,7 +130,7 @@ export function Navbar() {
           <LayoutGroup>
             <div className="hidden md:flex flex-1 justify-center items-center gap-12">
               {NAV_LINKS.map(link => (
-                <NavLink key={link.href} href={link.href} label={link.label} scrolled={hasBg} />
+                <NavLink key={link.href} href={link.href} label={link.label} />
               ))}
             </div>
           </LayoutGroup>
@@ -150,11 +147,6 @@ export function Navbar() {
                     <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2} />
                     Admin
                   </Link>
-                )}
-                {user?.name && (
-                  <span className="hidden xl:block text-sm font-semibold text-slate-700 truncate max-w-[120px]">
-                    {user.name}
-                  </span>
                 )}
                 <NotificationDropdown scrolled={true} />
                 <UserDropdown scrolled={true} />

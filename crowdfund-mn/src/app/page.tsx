@@ -1,26 +1,41 @@
-import { GuardedLink } from "@/components/ui/GuardedLink";
 import Link from "next/link";
+import { GuardedLink }      from "@/components/ui/GuardedLink";
 import { Hero }             from "@/components/landing/Hero";
 import { TrendingProjects } from "@/components/landing/TrendingProjects";
 import { Categories }       from "@/components/landing/Categories";
 import { TrustSection }     from "@/components/landing/TrustSection";
 import { HowItWorks }       from "@/components/landing/HowItWorks";
 import { Footer }           from "@/components/landing/Footer";
+import { getLandingProjects, getProjectCountsByCategory } from "@/lib/db/queries";
+import { toProject } from "@/lib/db/transform";
+import { getPublicStats } from "@/lib/db/stats";
 
-/* All data fetching is now client-side via useLandingData() inside each component.
-   This server component is a pure layout shell. */
-export default function LandingPage() {
+export default async function LandingPage() {
+  const [{ projects: rawProjects, featured: rawFeatured, trending: rawTrending }, counts, stats] = await Promise.all([
+    getLandingProjects(20),
+    getProjectCountsByCategory(),
+    getPublicStats(),
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projects = (rawProjects as any[]).map(toProject);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const featured = (rawFeatured as any[]).map(toProject);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trending = (rawTrending as any[]).map(toProject);
+
   return (
     <>
       <main className="flex flex-col">
-        <Hero />
-        <TrendingProjects />
-        <Categories />
+        <Hero stats={stats} />
+        <TrendingProjects projects={projects} featured={featured} trending={trending} />
+        <Categories counts={counts} />
         <TrustSection />
         <HowItWorks />
 
         {/* CTA Banner */}
         <section className="py-24 bg-gray-950 relative overflow-hidden">
+          {/* Subtle grid */}
           <div
             aria-hidden
             className="absolute inset-0 opacity-[0.06] pointer-events-none"
@@ -30,6 +45,7 @@ export default function LandingPage() {
               backgroundSize: "56px 56px",
             }}
           />
+          {/* Ambient glow */}
           <div
             aria-hidden
             className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[200%] pointer-events-none opacity-10"

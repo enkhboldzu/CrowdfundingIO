@@ -9,7 +9,6 @@ import { ProjectCard } from "@/components/projects/ProjectCard";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { fundingPercent, daysLeftLabel } from "@/lib/utils";
 import { imageSrcOrFallback } from "@/lib/image-src";
-import { useLandingData } from "@/hooks/useLandingData";
 import type { Project } from "@/types";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -21,70 +20,34 @@ const CATEGORY_LABELS: Record<string, string> = {
   fashion:    "Загвар",    music: "Хөгжим",      publishing: "Хэвлэл",
 };
 
-/* ── Skeleton cards ──────────────────────────────────────────── */
+const cardVariant = {
+  hidden: { opacity: 0, y: 24 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } },
+};
 
-function FeaturedSkeleton() {
-  return (
-    <div className="rounded-3xl border border-gray-100 overflow-hidden animate-pulse mb-8 flex flex-col sm:flex-row">
-      <div className="h-64 sm:h-auto sm:w-[45%] bg-gray-100" />
-      <div className="p-8 flex-1 space-y-4">
-        <div className="h-3 w-1/4 bg-gray-100 rounded" />
-        <div className="h-7 w-3/4 bg-gray-100 rounded" />
-        <div className="h-4 w-full bg-gray-100 rounded" />
-        <div className="h-4 w-2/3 bg-gray-100 rounded" />
-        <div className="mt-auto space-y-2 pt-6">
-          <div className="h-2 w-full bg-gray-100 rounded-full" />
-          <div className="flex justify-between">
-            <div className="h-3 w-20 bg-gray-100 rounded" />
-            <div className="h-8 w-20 bg-gray-100 rounded-xl" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CardSkeleton() {
-  return (
-    <div className="rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-      <div className="h-48 bg-gray-100" />
-      <div className="p-5 space-y-3">
-        <div className="h-3 w-1/4 bg-gray-100 rounded" />
-        <div className="h-5 w-3/4 bg-gray-100 rounded" />
-        <div className="h-4 w-full bg-gray-100 rounded" />
-        <div className="h-1.5 w-full bg-gray-100 rounded-full mt-4" />
-        <div className="flex justify-between items-center pt-1">
-          <div className="h-3 w-20 bg-gray-100 rounded" />
-          <div className="h-7 w-16 bg-gray-100 rounded-lg" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Glassmorphism featured card ────────────────────────────── */
+/* ── Large glassmorphism featured card ───────────────────────── */
 
 function FeaturedCard({ project }: { project: Project }) {
   const percent = fundingPercent(project.raised, project.goal);
-  const [imgSrc, setImgSrc]       = useState(imageSrcOrFallback(project.coverImage));
+  const [imgSrc, setImgSrc] = useState(imageSrcOrFallback(project.coverImage));
   const [avatarSrc, setAvatarSrc] = useState(imageSrcOrFallback(project.creator.avatar));
 
   return (
     <motion.div
-      className="group relative flex flex-col sm:flex-row overflow-hidden rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur-xl shadow-[0_2px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_40px_rgba(0,0,0,0.1)] transition-shadow duration-500 mb-8"
+      className="group relative flex flex-col sm:flex-row overflow-hidden rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur-xl shadow-[0_2px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_40px_rgba(0,0,0,0.1)] transition-all duration-500 mb-8"
       initial={{ opacity: 0, y: 28 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.6, ease: EASE }}
-      whileHover={{ scale: 1.005 }}
     >
+      {/* Stretched link */}
       <Link
         href={`/projects/${project.slug}`}
         className="absolute inset-0 z-[1] rounded-3xl"
         aria-label={`${project.title} дэлгэрэнгүй харах`}
       />
 
-      {/* Cover image */}
+      {/* ── Cover image ── */}
       <div className="relative sm:w-[45%] h-64 sm:h-auto min-h-[280px] overflow-hidden bg-gray-100 flex-shrink-0">
         <Image
           src={imgSrc}
@@ -94,14 +57,17 @@ function FeaturedCard({ project }: { project: Project }) {
           sizes="(max-width: 640px) 100vw, 45vw"
           onError={() => setImgSrc(imageSrcOrFallback(null))}
         />
+
+        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
 
-        {/* Badges */}
+        {/* Category pill */}
         <div className="absolute top-4 left-4 z-[2]">
           <span className="bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full">
             {CATEGORY_LABELS[project.category] ?? project.category}
           </span>
         </div>
+
         {project.isTrending && (
           <div className="absolute top-4 right-4 z-[2]">
             <span className="bg-gray-950 text-white text-xs font-bold px-3 py-1.5 rounded-full">
@@ -111,9 +77,10 @@ function FeaturedCard({ project }: { project: Project }) {
         )}
       </div>
 
-      {/* Body */}
+      {/* ── Body ── */}
       <div className="relative z-[2] flex flex-col justify-between p-7 sm:p-10 pointer-events-none flex-1">
-        {/* Creator */}
+
+        {/* Creator row */}
         <div className="flex items-center gap-2.5 mb-5">
           <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
             <Image
@@ -178,42 +145,49 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
       <div className="w-16 h-16 rounded-2xl border border-gray-200 flex items-center justify-center">
-        <span className="text-2xl select-none">📭</span>
+        <span className="text-2xl">📭</span>
       </div>
       <p className="text-gray-500 text-lg font-semibold">Одоогоор нийтлэгдсэн төсөл алга</p>
-      <p className="text-gray-300 text-sm max-w-xs">Анхны төслүүд батлагдмагц энд харагдана.</p>
+      <p className="text-gray-300 text-sm max-w-xs">
+        Анхны төслүүд батлагдмагц энд харагдана.
+      </p>
     </div>
   );
 }
 
 /* ── Main component ──────────────────────────────────────────── */
 
+interface Props {
+  projects: Project[];
+  featured: Project[];
+  trending: Project[];
+}
+
 function uniqueProjects(projects: Project[]): Project[] {
   return projects.filter((p, i, all) => all.findIndex(c => c.id === p.id) === i);
 }
 
-export function TrendingProjects() {
-  const { data, loading } = useLandingData();
+export function TrendingProjects({ projects, featured, trending }: Props) {
+  const featuredProject =
+    featured[0] ??
+    projects.find(p => p.isFeatured) ??
+    null;
 
-  const featuredProject = data
-    ? (data.featured[0] ?? data.projects.find(p => p.isFeatured) ?? null)
-    : null;
+  const trendDisplay = uniqueProjects([
+    ...trending.filter(p => p.id !== featuredProject?.id),
+    ...projects.filter(p =>
+      p.id !== featuredProject?.id && (p.isTrending || p.isVerified)
+    ),
+    ...projects.filter(p => p.id !== featuredProject?.id),
+  ]).slice(0, 3);
 
-  const trendDisplay = data
-    ? uniqueProjects([
-        ...data.trending.filter(p => p.id !== featuredProject?.id),
-        ...data.projects.filter(p => p.id !== featuredProject?.id && (p.isTrending || p.isVerified)),
-        ...data.projects.filter(p => p.id !== featuredProject?.id),
-      ]).slice(0, 3)
-    : [];
-
-  const isEmpty = !loading && !featuredProject && trendDisplay.length === 0;
+  const isEmpty = !featuredProject && trendDisplay.length === 0;
 
   return (
     <section className="py-24 bg-white">
       <div className="container-page">
 
-        {/* Section header */}
+        {/* ── Section header ── */}
         <motion.div
           className="flex items-end justify-between mb-12"
           initial={{ opacity: 0, y: 20 }}
@@ -239,26 +213,12 @@ export function TrendingProjects() {
           </Link>
         </motion.div>
 
-        {/* Loading state */}
-        {loading && (
+        {isEmpty ? <EmptyState /> : (
           <>
-            <FeaturedSkeleton />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
-          </>
-        )}
-
-        {/* Empty state */}
-        {isEmpty && <EmptyState />}
-
-        {/* Loaded state */}
-        {!loading && !isEmpty && (
-          <>
+            {/* ── Featured project ── */}
             {featuredProject && <FeaturedCard project={featuredProject} />}
 
+            {/* ── Trending grid ── */}
             {trendDisplay.length > 0 && (
               <motion.div
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
@@ -268,15 +228,7 @@ export function TrendingProjects() {
                 variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
               >
                 {trendDisplay.map(project => (
-                  <motion.div
-                    key={project.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 24 },
-                      show:   { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } },
-                    }}
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                  >
+                  <motion.div key={project.id} variants={cardVariant}>
                     <ProjectCard project={project} />
                   </motion.div>
                 ))}
@@ -285,18 +237,17 @@ export function TrendingProjects() {
           </>
         )}
 
-        {/* Mobile "view all" */}
-        {!loading && (
-          <div className="mt-10 text-center sm:hidden">
-            <Link
-              href="/explore"
-              className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-gray-950 transition-colors group"
-            >
-              Бүгдийг харах
-              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
-            </Link>
-          </div>
-        )}
+        {/* ── Mobile "view all" ── */}
+        <div className="mt-10 text-center sm:hidden">
+          <Link
+            href="/explore"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-gray-950 transition-colors group"
+          >
+            Бүгдийг харах
+            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
+          </Link>
+        </div>
+
       </div>
     </section>
   );
