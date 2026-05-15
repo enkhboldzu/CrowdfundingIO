@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "PowerShell(cd \"c:\\\\Users\\\\iZone.mn\\\\New folder \\(2\\)\\\\CrowdfundingIO\\\\crowdfund-mn\"; $env:DATABASE_URL=\"postgresql://postgres:12345678@localhost:5432/crowdfund_mn?schema=public\"; npx prisma db push --skip-generate --accept-data-loss 2>&1)",
-      "PowerShell(cd \"c:\\\\Users\\\\iZone.mn\\\\New folder \\(2\\)\\\\CrowdfundingIO\\\\crowdfund-mn\"; $env:DATABASE_URL=\"postgresql://postgres:12345678@localhost:5432/crowdfund_mn?schema=public\"; npx prisma generate 2>&1)"
+      "PowerShell(cd \"c:\\\\Users\\\\iZone.mn\\\\New folder \\(2\\)\\\\CrowdfundingIO\\\\crowdfund-mn\"; $env:DATABASE_URL=\"postgresql://postgres:12345678@localhost:5432/crowdfund_mn?schema=public\"; npx prisma generate 2>&1)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\iZone.mn\\\\New folder \\(2\\)\\\\CrowdfundingIO\\\\crowdfund-mn\\\\src\" -Recurse -ErrorAction SilentlyContinue)",
+      "PowerShell(cd \"c:\\\\Users\\\\iZone.mn\\\\New folder \\(2\\)\\\\CrowdfundingIO\\\\crowdfund-mn\"; $env:DATABASE_URL=\"postgresql://postgres:12345678@localhost:5432/crowdfund_mn?schema=public\"; npx prisma db push --skip-generate 2>&1)"
     ]
   }
 }

@@ -4,15 +4,16 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { GuardedLink } from "@/components/ui/GuardedLink";
 import Image from "next/image";
-import { useAuth }  from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import {
-  Calendar, Check, Edit3, Plus,
-  Heart, FolderOpen, Settings2, Bell,
+  Calendar, Check, Plus, Heart, FolderOpen,
   Mail, Lock, Wallet, TrendingUp, Users,
-  Eye, Pencil, Clock, AlertCircle, CheckCircle2, XCircle, Loader2,
+  Eye, Pencil, Clock, AlertCircle, CheckCircle2, XCircle,
+  Loader2, Shield, ChevronRight, CreditCard, Globe,
+  ArrowRight, Pen,
 } from "lucide-react";
-import { Footer }      from "@/components/landing/Footer";
+import { Footer } from "@/components/landing/Footer";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { fundingPercent } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -26,13 +27,14 @@ import {
 } from "@/lib/upload";
 import { uploadErrorMessage } from "@/lib/upload-client";
 
-/* ── Types ──────────────────────────────────────────────────────── */
+/* ── Types ──────────────────────────────────────────────────────────── */
 
 type ProfileTab = "backed" | "projects" | "settings";
 
 export interface ProfileUser {
   id:         string;
   name:       string | null;
+  bio:        string | null;
   email:      string | null;
   phone:      string | null;
   avatar:     string | null;
@@ -52,13 +54,13 @@ export interface BackedDonation {
   project:   Project;
 }
 
-/* ── Helpers ────────────────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────────────────────────── */
 
 function getDisplayName(user: ProfileUser): string {
   if (user.name?.trim()) return user.name;
-  if (user.email)        return user.email.split("@")[0];
-  if (user.phone)        return user.phone;
-  return "Гишүүн";
+  if (user.email) return user.email.split("@")[0];
+  if (user.phone) return user.phone;
+  return "Шинэ Дэмжигч";
 }
 
 function formatMemberSince(isoDate: string): string {
@@ -67,37 +69,29 @@ function formatMemberSince(isoDate: string): string {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  technology: "Технологи", arts: "Урлаг",      film: "Кино",       environment: "Байгаль",
+  technology: "Технологи", arts: "Урлаг",       film: "Кино",        environment: "Байгаль",
   games:      "Тоглоом",   health: "Эрүүл мэнд", education: "Боловсрол", community: "Нийгэм",
-  food:       "Хоол & Ундаа", fashion: "Загвар", music: "Хөгжим",   publishing: "Хэвлэл",
+  food:       "Хоол",       fashion: "Загвар",    music: "Хөгжим",     publishing: "Хэвлэл",
 };
 
-/* ── InitialAvatar ──────────────────────────────────────────────── */
-
-const AVATAR_COLORS = [
-  "bg-blue-500", "bg-violet-500", "bg-emerald-500",
-  "bg-rose-500",  "bg-amber-500",  "bg-cyan-500",
-];
+const AVATAR_COLORS = ["bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-rose-500", "bg-amber-500", "bg-cyan-500"];
 
 function InitialAvatar({ name, className }: { name: string; className?: string }) {
-  const char       = (name.trim().charAt(0) || "?").toUpperCase();
-  const colorIndex = char.charCodeAt(0) % AVATAR_COLORS.length;
+  const char = (name.trim().charAt(0) || "?").toUpperCase();
+  const color = AVATAR_COLORS[char.charCodeAt(0) % AVATAR_COLORS.length];
   return (
-    <div className={cn(
-      "flex items-center justify-center font-bold text-white select-none",
-      AVATAR_COLORS[colorIndex], className,
-    )}>
+    <div className={cn("flex items-center justify-center font-bold text-white select-none", color, className)}>
       {char}
     </div>
   );
 }
 
-/* ── Status configs ─────────────────────────────────────────────── */
+/* ── Status configs ──────────────────────────────────────────────────── */
 
 const BACKED_STATUS_CONFIG = {
-  active: { label: "Идэвхтэй",   dot: "bg-green-400", text: "text-green-700", bg: "bg-green-50",  border: "border-green-200" },
-  funded: { label: "Санхүүжсэн", dot: "bg-blue-500",  text: "text-blue-700",  bg: "bg-blue-50",   border: "border-blue-200"  },
-  ended:  { label: "Дууссан",    dot: "bg-slate-400", text: "text-slate-600", bg: "bg-slate-50",  border: "border-slate-200" },
+  active: { label: "Идэвхтэй",   dot: "bg-green-400",  text: "text-green-700",  bg: "bg-green-50",  border: "border-green-200"  },
+  funded: { label: "Санхүүжсэн", dot: "bg-blue-500",   text: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200"   },
+  ended:  { label: "Дууссан",    dot: "bg-slate-400",  text: "text-slate-600",  bg: "bg-slate-50",  border: "border-slate-200"  },
 };
 
 const CREATED_STATUS_CONFIG = {
@@ -109,7 +103,105 @@ const CREATED_STATUS_CONFIG = {
   CANCELLED: { label: "Цуцлагдсан",   icon: XCircle,      dot: "bg-slate-400",   text: "text-slate-600",   bg: "bg-slate-50",   border: "border-slate-200"   },
 } as const;
 
-/* ── Root component ─────────────────────────────────────────────── */
+/* ── InlineField — click to edit ─────────────────────────────────────── */
+
+function InlineField({ label, value, placeholder, multiline = false, onSave, saving }: {
+  label: string;
+  value: string;
+  placeholder: string;
+  multiline?: boolean;
+  onSave: (v: string) => Promise<void>;
+  saving?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [localSaving, setLocalSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+
+  function startEdit() {
+    setDraft(value);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  async function save() {
+    if (draft === value) { setEditing(false); return; }
+    setLocalSaving(true);
+    await onSave(draft.trim());
+    setLocalSaving(false);
+    setEditing(false);
+  }
+
+  function cancel() {
+    setDraft(value);
+    setEditing(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !multiline) { e.preventDefault(); save(); }
+    if (e.key === "Escape") cancel();
+  }
+
+  const isBusy = localSaving || saving;
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">{label}</p>
+      {editing ? (
+        <div className="space-y-2">
+          {multiline ? (
+            <textarea
+              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={3}
+              placeholder={placeholder}
+              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent resize-none bg-white"
+            />
+          ) : (
+            <input
+              ref={inputRef as React.RefObject<HTMLInputElement>}
+              type="text"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent bg-white"
+            />
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={isBusy}
+              className="inline-flex items-center gap-1.5 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {localSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" strokeWidth={2.5} />}
+              Хадгалах
+            </button>
+            <button type="button" onClick={cancel} className="text-xs font-semibold text-gray-500 hover:text-gray-800 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+              Болих
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={startEdit}
+          className="group flex items-start gap-2 w-full text-left hover:bg-gray-50 -mx-2 px-2 py-1.5 rounded-lg transition-colors"
+        >
+          <span className={cn("text-sm leading-relaxed flex-1", value ? "text-gray-900" : "text-gray-400 italic")}>
+            {value || placeholder}
+          </span>
+          <Pen className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-600 mt-0.5 shrink-0 transition-colors" strokeWidth={2} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── Root component ──────────────────────────────────────────────────── */
 
 interface ProfileClientProps {
   user:            ProfileUser;
@@ -127,168 +219,191 @@ export function ProfileClient({
   initialTab = "backed",
 }: ProfileClientProps) {
   const [tab, setTab] = useState<ProfileTab>(initialTab);
-
-  // Shadow the prop so hero/avatar update instantly after Settings save
   const [user, setUser] = useState<ProfileUser>(initialUser);
 
-  function handleProfileUpdate(updates: { name?: string | null; avatar?: string | null }) {
-    setUser(prev => ({
-      ...prev,
-      ...(updates.name   !== undefined ? { name:   updates.name   } : {}),
-      ...(updates.avatar !== undefined ? { avatar: updates.avatar } : {}),
-    }));
+  function handleProfileUpdate(updates: Partial<ProfileUser>) {
+    setUser(prev => ({ ...prev, ...updates }));
   }
 
   const displayName = getDisplayName(user);
-  const memberSince = formatMemberSince(user.createdAt);
-
-  const stats = [
-    { label: "Нийт дэмжсэн",    value: `₮${donationStats.totalAmount.toLocaleString()}`, icon: Wallet,     color: "text-blue-700",    bg: "bg-blue-50"    },
-    { label: "Дэмжсэн төслүүд", value: String(donationStats.count),                      icon: Heart,      color: "text-rose-600",    bg: "bg-rose-50"    },
-    { label: "Үүсгэсэн төслүүд",value: String(createdProjects.length),                   icon: TrendingUp, color: "text-emerald-700", bg: "bg-emerald-50" },
-  ];
+  const isNameEmpty = !user.name?.trim();
 
   const tabs: { id: ProfileTab; label: string; icon: React.ElementType; count?: number }[] = [
-    { id: "backed",   label: "Дэмжсэн төслүүд", icon: Heart,      count: donationStats.count    },
-    { id: "projects", label: "Миний төслүүд",    icon: FolderOpen, count: createdProjects.length },
-    { id: "settings", label: "Тохиргоо",         icon: Settings2                                 },
+    { id: "backed",   label: "Дэмжсэн",      icon: Heart,      count: donationStats.count    },
+    { id: "projects", label: "Төслүүд",       icon: FolderOpen, count: createdProjects.length },
+    { id: "settings", label: "Command Center", icon: Shield                                    },
   ];
 
   return (
     <>
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-h-screen bg-gray-50">
 
-        {/* ── Profile hero ──────────────────────────────── */}
-        <section className="gradient-brand-hero pt-24 pb-14 relative overflow-hidden">
-          <div aria-hidden className="absolute -top-16 -right-16 w-80 h-80 rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle, #93C5FD, transparent 70%)" }} />
-          <div aria-hidden className="absolute bottom-0 left-1/4 w-96 h-40 opacity-10"
-            style={{ background: "radial-gradient(ellipse, #60A5FA, transparent 70%)" }} />
+        {/* ── Command Center Header ─────────────────────────────── */}
+        <section className="bg-white border-b border-gray-200 pt-20 pb-0">
+          <div className="container-page">
 
-          <div className="container-page relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8">
+            {/* Top row: avatar + identity + metrics */}
+            <div className="py-8 grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] gap-6 lg:gap-10 items-start">
 
-              {/* Avatar */}
-              <div className="relative flex-shrink-0 self-start sm:self-center">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/25 shadow-2xl">
-                  {user.avatar ? (
-                    <Image
-                      src={user.avatar}
-                      alt={displayName}
-                      width={112}
-                      height={112}
-                      className="object-cover w-full h-full"
-                    />
-                  ) : (
-                    <InitialAvatar name={displayName} className="w-full h-full text-4xl" />
+              {/* Avatar (circle, strict) */}
+              <div className="flex-shrink-0">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-gray-200">
+                    {user.avatar ? (
+                      <Image src={user.avatar} alt={displayName} width={80} height={80} className="object-cover w-full h-full" />
+                    ) : (
+                      <InitialAvatar name={displayName} className="w-full h-full text-2xl" />
+                    )}
+                  </div>
+                  {user.isVerified && (
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-800 rounded-full flex items-center justify-center ring-2 ring-white" title="Баталгаажсан">
+                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    </div>
                   )}
                 </div>
-                {user.isVerified && (
-                  <div className="absolute -bottom-1.5 -right-1.5 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-md">
-                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                  </div>
+              </div>
+
+              {/* Identity block */}
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className={cn("font-bold text-2xl leading-tight", isNameEmpty ? "text-gray-400 italic" : "text-gray-900")}>
+                    {displayName}
+                  </h1>
+                  {user.isVerified && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full">
+                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                      Баталгаажсан
+                    </span>
+                  )}
+                  {isNameEmpty && (
+                    <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      Профайл тохируулаарай
+                    </span>
+                  )}
+                </div>
+                {user.bio ? (
+                  <p className="text-sm text-gray-500 leading-relaxed">{user.bio}</p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Товч танилцуулга нэм...</p>
+                )}
+                <div className="flex items-center gap-4 pt-1 flex-wrap">
+                  {(user.email || user.phone) && (
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <Mail className="w-3.5 h-3.5" strokeWidth={2} />
+                      {user.email ?? user.phone}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                    <Calendar className="w-3.5 h-3.5" strokeWidth={2} />
+                    {formatMemberSince(user.createdAt)} гишүүн
+                  </span>
+                </div>
+              </div>
+
+              {/* Edit button */}
+              <div className="hidden lg:block">
+                <button
+                  onClick={() => setTab("settings")}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-blue-800 hover:text-blue-800 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <Pen className="w-3.5 h-3.5" strokeWidth={2} />
+                  Edit Profile
+                </button>
+              </div>
+            </div>
+
+            {/* ── Impact Metrics strip ── */}
+            <div className="grid grid-cols-3 border-t border-gray-100 -mx-4 sm:mx-0">
+              {/* Total Contributed */}
+              <div className="px-4 sm:px-6 py-4 border-r border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Wallet className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Нийт дэмжсэн</span>
+                </div>
+                {donationStats.totalAmount > 0 ? (
+                  <p className="font-bold text-xl text-gray-900">₮{donationStats.totalAmount.toLocaleString()}</p>
+                ) : (
+                  <button onClick={() => setTab("backed")} className="group flex items-center gap-1 text-sm font-semibold text-blue-800 hover:text-blue-900 mt-0.5">
+                    Анхны төслөө дэмжээрэй
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  </button>
                 )}
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2.5 flex-wrap mb-2">
-                      <h1 className="font-display font-bold text-2xl sm:text-3xl text-white leading-tight">
-                        {displayName}
-                      </h1>
-                      {user.isVerified && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
-                          <Check className="w-3 h-3" strokeWidth={3} />
-                          Баталгаажсан
-                        </span>
-                      )}
-                    </div>
-                    {(user.email || user.phone) && (
-                      <p className="text-white/65 text-sm mb-3 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5" strokeWidth={2} />
-                        {user.email ?? user.phone}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1.5 text-xs text-white/50">
-                      <Calendar className="w-3.5 h-3.5" strokeWidth={2} />
-                      {memberSince} гишүүн
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setTab("settings")}
-                    className="self-start inline-flex items-center gap-2 text-sm font-semibold text-white border border-white/25 hover:border-white/50 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all backdrop-blur-sm flex-shrink-0"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" strokeWidth={2} />
-                    Профайл засах
-                  </button>
+              {/* Projects Backed */}
+              <div className="px-4 sm:px-6 py-4 border-r border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Heart className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Дэмжсэн</span>
                 </div>
+                {donationStats.count > 0 ? (
+                  <p className="font-bold text-xl text-gray-900">{donationStats.count} <span className="text-sm font-normal text-gray-500">төсөл</span></p>
+                ) : (
+                  <Link href="/explore" className="group flex items-center gap-1 text-sm font-semibold text-blue-800 hover:text-blue-900 mt-0.5">
+                    Судлах
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  </Link>
+                )}
+              </div>
+
+              {/* Created Projects */}
+              <div className="px-4 sm:px-6 py-4">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingUp className="w-3.5 h-3.5 text-gray-400" strokeWidth={2} />
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Үүсгэсэн</span>
+                </div>
+                {createdProjects.length > 0 ? (
+                  <p className="font-bold text-xl text-gray-900">{createdProjects.length} <span className="text-sm font-normal text-gray-500">төсөл</span></p>
+                ) : (
+                  <GuardedLink href="/create-project" className="group flex items-center gap-1 text-sm font-semibold text-blue-800 hover:text-blue-900 mt-0.5">
+                    Төсөл эхлүүлэх
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  </GuardedLink>
+                )}
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* ── Stats strip ───────────────────────────────── */}
-        <div className="bg-white border-b border-slate-100 shadow-sm">
-          <div className="container-page">
-            <div className="grid grid-cols-3 divide-x divide-slate-100">
-              {stats.map(stat => {
-                const Icon = stat.icon;
+            {/* ── Tab bar ── */}
+            <div className="flex gap-0 -mb-px overflow-x-auto">
+              {tabs.map(t => {
+                const Icon = t.icon;
+                const active = tab === t.id;
                 return (
-                  <div key={stat.label} className="flex flex-col sm:flex-row sm:items-center sm:gap-4 py-4 sm:py-5 px-3 sm:px-6">
-                    <div className={cn("hidden sm:flex w-10 h-10 rounded-xl items-center justify-center flex-shrink-0", stat.bg)}>
-                      <Icon className={cn("w-5 h-5", stat.color)} strokeWidth={2} />
-                    </div>
-                    <div className="text-center sm:text-left">
-                      <div className="font-display font-bold text-xl sm:text-2xl text-slate-900">{stat.value}</div>
-                      <div className="text-xs text-slate-500 mt-0.5 leading-tight">{stat.label}</div>
-                    </div>
-                  </div>
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      "inline-flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap",
+                      active
+                        ? "border-blue-800 text-blue-800"
+                        : "border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300",
+                    )}
+                  >
+                    <Icon className="w-4 h-4" strokeWidth={active ? 2.5 : 2} />
+                    {t.label}
+                    {t.count !== undefined && (
+                      <span className={cn("text-[11px] font-bold px-1.5 py-0.5 rounded-full", active ? "bg-blue-800 text-white" : "bg-gray-100 text-gray-500")}>
+                        {t.count}
+                      </span>
+                    )}
+                  </button>
                 );
               })}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* ── Tabs + content ────────────────────────────── */}
-        <div className="container-page py-8 sm:py-10">
-
-          {/* Tab bar */}
-          <div className="inline-flex gap-1 bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 mb-8 w-full sm:w-auto overflow-x-auto">
-            {tabs.map(t => {
-              const Icon     = t.icon;
-              const isActive = tab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={cn(
-                    "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0",
-                    isActive
-                      ? "bg-blue-800 text-white shadow-md"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
-                  )}
-                >
-                  <Icon className="w-4 h-4" strokeWidth={2} />
-                  {t.label}
-                  {t.count !== undefined && (
-                    <span className={cn(
-                      "text-[11px] font-bold px-1.5 py-0.5 rounded-full leading-none",
-                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500",
-                    )}>
-                      {t.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
+        {/* ── Tab Content ───────────────────────────────────────────── */}
+        <div className="container-page py-8">
           {tab === "backed"   && <BackedTab donations={backedDonations} />}
           {tab === "projects" && <ProjectsTab projects={createdProjects} />}
-          {tab === "settings" && <SettingsTab user={user} onProfileUpdate={handleProfileUpdate} />}
+          {tab === "settings" && (
+            <CommandCenterSettings
+              user={user}
+              createdProjects={createdProjects}
+              onProfileUpdate={handleProfileUpdate}
+            />
+          )}
         </div>
 
       </main>
@@ -297,17 +412,386 @@ export function ProfileClient({
   );
 }
 
-/* ── Backed Projects tab ────────────────────────────────────────── */
+/* ── Command Center Settings ─────────────────────────────────────────── */
+
+function CommandCenterSettings({
+  user,
+  createdProjects,
+  onProfileUpdate,
+}: {
+  user: ProfileUser;
+  createdProjects: Project[];
+  onProfileUpdate: (updates: Partial<ProfileUser>) => void;
+}) {
+  const { user: authUser, role, login: authLogin } = useAuth();
+  const { show: showToast } = useToast();
+
+  async function handleSaveField(field: "name" | "bio", value: string) {
+    const result = await updateProfile({ [field]: value });
+    if (result.success) {
+      onProfileUpdate({ [field]: value || null });
+      showToast("Хадгалагдлаа.", "info");
+      if (field === "name" && role) {
+        authLogin(role, { name: value.trim() || authUser?.name || "", email: authUser?.email ?? null, avatar: authUser?.avatar ?? null });
+      }
+    } else {
+      showToast(result.error ?? "Алдаа гарлаа.", "error");
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <IdentityCluster user={user} onSaveField={handleSaveField} onProfileUpdate={onProfileUpdate} />
+      <SecurityCluster user={user} />
+      <FinancialCluster user={user} createdProjects={createdProjects} />
+    </div>
+  );
+}
+
+/* ── Identity Cluster ────────────────────────────────────────────────── */
+
+function IdentityCluster({
+  user,
+  onSaveField,
+  onProfileUpdate,
+}: {
+  user: ProfileUser;
+  onSaveField: (field: "name" | "bio", value: string) => Promise<void>;
+  onProfileUpdate: (updates: Partial<ProfileUser>) => void;
+}) {
+  const { show: showToast } = useToast();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState(user.avatar ?? "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar ?? null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) { showToast("PNG, JPG, WEBP зураг оруулна уу.", "error"); return; }
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) { showToast(`Зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`, "error"); return; }
+    if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await uploadErrorMessage(res));
+      const { url } = await res.json() as { url: string };
+      setAvatarUrl(url);
+      const result = await updateProfile({ avatar: url });
+      if (result.success) {
+        onProfileUpdate({ avatar: url });
+        showToast("Профайл зураг шинэчлэгдлээ.", "info");
+      } else {
+        showToast(result.error ?? "Алдаа гарлаа.", "error");
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Зураг хуулахад алдаа гарлаа.", "error");
+      setAvatarPreview(user.avatar ?? "");
+      setAvatarUrl(user.avatar ?? null);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  const displayName = getDisplayName(user);
+
+  return (
+    <ClusterCard
+      badge="Identity"
+      title="Хувийн мэдээлэл"
+      description="Таны нэр болон танилцуулга кампанийн хуудсанд харагдана."
+    >
+      {/* Avatar row */}
+      <div className="flex items-center gap-5 pb-5 mb-5 border-b border-gray-100">
+        <div className="relative flex-shrink-0">
+          <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-gray-200">
+            {(avatarPreview || avatarUrl) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarPreview || avatarUrl!} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <InitialAvatar name={displayName} className="w-full h-full text-xl" />
+            )}
+          </div>
+          {avatarUploading && (
+            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+            </div>
+          )}
+        </div>
+        <div>
+          <input ref={avatarInputRef} type="file" accept={ACCEPTED_IMAGE_INPUT} className="hidden" onChange={handleAvatarSelect} />
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarUploading}
+            className="text-sm font-semibold text-gray-700 border border-gray-200 hover:border-blue-800 hover:text-blue-800 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {avatarUploading ? "Хуулж байна..." : "Зураг солих"}
+          </button>
+          <p className="text-xs text-gray-400 mt-1.5">PNG, JPG, WEBP · {MAX_IMAGE_UPLOAD_MB} MB хүртэл</p>
+        </div>
+      </div>
+
+      {/* Name inline field */}
+      <div className="space-y-5">
+        <InlineField
+          label="Нэр"
+          value={user.name ?? ""}
+          placeholder="Таны нэрийг бичнэ үү..."
+          onSave={v => onSaveField("name", v)}
+        />
+        <InlineField
+          label="Товч танилцуулга"
+          value={user.bio ?? ""}
+          placeholder="Та хэн бэ? Хоббийн тухай, ажлын чиглэл..."
+          multiline
+          onSave={v => onSaveField("bio", v)}
+        />
+
+        {/* Read-only contact */}
+        <div className="pt-2 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">И-мэйл / Утас</p>
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+            <Mail className="w-4 h-4 text-gray-400 shrink-0" strokeWidth={2} />
+            <span className="text-sm text-gray-500 flex-1">{user.email ?? user.phone ?? "—"}</span>
+            <span className="text-[11px] text-gray-400">Өөрчлөх боломжгүй</span>
+          </div>
+        </div>
+      </div>
+    </ClusterCard>
+  );
+}
+
+/* ── Security Cluster ────────────────────────────────────────────────── */
+
+function SecurityCluster({ user }: { user: ProfileUser }) {
+  const { show: showToast } = useToast();
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
+  const [saving, setSaving] = useState(false);
+
+  /* Security score */
+  const score = [
+    true,               // password always set
+    Boolean(user.avatar),
+    user.isVerified,
+  ].filter(Boolean).length;
+  const scoreLabels = ["Сул", "Дундаж", "Хүчтэй"];
+  const scoreColors = ["bg-red-400", "bg-amber-400", "bg-emerald-500"];
+  const scoreLabel  = scoreLabels[score - 1] ?? scoreLabels[0];
+  const scoreColor  = scoreColors[score - 1] ?? scoreColors[0];
+
+  async function handlePasswordSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (pwd.next !== pwd.confirm) { showToast("Нууц үг таарахгүй байна.", "error"); return; }
+    if (!pwd.next || pwd.next.length < 8) { showToast("8+ тэмдэгт нууц үг оруулна уу.", "error"); return; }
+    setSaving(true);
+    const result = await updateProfile({ currentPassword: pwd.current, newPassword: pwd.next });
+    setSaving(false);
+    if (result.success) {
+      showToast("Нууц үг амжилттай солигдлоо.", "info");
+      setPwd({ current: "", next: "", confirm: "" });
+      setShowPasswordForm(false);
+    } else {
+      showToast(result.error ?? "Алдаа гарлаа.", "error");
+    }
+  }
+
+  const scoreItems = [
+    { label: "Нууц үг тогтоосон", done: true },
+    { label: "Профайл зураг нэмсэн", done: Boolean(user.avatar) },
+    { label: "Холбоо барих баталгаажсан", done: user.isVerified },
+  ];
+
+  return (
+    <ClusterCard badge="Security" title="Аюулгүй байдлын тохиргоо" description="Бүртгэлийнхээ хамгаалалтыг бэхжүүлнэ үү.">
+
+      {/* Security score bar */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-gray-500">Хамгаалалтын түвшин</span>
+          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full text-white", scoreColor)}>
+            {scoreLabel}
+          </span>
+        </div>
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500", scoreColor)}
+            style={{ width: `${(score / 3) * 100}%` }}
+          />
+        </div>
+        <div className="mt-3 space-y-1.5">
+          {scoreItems.map(item => (
+            <div key={item.label} className="flex items-center gap-2">
+              <div className={cn("w-4 h-4 rounded-full flex items-center justify-center", item.done ? "bg-emerald-100" : "bg-gray-100")}>
+                {item.done
+                  ? <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
+                  : <span className="w-1.5 h-1.5 rounded-full bg-gray-300 block" />
+                }
+              </div>
+              <span className={cn("text-xs", item.done ? "text-gray-700" : "text-gray-400")}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-gray-100 divide-y divide-gray-100">
+        {/* Password change */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowPasswordForm(v => !v)}
+            className="w-full flex items-center justify-between py-3.5 text-left group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Lock className="w-4 h-4 text-gray-600" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Нууц үг солих</p>
+                <p className="text-xs text-gray-400">Хүчтэй нууц үг ашиглаарай</p>
+              </div>
+            </div>
+            <ChevronRight className={cn("w-4 h-4 text-gray-400 transition-transform", showPasswordForm && "rotate-90")} strokeWidth={2} />
+          </button>
+
+          {showPasswordForm && (
+            <form onSubmit={handlePasswordSave} className="pb-4 space-y-3">
+              {([
+                { id: "current" as const, label: "Одоогийн нууц үг", placeholder: "••••••••" },
+                { id: "next"    as const, label: "Шинэ нууц үг",     placeholder: "8+ тэмдэгт" },
+                { id: "confirm" as const, label: "Давтах",           placeholder: "••••••••"   },
+              ]).map(f => (
+                <div key={f.id}>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">{f.label}</label>
+                  <input
+                    type="password"
+                    value={pwd[f.id]}
+                    onChange={e => setPwd(p => ({ ...p, [f.id]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent bg-white"
+                  />
+                </div>
+              ))}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" strokeWidth={2.5} />}
+                  Хадгалах
+                </button>
+                <button type="button" onClick={() => { setShowPasswordForm(false); setPwd({ current: "", next: "", confirm: "" }); }} className="text-sm font-semibold text-gray-500 hover:text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Болих</button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* 2FA (coming soon) */}
+        <div className="flex items-center justify-between py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+              <Shield className="w-4 h-4 text-gray-600" strokeWidth={2} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">2 шатлалт баталгаажуулалт</p>
+              <p className="text-xs text-gray-400">SMS эсвэл authenticator app</p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-gray-400 border border-gray-200 px-2 py-1 rounded-full">Тун удахгүй</span>
+        </div>
+      </div>
+    </ClusterCard>
+  );
+}
+
+/* ── Financial Cluster ───────────────────────────────────────────────── */
+
+function FinancialCluster({ user: _user, createdProjects }: { user: ProfileUser; createdProjects: Project[] }) {
+  const uniqueBanks = Array.from(
+    new Map(
+      createdProjects
+        .filter(p => (p as unknown as Record<string, unknown>).bankName)
+        .map(p => {
+          const pp = p as unknown as Record<string, unknown>;
+          return [pp.bankName as string, { bankName: pp.bankName as string, bankAccount: pp.bankAccount as string }];
+        })
+    ).values()
+  );
+
+  return (
+    <ClusterCard badge="Financial" title="Санхүүгийн мэдээлэл" description="Санхүүжилт хүлээн авах дансны мэдээлэл. Төсөл бүрд тохируулагддаг.">
+      {uniqueBanks.length > 0 ? (
+        <div className="space-y-3">
+          {uniqueBanks.map(b => (
+            <div key={b.bankName} className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-lg">
+              <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                <CreditCard className="w-4 h-4 text-blue-800" strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{b.bankName}</p>
+                <p className="text-xs text-gray-400 font-mono">{b.bankAccount}</p>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Холбогдсон</span>
+            </div>
+          ))}
+          <p className="text-xs text-gray-400 mt-1">Банкны мэдээллийг засахын тулд тухайн төсөл дотроос edit хийнэ үү.</p>
+        </div>
+      ) : (
+        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
+          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Globe className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
+          </div>
+          <p className="text-sm font-semibold text-gray-700 mb-1">Данс холбогдоогүй байна</p>
+          <p className="text-xs text-gray-400 mb-4">Санхүүжилт авахын тулд эхлээд төсөл үүсгэж банкны мэдээллээ оруулна уу.</p>
+          <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Төсөл эхлүүлэх
+          </GuardedLink>
+        </div>
+      )}
+    </ClusterCard>
+  );
+}
+
+/* ── ClusterCard wrapper ─────────────────────────────────────────────── */
+
+function ClusterCard({ badge, title, description, children }: {
+  badge: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-start gap-3">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-800">{badge}</span>
+          <h3 className="font-bold text-gray-900 text-base mt-0.5">{title}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+        </div>
+      </div>
+      <div className="px-5 py-5">{children}</div>
+    </div>
+  );
+}
+
+/* ── Backed Projects tab ─────────────────────────────────────────────── */
 
 function BackedTab({ donations }: { donations: BackedDonation[] }) {
   if (donations.length === 0) {
     return (
       <EmptyState
-        icon={<Heart className="w-6 h-6 text-slate-400" />}
-        title="Таны дэмжсэн төсөл энд харагдана"
-        description="Та төсөл дэмжмэгц төлсөн дүн, огноо, төслийн явцыг энэ хэсгээс хянах боломжтой."
+        icon={<Heart className="w-6 h-6 text-gray-300" />}
+        title="Дэмжсэн төсөл байхгүй байна"
+        description="Та төсөл дэмжмэгц төлсөн дүн, огноо, явцыг эндээс харна."
         action={
-          <Link href="/explore" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+          <Link href="/explore" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
             Дэмжих төсөл хайх
           </Link>
         }
@@ -316,110 +800,71 @@ function BackedTab({ donations }: { donations: BackedDonation[] }) {
   }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {donations.map(item => (
-        <BackedCard key={item.id} item={item} />
-      ))}
+      {donations.map(item => <BackedCard key={item.id} item={item} />)}
     </div>
   );
 }
 
 function BackedCard({ item }: { item: BackedDonation }) {
   const { amount, createdAt, project } = item;
-  const percent       = fundingPercent(project.raised, project.goal);
-  const projectStatus = project.status ?? "ACTIVE";
-  const backedStatus: keyof typeof BACKED_STATUS_CONFIG =
-    projectStatus === "FUNDED" ? "funded" :
-    projectStatus === "ACTIVE" ? "active"  : "ended";
-  const cfg        = BACKED_STATUS_CONFIG[backedStatus];
-  const pledgeDate = createdAt.split("T")[0];
+  const percent = fundingPercent(project.raised, project.goal);
+  const st = project.status ?? "ACTIVE";
+  const key: keyof typeof BACKED_STATUS_CONFIG = st === "FUNDED" ? "funded" : st === "ACTIVE" ? "active" : "ended";
+  const cfg = BACKED_STATUS_CONFIG[key];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-200 overflow-hidden group">
-      <div className="flex gap-4 p-4 sm:p-5">
-        {/* Thumbnail */}
-        <Link
-          href={`/projects/${project.slug}`}
-          className="relative flex-shrink-0 w-[72px] h-[72px] sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100"
-        >
-          <Image
-            src={project.coverImage}
-            alt={project.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="80px"
-          />
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors">
+      <div className="flex gap-4 p-4">
+        <Link href={`/projects/${project.slug}`} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
+          <Image src={project.coverImage} alt={project.title} fill className="object-cover" sizes="80px" />
         </Link>
-
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <Link
-              href={`/projects/${project.slug}`}
-              className="font-display font-bold text-slate-900 text-sm sm:text-[15px] leading-snug line-clamp-2 hover:text-blue-800 transition-colors"
-            >
+            <Link href={`/projects/${project.slug}`} className="font-bold text-sm text-gray-900 line-clamp-2 hover:text-blue-800 transition-colors leading-snug">
               {project.title}
             </Link>
-            <span className={cn(
-              "inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border flex-shrink-0",
-              cfg.bg, cfg.text, cfg.border,
-            )}>
-              <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", cfg.dot)} />
+            <span className={cn("inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0", cfg.bg, cfg.text, cfg.border)}>
+              <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
               {cfg.label}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mb-2">
-            {CATEGORY_LABELS[project.category] ?? project.category} · {pledgeDate}
-          </p>
-          <div className="flex items-center gap-2 flex-wrap mb-2.5">
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full">
-              <Heart className="w-3 h-3 fill-rose-500 stroke-none" />
-              Баярлалаа
-            </span>
-            <span className="text-xs font-semibold text-slate-700">
-              ₮{amount.toLocaleString()} дэмжсэн
-            </span>
-          </div>
+          <p className="text-xs text-gray-400 mb-2">{CATEGORY_LABELS[project.category] ?? project.category} · {createdAt.split("T")[0]}</p>
+          <p className="text-xs font-semibold text-gray-700">₮{amount.toLocaleString()} дэмжсэн</p>
         </div>
       </div>
-      <div className="px-4 sm:px-5 pb-4">
+      <div className="px-4 pb-4">
         <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
       </div>
     </div>
   );
 }
 
-/* ── My Projects tab ────────────────────────────────────────────── */
+/* ── My Projects tab ─────────────────────────────────────────────────── */
 
 function ProjectsTab({ projects }: { projects: Project[] }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-slate-500 text-sm">{projects.length} төсөл илгээгдсэн</p>
-        <GuardedLink
-          href="/create-project"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-blue-800 hover:bg-blue-900 px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-        >
+        <p className="text-sm text-gray-500">{projects.length} төсөл</p>
+        <GuardedLink href="/create-project" className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-lg transition-colors">
           <Plus className="w-4 h-4" strokeWidth={2.5} />
           Шинэ төсөл
         </GuardedLink>
       </div>
-
       {projects.length === 0 ? (
         <EmptyState
-          icon={<FolderOpen className="w-6 h-6 text-slate-400" />}
-          title="Таны эхлүүлсэн төсөл энд харагдана"
+          icon={<FolderOpen className="w-6 h-6 text-gray-300" />}
+          title="Үүсгэсэн төсөл байхгүй байна"
           description="Санаагаа танилцуулж илгээсний дараа хянагдах төлөв, нийтлэгдсэн эсэх, дэмжлэгийн явцаа эндээс харна."
           action={
-            <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+            <GuardedLink href="/create-project" className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
               Төсөл эхлэх
             </GuardedLink>
           }
         />
       ) : (
         <div className="space-y-4">
-          {projects.map(project => (
-            <CreatedProjectCard key={project.id} project={project} />
-          ))}
+          {projects.map(p => <CreatedProjectCard key={p.id} project={p} />)}
         </div>
       )}
     </div>
@@ -427,77 +872,48 @@ function ProjectsTab({ projects }: { projects: Project[] }) {
 }
 
 function CreatedProjectCard({ project }: { project: Project }) {
-  const percent    = fundingPercent(project.raised, project.goal);
+  const percent = fundingPercent(project.raised, project.goal);
   const daysUrgent = (project.daysLeft ?? 0) <= 7;
-  const statusKey  = (project.status ?? "ACTIVE") as keyof typeof CREATED_STATUS_CONFIG;
-  const cfg        = CREATED_STATUS_CONFIG[statusKey] ?? CREATED_STATUS_CONFIG.ACTIVE;
+  const statusKey = (project.status ?? "ACTIVE") as keyof typeof CREATED_STATUS_CONFIG;
+  const cfg = CREATED_STATUS_CONFIG[statusKey] ?? CREATED_STATUS_CONFIG.ACTIVE;
   const StatusIcon = cfg.icon;
-  const isPublic   = statusKey === "ACTIVE" || statusKey === "FUNDED";
-  const canEdit    = statusKey === "PENDING" || statusKey === "REJECTED" || statusKey === "ACTIVE";
+  const isPublic = statusKey === "ACTIVE" || statusKey === "FUNDED";
+  const canEdit = statusKey === "PENDING" || statusKey === "REJECTED" || statusKey === "ACTIVE";
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="flex flex-col sm:flex-row">
-        {/* Cover image */}
-        <div className="relative sm:w-48 h-44 sm:h-auto flex-shrink-0 bg-slate-100">
-          <Image
-            src={project.coverImage}
-            alt={project.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 100vw, 192px"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
-          <div className={cn(
-            "absolute top-3 left-3 inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm",
-            cfg.bg, cfg.text, cfg.border,
-          )}>
+        <div className="relative sm:w-44 h-40 sm:h-auto flex-shrink-0 bg-gray-100">
+          <Image src={project.coverImage} alt={project.title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 176px" />
+          <div className={cn("absolute top-3 left-3 inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-full border", cfg.bg, cfg.text, cfg.border)}>
             <StatusIcon className="w-3 h-3" strokeWidth={2.5} />
             {cfg.label}
           </div>
         </div>
-
-        {/* Content */}
         <div className="flex-1 p-5 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full mb-1.5 inline-block">
+              <span className="text-xs font-semibold text-blue-800 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full mb-1.5 inline-block">
                 {CATEGORY_LABELS[project.category] ?? project.category}
               </span>
-              <h3 className="font-display font-bold text-slate-900 text-base sm:text-lg leading-snug line-clamp-2">
-                {project.title}
-              </h3>
+              <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2">{project.title}</h3>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {isPublic ? (
-                <Link
-                  href={`/projects/${project.slug}`}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-blue-800 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-all"
-                  title="Харах"
-                >
+                <Link href={`/projects/${project.slug}`} className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-800 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 transition-all" title="Харах">
                   <Eye className="w-4 h-4" strokeWidth={2} />
                 </Link>
               ) : (
-                <div
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 border border-slate-100 cursor-not-allowed"
-                  title="Нийтлэгдээгүй тул харах боломжгүй"
-                >
+                <div className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-200 border border-gray-100 cursor-not-allowed" title="Нийтлэгдээгүй">
                   <Eye className="w-4 h-4" strokeWidth={2} />
                 </div>
               )}
               {canEdit ? (
-                <Link
-                  href={`/projects/${project.slug}/edit`}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-blue-800 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-all"
-                  title="Засах"
-                >
+                <Link href={`/projects/${project.slug}/edit`} className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-800 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 transition-all" title="Засах">
                   <Pencil className="w-4 h-4" strokeWidth={2} />
                 </Link>
               ) : (
-                <div
-                  className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 border border-slate-100 cursor-not-allowed"
-                  title="Энэ төлөвтэй төслийг засварлах боломжгүй"
-                >
+                <div className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-200 border border-gray-100 cursor-not-allowed" title="Засах боломжгүй">
                   <Pencil className="w-4 h-4" strokeWidth={2} />
                 </div>
               )}
@@ -505,39 +921,27 @@ function CreatedProjectCard({ project }: { project: Project }) {
           </div>
 
           {statusKey === "PENDING" && (
-            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3.5 py-2.5 rounded-xl">
-              <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" strokeWidth={2} />
-              <span>Таны төсөл администраторын хянаж байна. Батлагдсаны дараа нийтэд харагдана (24–48 цаг).</span>
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2.5 rounded-lg">
+              <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" strokeWidth={2} />
+              Таны төсөл администраторын хянаж байна (24–48 цаг).
             </div>
           )}
-
           {statusKey === "REJECTED" && (
-            <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 text-xs px-3.5 py-2.5 rounded-xl">
-              <XCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-red-500" strokeWidth={2} />
-              <span>
-                <span className="font-semibold">Татгалзсан шалтгаан: </span>
-                {project.rejectionReason ?? "Дэлгэрэнгүй мэдээлэл байхгүй."}
-              </span>
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-800 text-xs px-3 py-2.5 rounded-lg">
+              <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-red-500" strokeWidth={2} />
+              <span><span className="font-semibold">Татгалзсан: </span>{project.rejectionReason ?? "Дэлгэрэнгүй байхгүй."}</span>
             </div>
           )}
 
           <ProgressBar value={percent} raised={project.raised} goal={project.goal} />
-
-          <div className="flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
+          <div className="flex items-center justify-between text-xs text-gray-500 flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <Users className="w-3.5 h-3.5" strokeWidth={2} />
-                {project.backers.toLocaleString()} дэмжигч
-              </span>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" strokeWidth={2} />{project.backers.toLocaleString()} дэмжигч</span>
               {isPublic && project.daysLeft !== undefined && (
-                <span className={cn("font-semibold", daysUrgent ? "text-red-600" : "text-slate-600")}>
-                  {project.daysLeft} өдөр үлдсэн
-                </span>
+                <span className={cn("font-semibold", daysUrgent ? "text-red-600" : "text-gray-600")}>{project.daysLeft} өдөр</span>
               )}
             </div>
-            <span className="font-bold text-blue-800 text-sm">
-              {percent.toFixed(0)}% санхүүжсэн
-            </span>
+            <span className="font-bold text-blue-800">{percent.toFixed(0)}% санхүүжсэн</span>
           </div>
         </div>
       </div>
@@ -545,348 +949,19 @@ function CreatedProjectCard({ project }: { project: Project }) {
   );
 }
 
-/* ── Settings tab ───────────────────────────────────────────────── */
+/* ── Shared EmptyState ───────────────────────────────────────────────── */
 
-function SettingsTab({
-  user,
-  onProfileUpdate,
-}: {
-  user: ProfileUser;
-  onProfileUpdate: (updates: { name?: string | null; avatar?: string | null }) => void;
-}) {
-  const { user: authUser, role, login: authLogin } = useAuth();
-  const { show: showToast }                        = useToast();
-
-  const displayEmail = user.email ?? user.phone ?? "";
-  const fallbackName = user.name?.trim() || user.email?.split("@")[0] || "Гишүүн";
-
-  const [profile,  setProfile]  = useState({ name: user.name ?? "" });
-  const [password, setPassword] = useState({ current: "", next: "", confirm: "" });
-  const [notifs,   setNotifs]   = useState({
-    newBacker: true, projectUpdates: true, emailNotifs: true,
-    fundingAlerts: false, weeklyDigest: true,
-  });
-  const [saving, setSaving] = useState(false);
-
-  /* ── Avatar ──────────────────────────────────────────────────── */
-  const avatarInputRef                         = useRef<HTMLInputElement>(null);
-  const [avatarPreview,   setAvatarPreview]    = useState<string>(user.avatar ?? "");
-  const [avatarUrl,       setAvatarUrl]        = useState<string | null>(user.avatar ?? null);
-  const [avatarUploading, setAvatarUploading]  = useState(false);
-  const avatarChanged = avatarUrl !== user.avatar;
-
-  async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-
-    if (!ACCEPTED_IMAGE_TYPE_SET.has(file.type)) {
-      showToast("Зөвхөн PNG, JPG, WEBP зураг оруулна уу.", "error");
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      showToast(`Зураг ${MAX_IMAGE_UPLOAD_MB} MB-аас их байна.`, "error");
-      return;
-    }
-
-    // Show blob preview immediately
-    if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
-    setAvatarPreview(URL.createObjectURL(file));
-    setAvatarUploading(true);
-
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!res.ok) {
-        throw new Error(await uploadErrorMessage(res));
-      }
-      const { url } = await res.json() as { url: string };
-      setAvatarUrl(url);
-    } catch (err) {
-      const message = err instanceof Error && err.message !== "Upload failed"
-        ? err.message
-        : "Зураг хуулахад алдаа гарлаа.";
-      showToast(message, "error");
-      setAvatarPreview(user.avatar ?? "");
-      setAvatarUrl(user.avatar ?? null);
-    } finally {
-      setAvatarUploading(false);
-    }
-  }
-
-  function handleRevertAvatar() {
-    if (avatarPreview.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
-    setAvatarPreview(user.avatar ?? "");
-    setAvatarUrl(user.avatar ?? null);
-  }
-
-  /* ── Save ────────────────────────────────────────────────────── */
-  async function handleSave(e: React.SyntheticEvent) {
-    e.preventDefault();
-
-    if (password.next && password.next !== password.confirm) {
-      showToast("Шинэ нууц үг таарахгүй байна.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const result = await updateProfile({
-        name:            profile.name || undefined,
-        avatar:          avatarUrl    ?? undefined,
-        currentPassword: password.current || undefined,
-        newPassword:     password.next    || undefined,
-      });
-
-      if (result.success) {
-        showToast("Өөрчлөлтүүд амжилттай хадгалагдлаа.", "info");
-        setPassword({ current: "", next: "", confirm: "" });
-
-        // Update profile hero immediately (no page reload needed)
-        onProfileUpdate({ name: profile.name || null, avatar: avatarUrl });
-
-        // Sync global auth state → navbar name/avatar update instantly
-        if (role) {
-          authLogin(role, {
-            name:   profile.name.trim() || authUser?.name || "",
-            email:  authUser?.email ?? null,
-            avatar: avatarUrl,
-          });
-        }
-      } else {
-        showToast(result.error ?? "Алдаа гарлаа.", "error");
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
-
-      {/* ── Profile photo ────────────────────────────── */}
-      <SettingsCard icon={<Edit3 className="w-4 h-4" strokeWidth={2} />} title="Профайл зураг">
-        <div className="flex items-center gap-5">
-
-          {/* Preview circle */}
-          <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-slate-200 bg-slate-100">
-              {(avatarPreview || avatarUrl) ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={avatarPreview || avatarUrl!}
-                  alt="Профайл зураг"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <InitialAvatar name={fallbackName} className="w-full h-full text-2xl" />
-              )}
-            </div>
-            {avatarUploading && (
-              <div className="absolute inset-0 rounded-2xl bg-black/45 flex items-center justify-center">
-                <Loader2 className="w-5 h-5 text-white animate-spin" />
-              </div>
-            )}
-          </div>
-
-          {/* Controls */}
-          <div className="space-y-2">
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept={ACCEPTED_IMAGE_INPUT}
-              className="hidden"
-              onChange={handleAvatarSelect}
-            />
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={avatarUploading}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 border border-slate-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 px-4 py-2 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {avatarUploading
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : <Edit3 className="w-4 h-4" strokeWidth={2} />}
-                {avatarUploading ? "Хуулж байна..." : "Зураг солих"}
-              </button>
-
-              {avatarChanged && !avatarUploading && (
-                <button
-                  type="button"
-                  onClick={handleRevertAvatar}
-                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
-                >
-                  Буцаах
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-slate-400">PNG, JPG, WEBP · Дээд тал нь {MAX_IMAGE_UPLOAD_MB} MB</p>
-          </div>
-        </div>
-      </SettingsCard>
-
-      {/* ── Profile name ─────────────────────────────── */}
-      <SettingsCard icon={<Edit3 className="w-4 h-4" strokeWidth={2} />} title="Хувийн мэдээлэл">
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Нэр</label>
-          <input
-            type="text"
-            value={profile.name}
-            onChange={e => setProfile({ name: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
-            placeholder="Таны нэр"
-          />
-        </div>
-      </SettingsCard>
-
-      {/* ── Login info ────────────────────────────────── */}
-      <SettingsCard icon={<Lock className="w-4 h-4" strokeWidth={2} />} title="Нэвтрэх мэдээлэл">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">И-мэйл / Утас</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={2} />
-              <input
-                type="text"
-                value={displayEmail}
-                readOnly
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-100 text-slate-500 text-sm bg-slate-50 cursor-not-allowed"
-              />
-            </div>
-            <p className="text-xs text-slate-400 mt-1">И-мэйл болон утасны дугаар өөрчлөх боломжгүй.</p>
-          </div>
-
-          <div className="h-px bg-slate-100" />
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Нууц үг солих</p>
-
-          {([
-            { id: "current", label: "Одоогийн нууц үг",       placeholder: "••••••••"   },
-            { id: "next",    label: "Шинэ нууц үг",           placeholder: "8+ тэмдэгт" },
-            { id: "confirm", label: "Шинэ нууц үгийг давтах", placeholder: "••••••••"   },
-          ] as const).map(f => (
-            <div key={f.id}>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">{f.label}</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={2} />
-                <input
-                  type="password"
-                  value={password[f.id]}
-                  onChange={e => setPassword(p => ({ ...p, [f.id]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-slate-400"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </SettingsCard>
-
-      {/* ── Notification prefs ────────────────────────── */}
-      <SettingsCard icon={<Bell className="w-4 h-4" strokeWidth={2} />} title="Мэдэгдлийн тохиргоо">
-        <div className="divide-y divide-slate-50">
-          {([
-            { key: "newBacker",      label: "Шинэ дэмжигч",        desc: "Таны төслийг хэн нэгэн дэмжихэд мэдэгдэл авах"           },
-            { key: "projectUpdates", label: "Төслийн шинэчлэлт",   desc: "Дэмжсэн төслүүд шинэ шинэчлэлт нийтлэхэд мэдэгдэл авах"  },
-            { key: "emailNotifs",    label: "И-мэйл мэдэгдэл",     desc: "Чухал мэдэгдлийг и-мэйлээр хүлээн авах"                  },
-            { key: "fundingAlerts",  label: "Санхүүжилтийн дохио", desc: "Зорилтын 50%, 75%, 100% хүрэхэд мэдэгдэл авах"           },
-            { key: "weeklyDigest",   label: "Долоо хоногийн тойм", desc: "Долоо хоног бүр шилдэг төслүүдийн хураангуй авах"         },
-          ] as const).map(item => {
-            const isOn = notifs[item.key];
-            return (
-              <div key={item.key} className="flex items-center justify-between gap-4 py-3.5">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 leading-snug">{item.label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{item.desc}</p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isOn}
-                  onClick={() => setNotifs(n => ({ ...n, [item.key]: !isOn }))}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2",
-                    isOn ? "bg-blue-800" : "bg-slate-200",
-                  )}
-                >
-                  <span className={cn(
-                    "inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow-md transition-transform duration-200",
-                    isOn ? "translate-x-[22px]" : "translate-x-[3px]",
-                  )} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </SettingsCard>
-
-      {/* ── Action buttons ────────────────────────────── */}
-      <div className="flex items-center justify-end gap-3 pt-1">
-        <button
-          type="button"
-          onClick={() => {
-            setProfile({ name: user.name ?? "" });
-            setPassword({ current: "", next: "", confirm: "" });
-            handleRevertAvatar();
-          }}
-          className="text-sm font-semibold text-slate-600 hover:text-slate-800 px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
-        >
-          Болих
-        </button>
-        <button
-          type="submit"
-          disabled={saving || avatarUploading}
-          className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-cta transition-colors"
-        >
-          {saving
-            ? <Loader2 className="w-4 h-4 animate-spin" />
-            : <Check className="w-4 h-4" strokeWidth={2.5} />}
-          Хадгалах
-        </button>
-      </div>
-    </form>
-  );
-}
-
-/* ── Shared sub-components ──────────────────────────────────────── */
-
-function SettingsCard({
-  icon, title, children,
-}: {
-  icon:     React.ReactNode;
-  title:    string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 sm:px-6 py-4 border-b border-slate-50 bg-slate-50/50">
-        <div className="w-7 h-7 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center">
-          {icon}
-        </div>
-        <h3 className="font-display font-bold text-slate-900 text-sm">{title}</h3>
-      </div>
-      <div className="px-5 sm:px-6 py-5">{children}</div>
-    </div>
-  );
-}
-
-function EmptyState({
-  icon, title, description, action,
-}: {
+function EmptyState({ icon, title, description, action }: {
   icon:        React.ReactNode;
   title:       string;
   description: string;
-  action?:     React.ReactNode;
+  action:      React.ReactNode;
 }) {
   return (
-    <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-card">
-      <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        {icon}
-      </div>
-      <h3 className="font-display font-bold text-slate-800 text-lg mb-2">{title}</h3>
-      <p className="text-slate-400 text-sm max-w-xs mx-auto mb-6 leading-relaxed">{description}</p>
+    <div className="bg-white border border-gray-200 rounded-xl px-6 py-16 text-center max-w-sm mx-auto">
+      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">{icon}</div>
+      <h3 className="font-bold text-gray-900 text-base mb-2">{title}</h3>
+      <p className="text-sm text-gray-500 leading-relaxed mb-6">{description}</p>
       {action}
     </div>
   );

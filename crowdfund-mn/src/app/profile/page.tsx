@@ -32,7 +32,7 @@ export default async function ProfilePage({ searchParams }: Props) {
     prisma.user.findUnique({
       where: { id: session.userId },
       select: {
-        id: true, name: true, email: true, phone: true,
+        id: true, name: true, bio: true, email: true, phone: true,
         avatar: true, isVerified: true, createdAt: true,
       },
     }),
@@ -61,6 +61,7 @@ export default async function ProfilePage({ searchParams }: Props) {
       user={{
         id:         user.id,
         name:       user.name,
+        bio:        user.bio ?? null,
         email:      user.email,
         phone:      user.phone,
         avatar:     normalizeImageSrc(user.avatar),

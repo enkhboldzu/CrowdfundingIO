@@ -7,6 +7,7 @@ import { normalizeImageSrc } from "@/lib/image-src";
 
 export async function updateProfile(data: {
   name?: string;
+  bio?: string;
   avatar?: string;
   currentPassword?: string;
   newPassword?: string;
@@ -19,6 +20,10 @@ export async function updateProfile(data: {
 
     if (data.name?.trim()) {
       updates.name = data.name.trim();
+    }
+
+    if (data.bio !== undefined) {
+      updates.bio = data.bio.trim() || null;
     }
 
     if (data.avatar) {

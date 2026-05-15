@@ -109,7 +109,7 @@ export function Navbar() {
                     !scrolled && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta"
                   )}
                 >
-                  Төсөл эхлэх
+                  Төсөл эхлүүлэх
                 </Link>
               </div>
             ) : (
@@ -128,7 +128,7 @@ export function Navbar() {
                     !scrolled && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta"
                   )}
                 >
-                  Төсөл эхлэх
+                  Төсөл эхлүүлэх
                 </Link>
               </div>
             )}
@@ -221,7 +221,7 @@ export function Navbar() {
                 onClick={closeMobile}
                 className={buttonVariants({ size: "lg", fullWidth: true })}
               >
-                Төсөл эхлэх
+                Төсөл эхлүүлэх
               </Link>
             </div>
 
