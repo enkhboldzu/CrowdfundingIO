@@ -68,6 +68,7 @@ export interface Project {
   coverImage: string;
   galleryImages?: string[];
   videoUrl?: string | null;
+  documents?: string[];
   storyMedia?: ProjectStoryMedia[];
   storyBlocks?: ProjectStoryBlock[];
   faq?: ProjectFaqItem[];

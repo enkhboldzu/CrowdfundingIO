@@ -6,6 +6,7 @@ import {
   User, Mail, Phone, CalendarDays, FolderKanban,
   MapPin, Tag, Banknote, Building2, CreditCard,
   Award, BookOpen, Clock, FileText, ExternalLink, RefreshCw,
+  Image as ImageIcon, Link2, HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMNT } from "@/lib/formatters";
@@ -17,10 +18,40 @@ interface RewardTier {
   title:             string;
   amount:            number;
   description:       string;
+  image:             string | null;
   estimatedDelivery: string;
   isLimited:         boolean;
   remaining:         number | null;
   backerCount:       number;
+}
+
+interface ProjectStoryBlock {
+  id: string;
+  title: string;
+  body: string;
+  image: string;
+  caption?: string | null;
+}
+
+interface ProjectFaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+interface ProjectTimelineItem {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+}
+
+interface ProjectSocialLinks {
+  website?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  discord?: string | null;
+  twitter?: string | null;
 }
 
 interface DonationDetail {
@@ -56,7 +87,13 @@ interface ProjectDetail {
   risks:           string | null;
   category:        string;
   coverImage:      string | null;
+  galleryImages:   string[];
+  videoUrl:        string | null;
   documents:       string[];
+  storyBlocks:     ProjectStoryBlock[];
+  faq:             ProjectFaqItem[];
+  timeline:        ProjectTimelineItem[];
+  socialLinks:     ProjectSocialLinks | null;
   goal:            number;
   raised:          number;
   backers:         number;
@@ -99,6 +136,14 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = 
   FUNDED:    { label: "Санхүүжсэн",      bg: "bg-blue-100",    text: "text-blue-700"    },
 };
 
+const SOCIAL_LINK_META = [
+  { key: "website", label: "Вэбсайт" },
+  { key: "facebook", label: "Facebook" },
+  { key: "instagram", label: "Instagram" },
+  { key: "discord", label: "Discord" },
+  { key: "twitter", label: "X / Twitter" },
+] as const;
+
 function documentName(src: string, index: number) {
   try {
     const url = new URL(src, "https://crowdfund.local");
@@ -107,6 +152,61 @@ function documentName(src: string, index: number) {
   } catch {
     return `document-${index + 1}`;
   }
+}
+
+function socialLinkItems(links: ProjectSocialLinks | null | undefined) {
+  if (!links) return [];
+
+  return SOCIAL_LINK_META.flatMap(({ key, label }) => {
+    const rawValue = links[key];
+    const value = typeof rawValue === "string" ? rawValue.trim() : "";
+    if (!value) return [];
+    const href = /^https?:\/\//i.test(value) ? value : `https://${value.replace(/^\/+/, "")}`;
+    const display = value.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+    return [{ key, label, href, display }];
+  });
+}
+
+function formatTimelineDate(value?: string | null) {
+  const clean = value?.trim();
+  if (!clean) return "Огноо оруулаагүй";
+
+  const date = new Date(`${clean}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return clean;
+
+  return date.toLocaleDateString("mn-MN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function FullImageFrame({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950", className)}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-xl"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="relative z-[1] h-full w-full object-contain"
+      />
+    </div>
+  );
 }
 
 /* ── Section header helper ──────────────────────────────────────── */
@@ -141,7 +241,7 @@ function DetailTextCard({ title, content }: { title: string; content: string | n
     <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
       <p className="text-xs font-bold text-slate-800 mb-1.5">{title}</p>
       {content?.trim() ? (
-        <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap line-clamp-5">{content}</p>
+        <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap">{content}</p>
       ) : (
         <p className="text-xs italic text-slate-400">Мэдээлэл байхгүй</p>
       )}
@@ -274,14 +374,45 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
 
                 {/* Cover image */}
                 {detail.coverImage && (
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden bg-slate-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={detail.coverImage}
-                      alt={detail.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  <FullImageFrame
+                    src={detail.coverImage}
+                    alt={detail.title}
+                    className="h-72 w-full sm:h-80"
+                  />
+                )}
+
+                {(detail.galleryImages.length > 0 || detail.videoUrl) && (
+                  <Section icon={ImageIcon} title="Кампанийн медиа">
+                    <div className="space-y-3">
+                      {detail.videoUrl && (
+                        <a
+                          href={detail.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 transition hover:border-blue-300"
+                        >
+                          <span className="min-w-0 truncate">Видео холбоос: {detail.videoUrl}</span>
+                          <ExternalLink className="h-4 w-4 shrink-0" strokeWidth={2} />
+                        </a>
+                      )}
+                      {detail.galleryImages.length > 0 && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {detail.galleryImages.map((image, index) => (
+                            <div key={`${image}-${index}`} className="space-y-1.5">
+                              <FullImageFrame
+                                src={image}
+                                alt={`${detail.title} зураг ${index + 1}`}
+                                className="h-44"
+                              />
+                              <p className="text-[11px] font-semibold text-slate-400">
+                                Зураг {index + 1}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Section>
                 )}
 
                 {/* Description */}
@@ -291,10 +422,36 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
 
                 {/* Full story */}
                 <Section icon={BookOpen} title="Бүтэн түүх / Хэрхэн зарцуулах">
-                  <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto pr-2 border border-slate-100 rounded-xl p-4 bg-slate-50">
+                  <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap border border-slate-100 rounded-xl p-4 bg-slate-50">
                     {detail.story || <span className="italic text-slate-400">Мэдээлэл байхгүй</span>}
                   </div>
                 </Section>
+
+                {detail.storyBlocks.length > 0 && (
+                  <Section icon={BookOpen} title={`Зурагтай дэлгэрэнгүй мэдээлэл (${detail.storyBlocks.length})`}>
+                    <div className="space-y-4">
+                      {detail.storyBlocks.map((block, index) => (
+                        <article key={block.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+                          <FullImageFrame
+                            src={block.image}
+                            alt={block.title}
+                            className="h-56"
+                          />
+                          <div className="p-4">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600">
+                              Дэлгэрэнгүй #{index + 1}
+                            </p>
+                            <h4 className="mt-1 text-sm font-black text-slate-950">{block.title}</h4>
+                            {block.caption && (
+                              <p className="mt-2 text-xs font-semibold text-slate-500">{block.caption}</p>
+                            )}
+                            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600">{block.body}</p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </Section>
+                )}
 
                 <Section icon={FileText} title="Дэлгэрэнгүй хэсгүүд">
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -305,28 +462,95 @@ export function ProjectDetailModal({ projectId, onClose, onDecide, acting }: Pro
                   </div>
                 </Section>
 
+                {detail.faq.length > 0 && (
+                  <Section icon={HelpCircle} title={`FAQ (${detail.faq.length})`}>
+                    <div className="space-y-2.5">
+                      {detail.faq.map((item, index) => (
+                        <div key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                          <p className="text-[11px] font-bold text-blue-700">Асуулт #{index + 1}</p>
+                          <h4 className="mt-1 text-sm font-bold text-slate-950">{item.question}</h4>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{item.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
+                {detail.timeline.length > 0 && (
+                  <Section icon={Clock} title={`Timeline (${detail.timeline.length})`}>
+                    <div className="space-y-3">
+                      {detail.timeline.map((item, index) => (
+                        <div key={item.id} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-blue-700 text-[11px] font-bold text-white">
+                              {index + 1}
+                            </span>
+                            {index < detail.timeline.length - 1 && <span className="h-full w-px bg-slate-200" />}
+                          </div>
+                          <div className="pb-3">
+                            <h4 className="text-sm font-bold text-slate-950">{item.title}</h4>
+                            <p className="mt-1 text-xs font-semibold text-slate-400">{formatTimelineDate(item.date)}</p>
+                            {item.description && (
+                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{item.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
+                {socialLinkItems(detail.socialLinks).length > 0 && (
+                  <Section icon={Link2} title="Төслийн холбоосууд">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {socialLinkItems(detail.socialLinks).map((link) => (
+                        <a
+                          key={link.key}
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 transition-colors hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-bold text-slate-900">{link.label}</span>
+                            <span className="block truncate text-xs text-slate-400">{link.display}</span>
+                          </span>
+                          <ExternalLink className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
+                        </a>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+
                 {/* Reward tiers */}
                 {detail.rewards.length > 0 && (
                   <Section icon={Award} title="Шагналын үе шат (Хөрөнгийн хуваарилалт)">
-                    <div className="space-y-2">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {detail.rewards.map(r => (
-                        <div key={r.id} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
-                          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-bold">
-                              {formatMNT(r.amount)}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <span className="text-sm font-bold text-slate-900">{r.title}</span>
-                              <span className="text-sm font-bold text-blue-700">{r.amount.toLocaleString()}₮</span>
+                        <div key={r.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+                          {r.image ? (
+                            <FullImageFrame
+                              src={r.image}
+                              alt={r.title}
+                              className="h-40 rounded-none border-0"
+                            />
+                          ) : (
+                            <div className="flex h-24 items-center justify-center bg-blue-600">
+                              <span className="text-white text-sm font-bold">{formatMNT(r.amount)}</span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{r.description}</p>
-                            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-400">
+                          )}
+                          <div className="p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-sm font-bold text-slate-900">{r.title}</span>
+                              <span className="shrink-0 text-sm font-black text-blue-700">{formatMNT(r.amount)}</span>
+                            </div>
+                            <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-500">{r.description}</p>
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-400">
                               <span>Хүргэлт: {r.estimatedDelivery}</span>
+                              <span>{r.backerCount} дэмжигч</span>
                               {r.isLimited && r.remaining !== null && (
                                 <span className="text-amber-600 font-semibold">
-                                  {r.remaining} үлдсэн / {r.backerCount} дэмжигч
+                                  {r.remaining} үлдсэн
                                 </span>
                               )}
                             </div>

@@ -1,3 +1,8 @@
+"use client";
+
+import { useRef } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+
 const TRUST_PILLARS = [
   {
     icon: (
@@ -35,10 +40,25 @@ const TRUST_PILLARS = [
 ];
 
 export function TrustSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const headerY = useTransform(scrollYProgress, [0, 1], [22, -16]);
+  const cardsY = useTransform(scrollYProgress, [0, 1], [38, -24]);
+  const lineY = useTransform(scrollYProgress, [0, 1], [-40, 40]);
+
   return (
-    <section className="py-20 bg-white">
-      <div className="container-page">
-        <div className="text-center mb-14">
+    <section ref={sectionRef} className="relative overflow-hidden py-20 bg-white">
+      <motion.div
+        aria-hidden
+        className="absolute inset-x-0 top-16 h-px bg-gradient-to-r from-transparent via-blue-200/70 to-transparent"
+        style={{ y: reduceMotion ? 0 : lineY }}
+      />
+      <div className="container-page relative z-10">
+        <motion.div className="text-center mb-14" style={{ y: reduceMotion ? 0 : headerY }}>
           <p className="text-blue-700 font-semibold text-sm uppercase tracking-widest mb-2">
             Яагаад Crowdfund.mn вэ?
           </p>
@@ -48,13 +68,15 @@ export function TrustSection() {
           <p className="text-slate-500 text-base max-w-2xl mx-auto">
             Төсөл бүр зорилго, төсөв, баг, эрсдэлээ ил тод харуулдаг. Та юунд дэмжлэг өгч байгаагаа мэдэж шийднэ.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-8" style={{ y: reduceMotion ? 0 : cardsY }}>
           {TRUST_PILLARS.map((pillar, i) => (
-            <div
+            <motion.div
               key={i}
               className="relative group flex flex-col p-8 rounded-3xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-lg transition-all duration-300"
+              whileHover={{ y: -6 }}
+              transition={{ type: "spring", stiffness: 360, damping: 24 }}
             >
               {/* Icon circle */}
               <div className="w-14 h-14 rounded-2xl gradient-brand flex items-center justify-center text-white mb-6 shadow-md group-hover:scale-105 transition-transform duration-200">
@@ -75,9 +97,9 @@ export function TrustSection() {
 
               {/* Corner accent */}
               <div className="absolute top-6 right-6 w-2 h-2 rounded-full bg-blue-200 group-hover:bg-blue-500 transition-colors duration-300" />
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

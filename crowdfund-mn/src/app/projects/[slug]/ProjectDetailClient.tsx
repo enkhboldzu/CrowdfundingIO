@@ -4,7 +4,17 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import type { FormEvent } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, ChevronLeft, ChevronRight, Play, Users } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  Globe,
+  HelpCircle,
+  Play,
+  Users,
+} from "lucide-react";
 import { Footer }       from "@/components/landing/Footer";
 import { Badge }        from "@/components/ui/Badge";
 import { ProgressBar }  from "@/components/ui/ProgressBar";
@@ -105,6 +115,56 @@ function isDirectVideo(src: string) {
     return /\.(mp4|webm|mov|m4v)$/i.test(new URL(src).pathname);
   } catch {
     return false;
+  }
+}
+
+const SOCIAL_LINK_META = [
+  { key: "website", label: "Вэбсайт" },
+  { key: "facebook", label: "Facebook" },
+  { key: "instagram", label: "Instagram" },
+  { key: "discord", label: "Discord" },
+  { key: "twitter", label: "X / Twitter" },
+] as const;
+
+function projectSocialLinkItems(project: Project) {
+  const links = project.socialLinks;
+  if (!links) return [];
+
+  return SOCIAL_LINK_META.flatMap(({ key, label }) => {
+    const value = links[key]?.trim();
+    if (!value) return [];
+
+    const href = /^https?:\/\//i.test(value)
+      ? value
+      : `https://${value.replace(/^\/+/, "")}`;
+    const display = value.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+
+    return [{ key, label, href, display }];
+  });
+}
+
+function formatTimelineDate(value?: string | null) {
+  const clean = value?.trim();
+  if (!clean) return "Төлөвлөгдөж байна";
+
+  const date = new Date(`${clean}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return clean;
+
+  return date.toLocaleDateString("mn-MN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function documentName(src: string, index: number) {
+  try {
+    const url = new URL(src, "https://crowdfund.mn");
+    const last = url.pathname.split("/").filter(Boolean).pop();
+    return last ? decodeURIComponent(last) : `Баримт ${index + 1}`;
+  } catch {
+    const last = src.split("/").filter(Boolean).pop();
+    return last ? decodeURIComponent(last) : `Баримт ${index + 1}`;
   }
 }
 
@@ -274,6 +334,9 @@ function CampaignSideNav({
 }) {
   const sections = campaignStorySections(project);
   const storyBlocks = project.storyBlocks ?? [];
+  const hasFaq = Boolean(project.faq?.length);
+  const hasSocialLinks = projectSocialLinkItems(project).length > 0;
+  const hasDocuments = Boolean(project.documents?.length);
 
   return (
     <aside className="hidden lg:block">
@@ -316,9 +379,24 @@ function CampaignSideNav({
               Шинэчлэлт
             </a>
           )}
+          {hasFaq && (
+            <a href="#faq" className="block font-medium transition-colors hover:text-blue-800">
+              FAQ
+            </a>
+          )}
           <a href="#timeline" className="block font-medium transition-colors hover:text-blue-800">
             Хугацаа
           </a>
+          {hasSocialLinks && (
+            <a href="#links" className="block font-medium transition-colors hover:text-blue-800">
+              Холбоос
+            </a>
+          )}
+          {hasDocuments && (
+            <a href="#documents" className="block font-medium transition-colors hover:text-blue-800">
+              Баримт
+            </a>
+          )}
         </div>
       </nav>
     </aside>
@@ -402,7 +480,10 @@ function CampaignStory({
         </section>
       )}
 
+      <ProjectFaqSection faq={project.faq ?? []} />
       <CampaignTimeline project={project} />
+      <ProjectLinksSection project={project} />
+      <ProjectDocumentsSection documents={project.documents ?? []} />
     </article>
   );
 }
@@ -570,6 +651,40 @@ function RewardRailCard({
   );
 }
 
+function ProjectFaqSection({ faq }: { faq: NonNullable<Project["faq"]> }) {
+  if (faq.length === 0) return null;
+
+  return (
+    <section id="faq" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7">
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-800">
+          <HelpCircle className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">FAQ</p>
+          <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Түгээмэл асуулт</h2>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {faq.map((item, index) => (
+          <article key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+            <div className="flex gap-3">
+              <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-blue-800 shadow-sm">
+                {index + 1}
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-950">{item.question}</h3>
+                <p className="project-copy-preserve mt-2 text-sm leading-7 text-slate-600">{item.answer}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function CampaignTimeline({ project }: { project: Project }) {
   const start = project.publishedAt ?? project.createdAt;
   const statusLabels: Record<string, string> = {
@@ -580,11 +695,17 @@ function CampaignTimeline({ project }: { project: Project }) {
     CANCELLED: "Цуцлагдсан",
     REJECTED: "Татгалзсан",
   };
-  const timeline = [
-    { label: "Кампан эхэлсэн", value: start ? new Date(start).toLocaleDateString("mn-MN") : "Тун удахгүй" },
-    { label: "Дэмжлэг авах хугацаа", value: project.endsAt ? new Date(project.endsAt).toLocaleDateString("mn-MN") : daysLeftLabel(project.daysLeft) },
-    { label: "Одоогийн төлөв", value: statusLabels[project.status ?? "ACTIVE"] ?? "Идэвхтэй" },
-  ];
+  const timeline = project.timeline?.length
+    ? project.timeline.map((item) => ({
+        label: item.title,
+        value: formatTimelineDate(item.date),
+        description: item.description,
+      }))
+    : [
+        { label: "Кампан эхэлсэн", value: start ? new Date(start).toLocaleDateString("mn-MN") : "Тун удахгүй", description: "" },
+        { label: "Дэмжлэг авах хугацаа", value: project.endsAt ? new Date(project.endsAt).toLocaleDateString("mn-MN") : daysLeftLabel(project.daysLeft), description: "" },
+        { label: "Одоогийн төлөв", value: statusLabels[project.status ?? "ACTIVE"] ?? "Идэвхтэй", description: "" },
+      ];
 
   return (
     <section id="timeline" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7">
@@ -592,7 +713,7 @@ function CampaignTimeline({ project }: { project: Project }) {
       <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Төслийн хугацаа</h2>
       <div className="mt-6 space-y-4">
         {timeline.map((item, index) => (
-          <div key={item.label} className="flex gap-4">
+          <div key={`${item.label}-${index}`} className="flex gap-4">
             <div className="flex flex-col items-center">
               <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-800 text-xs font-bold text-white">{index + 1}</span>
               {index < timeline.length - 1 && <span className="h-full w-px bg-slate-200" />}
@@ -600,8 +721,87 @@ function CampaignTimeline({ project }: { project: Project }) {
             <div className="pb-4">
               <p className="text-sm font-bold text-slate-900">{item.label}</p>
               <p className="mt-1 text-sm text-slate-500">{item.value}</p>
+              {item.description && (
+                <p className="project-copy-preserve mt-2 text-sm leading-7 text-slate-600">{item.description}</p>
+              )}
             </div>
           </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProjectLinksSection({ project }: { project: Project }) {
+  const links = projectSocialLinkItems(project);
+  if (links.length === 0) return null;
+
+  return (
+    <section id="links" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7">
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-800">
+          <Globe className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Холбоос</p>
+          <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Төслийн холбоосууд</h2>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        {links.map((link) => (
+          <a
+            key={link.key}
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 transition hover:border-blue-200 hover:bg-blue-50"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-slate-950">{link.label}</span>
+              <span className="block truncate text-xs font-medium text-slate-500">{link.display}</span>
+            </span>
+            <ExternalLink className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-blue-800" />
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProjectDocumentsSection({ documents }: { documents: string[] }) {
+  const cleanDocuments = documents.map((document) => document.trim()).filter(Boolean);
+  if (cleanDocuments.length === 0) return null;
+
+  return (
+    <section id="documents" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-7">
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-800">
+          <FileText className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Баримт</p>
+          <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Нэмэлт баримт бичиг</h2>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {cleanDocuments.map((document, index) => (
+          <a
+            key={`${document}-${index}`}
+            href={document}
+            target="_blank"
+            rel="noreferrer"
+            className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 transition hover:border-blue-200 hover:bg-blue-50"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-blue-800 shadow-sm">
+                <FileText className="h-4 w-4" />
+              </span>
+              <span className="truncate text-sm font-bold text-slate-900">{documentName(document, index)}</span>
+            </span>
+            <ExternalLink className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-blue-800" />
+          </a>
         ))}
       </div>
     </section>

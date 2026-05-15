@@ -1,7 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
 /* ── Category definitions ───────────────────────────────────────── */
@@ -101,9 +102,29 @@ const card = {
 
 /* ── Component ──────────────────────────────────────────────────── */
 export function Categories({ counts }: { counts?: Record<string, number> }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const bandY = useTransform(scrollYProgress, [0, 1], [-56, 56]);
+  const headerY = useTransform(scrollYProgress, [0, 1], [20, -18]);
+  const cardsY = useTransform(scrollYProgress, [0, 1], [34, -24]);
+
   return (
-    <section className="py-20 bg-slate-50">
-      <div className="container-page">
+    <section ref={sectionRef} className="relative overflow-hidden py-20 bg-slate-50">
+      <motion.div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-white to-transparent"
+        style={{ y: reduceMotion ? 0 : bandY }}
+      />
+      <motion.div
+        aria-hidden
+        className="absolute inset-x-0 bottom-10 h-px bg-gradient-to-r from-transparent via-blue-200/70 to-transparent"
+        style={{ y: reduceMotion ? 0 : cardsY }}
+      />
+      <div className="container-page relative z-10">
 
         {/* Section header */}
         <motion.div
@@ -112,6 +133,7 @@ export function Categories({ counts }: { counts?: Record<string, number> }) {
           whileInView="show"
           viewport={{ once: true, margin: "-80px" }}
           variants={sectionHeader}
+          style={{ y: reduceMotion ? 0 : headerY }}
         >
           <p className="text-blue-700 font-semibold text-sm uppercase tracking-widest mb-2">
             Ангилал
@@ -129,6 +151,7 @@ export function Categories({ counts }: { counts?: Record<string, number> }) {
           whileInView="show"
           viewport={{ once: true, margin: "-60px" }}
           variants={grid}
+          style={{ y: reduceMotion ? 0 : cardsY }}
         >
           {CATEGORIES.map((cat) => (
             <motion.div

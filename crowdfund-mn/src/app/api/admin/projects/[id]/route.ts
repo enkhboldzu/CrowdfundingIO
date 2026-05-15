@@ -70,8 +70,19 @@ export async function GET(req: NextRequest, { params }: Params) {
       project: {
         ...project,
         coverImage: normalizeImageSrc(project.coverImage),
-        galleryImages: normalizeImageList(project.galleryImages).slice(0, 3),
+        galleryImages: normalizeImageList(project.galleryImages).slice(0, 8),
         documents: normalizeDocumentList(project.documents).slice(0, 5),
+        storyBlocks: Array.isArray(project.storyBlocks) ? project.storyBlocks : [],
+        faq: Array.isArray(project.faq) ? project.faq : [],
+        timeline: Array.isArray(project.timeline) ? project.timeline : [],
+        socialLinks:
+          project.socialLinks && typeof project.socialLinks === "object" && !Array.isArray(project.socialLinks)
+            ? project.socialLinks
+            : null,
+        rewards: project.rewards.map((reward) => ({
+          ...reward,
+          image: normalizeImageSrc(reward.image),
+        })),
       },
     });
   } catch (err) {

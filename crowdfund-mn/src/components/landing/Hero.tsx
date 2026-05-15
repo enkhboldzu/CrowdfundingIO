@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { motion, animate, type Variants } from "framer-motion";
+import { motion, animate, useReducedMotion, useScroll, useTransform, type Variants } from "framer-motion";
 import { buttonVariants } from "@/lib/button-variants";
 import { cn } from "@/lib/utils";
 import { GuardedLink } from "@/components/ui/GuardedLink";
@@ -64,6 +64,17 @@ interface HeroProps {
 }
 
 export function Hero({ stats }: HeroProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const gridY = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const glowTopY = useTransform(scrollYProgress, [0, 1], [0, 180]);
+  const glowBottomY = useTransform(scrollYProgress, [0, 1], [0, -120]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, 64]);
+  const waveY = useTransform(scrollYProgress, [0, 1], [0, 28]);
   const s = stats ?? {
     totalSuccessfulProjects: 0,
     totalFundingRaised:      0,
@@ -79,32 +90,42 @@ export function Hero({ stats }: HeroProps) {
   ];
 
   return (
-    <section className="relative overflow-hidden min-h-[100svh] sm:min-h-[92vh] flex items-center gradient-brand-hero">
+    <section ref={sectionRef} className="relative overflow-hidden min-h-[100svh] sm:min-h-[92vh] flex items-center gradient-brand-hero">
 
       {/* Decorative blobs */}
-      <div
+      <motion.div
         aria-hidden
         className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-10"
-        style={{ background: "radial-gradient(circle, #60A5FA, transparent 70%)" }}
+        style={{
+          y: reduceMotion ? 0 : glowTopY,
+          background: "radial-gradient(circle, #60A5FA, transparent 70%)",
+        }}
       />
-      <div
+      <motion.div
         aria-hidden
         className="absolute -bottom-48 -left-32 w-[500px] h-[500px] rounded-full opacity-10"
-        style={{ background: "radial-gradient(circle, #93C5FD, transparent 70%)" }}
+        style={{
+          y: reduceMotion ? 0 : glowBottomY,
+          background: "radial-gradient(circle, #93C5FD, transparent 70%)",
+        }}
       />
 
       {/* Grid pattern */}
-      <div
+      <motion.div
         aria-hidden
         className="absolute inset-0 opacity-[0.04]"
         style={{
+          y: reduceMotion ? 0 : gridY,
           backgroundImage:
             "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)",
           backgroundSize: "48px 48px",
         }}
       />
 
-      <div className="container-page relative z-10 pt-24 pb-20 sm:py-24 lg:py-32">
+      <motion.div
+        className="container-page relative z-10 pt-24 pb-20 sm:py-24 lg:py-32"
+        style={{ y: reduceMotion ? 0 : contentY }}
+      >
         <motion.div
           className="max-w-4xl mx-auto text-center"
           variants={container}
@@ -183,15 +204,15 @@ export function Hero({ stats }: HeroProps) {
           </motion.div>
 
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Bottom wave */}
-      <div className="absolute bottom-0 left-0 right-0">
+      <motion.div className="absolute bottom-0 left-0 right-0" style={{ y: reduceMotion ? 0 : waveY }}>
         <svg viewBox="0 0 1440 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full" preserveAspectRatio="none">
           <path d="M0 64L480 20L960 48L1440 8V64H0Z" fill="white" fillOpacity="0.08" />
           <path d="M0 64L360 32L720 56L1080 24L1440 40V64H0Z" fill="white" />
         </svg>
-      </div>
+      </motion.div>
     </section>
   );
 }

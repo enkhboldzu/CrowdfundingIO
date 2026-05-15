@@ -1,3 +1,8 @@
+"use client";
+
+import { useRef } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+
 const STEPS = [
   {
     step: "01",
@@ -30,20 +35,31 @@ const STEPS = [
 ];
 
 export function HowItWorks() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const gridY = useTransform(scrollYProgress, [0, 1], [-70, 70]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [34, -24]);
+  const cardY = useTransform(scrollYProgress, [0, 1], [26, -20]);
+
   return (
-    <section className="py-20 gradient-brand-hero relative overflow-hidden">
+    <section ref={sectionRef} className="py-20 gradient-brand-hero relative overflow-hidden">
       {/* subtle grid */}
-      <div
+      <motion.div
         aria-hidden
         className="absolute inset-0 opacity-[0.05]"
         style={{
+          y: reduceMotion ? 0 : gridY,
           backgroundImage:
             "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)",
           backgroundSize: "40px 40px",
         }}
       />
 
-      <div className="container-page relative z-10">
+      <motion.div className="container-page relative z-10" style={{ y: reduceMotion ? 0 : contentY }}>
         <div className="text-center mb-14">
           <p className="text-blue-200 font-semibold text-sm uppercase tracking-widest mb-2">
             Хэрхэн ажилладаг
@@ -56,7 +72,7 @@ export function HowItWorks() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" style={{ y: reduceMotion ? 0 : cardY }}>
           {STEPS.map((step, i) => (
             <div key={step.step} className="relative flex flex-col">
               {/* Connector line (desktop only) */}
@@ -81,8 +97,8 @@ export function HowItWorks() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

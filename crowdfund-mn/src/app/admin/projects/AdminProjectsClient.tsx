@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
+import { ProjectDetailModal } from "@/components/admin/ProjectDetailModal";
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -42,6 +43,7 @@ export function AdminProjectsClient() {
   const [rejectId,  setRejectId]        = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [expanded, setExpanded]         = useState<string | null>(null);
+  const [detailId, setDetailId]         = useState<string | null>(null);
   const { show }                        = useToast();
 
   const fetchProjects = useCallback(async () => {
@@ -66,7 +68,13 @@ export function AdminProjectsClient() {
     }
   }, []);
 
-  useEffect(() => { fetchProjects(); }, [fetchProjects]);
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void fetchProjects();
+    }, 0);
+
+    return () => window.clearTimeout(id);
+  }, [fetchProjects]);
 
   const decide = useCallback(async (
     id: string,
@@ -154,8 +162,17 @@ export function AdminProjectsClient() {
 
   /* ── Success ──────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+    <>
+      {detailId && (
+        <ProjectDetailModal
+          projectId={detailId}
+          onClose={() => setDetailId(null)}
+          onDecide={decide}
+          acting={!!loadingId}
+        />
+      )}
+      <div className="min-h-screen bg-slate-50 py-10 px-4">
+        <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-900">Хүлээгдэж буй төслүүд</h1>
@@ -249,12 +266,13 @@ export function AdminProjectsClient() {
                           {project.rewards.map(r => `${r.title} — ${r.amount.toLocaleString()}₮`).join(" · ")}
                         </div>
                       )}
-                      <a
-                        href={`/projects/review/${project.id}`}
+                      <button
+                        type="button"
+                        onClick={() => setDetailId(project.id)}
                         className="inline-flex items-center gap-1.5 text-blue-700 font-semibold hover:underline"
                       >
                         <Eye className="w-4 h-4" /> Дэлгэрэнгүй харах
-                      </a>
+                      </button>
                     </div>
                   )}
 
@@ -321,7 +339,8 @@ export function AdminProjectsClient() {
             })}
           </ul>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

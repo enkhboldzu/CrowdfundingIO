@@ -1,7 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Flame, LayoutGrid } from "lucide-react";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import type { Project } from "@/types";
@@ -36,6 +37,15 @@ function uniqueProjects(projects: Project[]): Project[] {
 }
 
 export function TrendingProjects({ projects, featured, trending }: Props) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const backdropY = useTransform(scrollYProgress, [0, 1], [-48, 64]);
+  const featuredY = useTransform(scrollYProgress, [0, 1], [24, -28]);
+  const gridY = useTransform(scrollYProgress, [0, 1], [18, -16]);
   const featuredProject =
     featured[0] ??
     projects.find((project) => project.isFeatured) ??
@@ -54,8 +64,13 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
 
   if (isEmpty) {
     return (
-      <section className="py-20 bg-white">
-        <div className="container-page">
+      <section ref={sectionRef} className="relative overflow-hidden py-20 bg-white">
+        <motion.div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-blue-50/80 to-transparent"
+          style={{ y: reduceMotion ? 0 : backdropY }}
+        />
+        <div className="container-page relative z-10">
           <motion.div
             className="flex items-end justify-between mb-10"
             initial="hidden"
@@ -86,8 +101,18 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
   }
 
   return (
-    <section className="py-20 bg-white">
-      <div className="container-page">
+    <section ref={sectionRef} className="relative overflow-hidden py-20 bg-white">
+      <motion.div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-blue-50/80 via-white to-transparent"
+        style={{ y: reduceMotion ? 0 : backdropY }}
+      />
+      <motion.div
+        aria-hidden
+        className="absolute left-0 top-20 h-px w-full bg-gradient-to-r from-transparent via-blue-200/70 to-transparent"
+        style={{ y: reduceMotion ? 0 : gridY }}
+      />
+      <div className="container-page relative z-10">
 
         {/* ── Trending header ── */}
         <motion.div
@@ -116,7 +141,9 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
 
         {/* ── Featured project (full-width) ── */}
         {featuredProject && (
-          <ProjectCard project={featuredProject} featured className="mb-6" />
+          <motion.div style={{ y: reduceMotion ? 0 : featuredY }} className="mb-6">
+            <ProjectCard project={featuredProject} featured />
+          </motion.div>
         )}
 
         {/* ── Trending grid ── */}
@@ -126,6 +153,7 @@ export function TrendingProjects({ projects, featured, trending }: Props) {
           whileInView="show"
           viewport={{ once: true, margin: "-60px" }}
           variants={gridVariant}
+          style={{ y: reduceMotion ? 0 : gridY }}
         >
           {trendDisplay.map(project => (
             <motion.div key={project.id} variants={cardVariant}>

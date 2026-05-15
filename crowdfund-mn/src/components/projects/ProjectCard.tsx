@@ -116,7 +116,10 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
 
       {/* Cover image */}
       <div
-        className={cn("relative z-0 overflow-hidden bg-slate-100", featured ? "sm:w-[45%] h-48 sm:h-auto" : "h-48")}
+        className={cn(
+          "relative z-0 overflow-hidden bg-slate-100",
+          featured ? "h-60 sm:h-auto sm:min-h-[320px] sm:w-[45%]" : "h-60 sm:h-64"
+        )}
         onMouseEnter={() => setIsCarouselPaused(true)}
         onMouseLeave={() => setIsCarouselPaused(false)}
         onFocus={() => setIsCarouselPaused(true)}
@@ -134,9 +137,17 @@ export function ProjectCard({ project, featured = false, className }: ProjectCar
           >
             <Image
               src={displayImage}
+              alt=""
+              fill
+              className="object-cover scale-110 blur-xl opacity-35"
+              sizes={featured ? "(max-width: 640px) 100vw, 45vw" : "(max-width: 768px) 100vw, 33vw"}
+              aria-hidden
+            />
+            <Image
+              src={displayImage}
               alt={project.title}
               fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              className="object-contain transition-transform duration-500"
               sizes={featured ? "(max-width: 640px) 100vw, 45vw" : "(max-width: 768px) 100vw, 33vw"}
               onError={() => setFailedImages((prev) => prev.includes(currentImage) ? prev : [...prev, currentImage])}
             />

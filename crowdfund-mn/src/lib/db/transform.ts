@@ -6,12 +6,16 @@ import type {
   ProjectStoryMedia,
   ProjectStorySectionKey,
   ProjectStoryBlock,
+  ProjectFaqItem,
+  ProjectTimelineItem,
+  ProjectSocialLinks,
 } from "@/types";
 import {
   imageSrcOrFallback,
   normalizeImageList,
   normalizeImageSrc,
 } from "@/lib/image-src";
+import { normalizeDocumentList } from "@/lib/document-src";
 
 interface DBUser {
   id: string;
@@ -35,8 +39,12 @@ interface DBProject {
   coverImage: string | null;
   galleryImages?: string[];
   videoUrl?: string | null;
+  documents?: string[];
   storyMedia?: unknown;
   storyBlocks?: unknown;
+  faq?: unknown;
+  timeline?: unknown;
+  socialLinks?: unknown;
   goal: number;
   raised: number;
   backers: number;
@@ -115,6 +123,67 @@ function normalizeStoryBlocks(value: unknown): ProjectStoryBlock[] {
   });
 }
 
+function normalizeFaq(value: unknown): ProjectFaqItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.slice(0, 12).flatMap((item, index): ProjectFaqItem[] => {
+    if (!item || typeof item !== "object") return [];
+
+    const row = item as Record<string, unknown>;
+    const question = typeof row.question === "string" ? row.question.trim() : "";
+    const answer = typeof row.answer === "string" ? row.answer.trim() : "";
+    const id = typeof row.id === "string" && row.id.trim()
+      ? row.id.trim()
+      : `faq-${index + 1}`;
+
+    if (!question || !answer) return [];
+
+    return [{ id, question, answer }];
+  });
+}
+
+function normalizeTimeline(value: unknown): ProjectTimelineItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.slice(0, 12).flatMap((item, index): ProjectTimelineItem[] => {
+    if (!item || typeof item !== "object") return [];
+
+    const row = item as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    const date = typeof row.date === "string" ? row.date.trim() : "";
+    const description = typeof row.description === "string" ? row.description.trim() : "";
+    const id = typeof row.id === "string" && row.id.trim()
+      ? row.id.trim()
+      : `timeline-${index + 1}`;
+
+    if (!title) return [];
+
+    return [{ id, title, date, description }];
+  });
+}
+
+const SOCIAL_LINK_KEYS = [
+  "website",
+  "facebook",
+  "instagram",
+  "discord",
+  "twitter",
+] as const satisfies readonly (keyof ProjectSocialLinks)[];
+
+function normalizeSocialLinks(value: unknown): ProjectSocialLinks | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const row = value as Record<string, unknown>;
+  const links: ProjectSocialLinks = {};
+
+  for (const key of SOCIAL_LINK_KEYS) {
+    const link = typeof row[key] === "string" ? row[key].trim() : "";
+    if (link) links[key] = link;
+  }
+
+  return Object.values(links).some(Boolean) ? links : undefined;
+}
+
 interface DBRewardTier {
   id: string;
   title: string;
@@ -153,10 +222,14 @@ export function toProject(p: DBProject): Project {
     risks:           p.risks ?? null,
     category:        p.category as Project["category"],
     coverImage:      imageSrcOrFallback(p.coverImage),
-    galleryImages:   normalizeImageList(p.galleryImages).slice(0, 3),
+    galleryImages:   normalizeImageList(p.galleryImages).slice(0, 8),
     videoUrl:        p.videoUrl?.trim() || null,
+    documents:       normalizeDocumentList(p.documents).slice(0, 5),
     storyMedia:      normalizeStoryMedia(p.storyMedia),
     storyBlocks:     normalizeStoryBlocks(p.storyBlocks),
+    faq:             normalizeFaq(p.faq),
+    timeline:        normalizeTimeline(p.timeline),
+    socialLinks:     normalizeSocialLinks(p.socialLinks),
     goal:            p.goal,
     raised:          p.raised,
     backers:         p.backers,
