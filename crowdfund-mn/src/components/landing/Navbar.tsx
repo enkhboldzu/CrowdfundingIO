@@ -80,7 +80,7 @@ function MobileNavLink({ href, label, onClick }: { href: string; label: string; 
 }
 
 export function Navbar() {
-  const { isLoggedIn, role, logout } = useAuth();
+  const { isLoggedIn, role, user, logout } = useAuth();
   const pathname               = usePathname();
   const [scrolled,   setScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -150,6 +150,11 @@ export function Navbar() {
                     <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2} />
                     Admin
                   </Link>
+                )}
+                {user?.name && (
+                  <span className="hidden xl:block text-sm font-semibold text-slate-700 truncate max-w-[120px]">
+                    {user.name}
+                  </span>
                 )}
                 <NotificationDropdown scrolled={true} />
                 <UserDropdown scrolled={true} />

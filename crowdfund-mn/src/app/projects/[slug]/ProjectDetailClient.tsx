@@ -163,8 +163,8 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
         {/* ── Campaign story layout ──────────────────────── */}
         <div className="container-page py-8 lg:py-12">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[190px_minmax(0,1fr)_320px] xl:gap-10">
-            <CampaignSideNav project={project} tiers={tiers} updates={updates} />
-            <CampaignStory project={project} tiers={tiers} updates={updates} onSelectTier={openSupport} />
+            <CampaignSideNav project={project} updates={updates} />
+            <CampaignStory project={project} updates={updates} />
             <CampaignRewardRail tiers={tiers} onSelectTier={openSupport} />
           </div>
         </div>
@@ -267,11 +267,9 @@ function sectionSummary(caption?: string | null, text?: string | null) {
 
 function CampaignSideNav({
   project,
-  tiers,
   updates,
 }: {
   project: Project;
-  tiers: RewardTier[];
   updates: FundingUpdate[];
 }) {
   const sections = campaignStorySections(project);
@@ -313,23 +311,6 @@ function CampaignSideNav({
             </>
           )}
 
-          <a href="#rewards" className="block font-medium transition-colors hover:text-blue-800">
-            Урамшуулал
-          </a>
-          {tiers.length > 0 && (
-            <div className="space-y-2 border-l border-dashed border-slate-300 pl-4">
-              {tiers.slice(0, 4).map((tier) => (
-                <a
-                  key={tier.id}
-                  href="#rewards"
-                  className="block truncate text-xs font-medium text-slate-500 transition-colors hover:text-blue-800"
-                >
-                  {tier.title}
-                </a>
-              ))}
-            </div>
-          )}
-
           {updates.length > 0 && (
             <a href="#updates" className="block font-medium transition-colors hover:text-blue-800">
               Шинэчлэлт
@@ -346,14 +327,10 @@ function CampaignSideNav({
 
 function CampaignStory({
   project,
-  tiers,
   updates,
-  onSelectTier,
 }: {
   project: Project;
-  tiers: RewardTier[];
   updates: FundingUpdate[];
-  onSelectTier: (tier: RewardTier) => void;
 }) {
   const sections = campaignStorySections(project);
   const storyBlocks = project.storyBlocks ?? [];
@@ -414,14 +391,6 @@ function CampaignStory({
           ))}
         </section>
       )}
-
-      <section id="rewards" className="scroll-mt-28">
-        <div className="mb-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-700">Урамшуулал</p>
-          <h2 className="font-display text-2xl font-bold text-slate-950 sm:text-3xl">Урамшуулал</h2>
-        </div>
-        <RewardsTab tiers={tiers} onSelectTier={onSelectTier} />
-      </section>
 
       {updates.length > 0 && (
         <section id="updates" className="scroll-mt-28">
@@ -1244,98 +1213,6 @@ function UpdatesTab({ updates }: { updates: FundingUpdate[] }) {
           <p className="text-slate-600 text-sm leading-relaxed">{update.content}</p>
         </article>
       ))}
-    </div>
-  );
-}
-
-function RewardsTab({ tiers, onSelectTier }: { tiers: RewardTier[]; onSelectTier: (tier: RewardTier) => void }) {
-  if (tiers.length === 0) {
-    return (
-      <div className="text-center py-20">
-        <div className="w-14 h-14 bg-white border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
-          🎁
-        </div>
-        <p className="font-semibold text-slate-700 mb-1">Урамшуулал нэмээгүй байна</p>
-        <p className="text-slate-400 text-sm">Та урамшуулалгүйгээр мөнгөн дэмжлэг өгөх боломжтой.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {tiers.map(tier => (
-        <RewardTierCard key={tier.id} tier={tier} onSelect={() => onSelectTier(tier)} />
-      ))}
-    </div>
-  );
-}
-
-function RewardTierCard({ tier, onSelect }: { tier: RewardTier; onSelect: () => void }) {
-  const isAlmostGone = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 5;
-  const isSoldOut = tier.isLimited && tier.remaining !== undefined && tier.remaining <= 0;
-
-  return (
-    <div className={cn(
-      "overflow-hidden rounded-2xl border bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg",
-      isAlmostGone ? "border-orange-200" : "border-slate-200 hover:border-blue-200"
-    )}>
-      {tier.image && (
-        <div className="relative aspect-[16/9] bg-slate-100">
-          <Image
-            src={tier.image}
-            alt={tier.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 760px"
-          />
-          <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-700 shadow-sm">
-            Шагнал
-          </div>
-        </div>
-      )}
-
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <span className="font-display font-bold text-blue-800 text-2xl">
-              {formatMNT(tier.amount)}
-            </span>
-            <h4 className="font-display font-bold text-slate-950 text-lg mt-1">{tier.title}</h4>
-          </div>
-          {tier.isLimited && tier.remaining !== undefined && (
-            <span className={cn(
-              "text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 border",
-              isAlmostGone
-                ? "bg-orange-50 text-orange-600 border-orange-200"
-                : "bg-slate-50 text-slate-500 border-slate-200"
-            )}>
-              {tier.remaining} үлдсэн
-            </span>
-          )}
-        </div>
-
-        <p className="text-slate-500 text-sm leading-6 mb-4">{tier.description}</p>
-
-        <div className="mb-4 grid grid-cols-2 gap-3 text-xs text-slate-500">
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <span className="block font-bold text-slate-900">{tier.backerCount}</span>
-            <span>хүн дэмжсэн</span>
-          </div>
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <span className="block font-bold text-slate-900">{tier.estimatedDelivery}</span>
-            <span>хүргэлт</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onSelect}
-          disabled={isSoldOut}
-          className="w-full bg-blue-50 hover:bg-blue-800 text-blue-800 hover:text-white disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed text-sm font-bold py-3 rounded-xl transition-all duration-200 border border-blue-100 hover:border-blue-800"
-        >
-          {isSoldOut ? "Урамшуулал дууссан" : "Энэ шагналыг сонгох"}
-        </button>
-      </div>
     </div>
   );
 }

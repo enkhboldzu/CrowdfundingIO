@@ -138,6 +138,8 @@ type ErrMap = Record<string, string>;
 
 const MAX_PROJECT_IMAGES = 8;
 const MAX_PROJECT_DOCUMENTS = 5;
+const MIN_STORY_BLOCKS = 4;
+const MAX_STORY_BLOCKS = 10;
 const MIN_PROJECT_GOAL = 10;
 const MIN_REWARD_AMOUNT = 10;
 
@@ -209,6 +211,10 @@ function emptyStoryBlock(index: number): StoryBlock {
   return { id: `sb-${index}-${Date.now()}`, title: "", body: "", image: "", caption: "" };
 }
 
+function initialStoryBlocks(): StoryBlock[] {
+  return Array.from({ length: MIN_STORY_BLOCKS }, (_, index) => emptyStoryBlock(index));
+}
+
 function emptyFaqItem(index: number): FaqItem {
   return { id: `faq-${index}-${Date.now()}`, question: "", answer: "" };
 }
@@ -223,7 +229,7 @@ const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
   story: "", videoUrl: "",
-  storyBlocks: [],
+  storyBlocks: initialStoryBlocks(),
   faq: [],
   timeline: [],
   socialLinks: { ...EMPTY_SOCIAL },
@@ -231,7 +237,36 @@ const EMPTY: FormValues = {
 };
 
 function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
-  if (!seed) return EMPTY;
+  if (!seed) {
+    return {
+      ...EMPTY,
+      storyBlocks: initialStoryBlocks(),
+      faq: [],
+      timeline: [],
+      socialLinks: { ...EMPTY_SOCIAL },
+      rewards: [{ id: "r1", title: "", amount: "", description: "", image: "" }],
+    };
+  }
+
+  const seededStoryBlocks = seed.storyBlocks?.length
+    ? seed.storyBlocks.slice(0, MAX_STORY_BLOCKS).map((b, i) => ({
+        id: b.id || `sb-${i}`,
+        title: b.title,
+        body: b.body,
+        image: b.image ?? "",
+        caption: b.caption ?? "",
+      }))
+    : [];
+  const paddedStoryBlocks = seededStoryBlocks.length > 0
+    ? [
+        ...seededStoryBlocks,
+        ...Array.from(
+          { length: Math.max(0, MIN_STORY_BLOCKS - seededStoryBlocks.length) },
+          (_, index) => emptyStoryBlock(seededStoryBlocks.length + index)
+        ),
+      ]
+    : initialStoryBlocks();
+
   return {
     title: seed.title,
     blurb: seed.blurb,
@@ -244,15 +279,7 @@ function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
     bankAccountName: seed.bankAccountName,
     story: seed.story,
     videoUrl: seed.videoUrl ?? "",
-    storyBlocks: seed.storyBlocks?.length
-      ? seed.storyBlocks.map((b, i) => ({
-          id: b.id || `sb-${i}`,
-          title: b.title,
-          body: b.body,
-          image: b.image ?? "",
-          caption: b.caption ?? "",
-        }))
-      : [],
+    storyBlocks: paddedStoryBlocks,
     faq: seed.faq?.length
       ? seed.faq.map((f, i) => ({
           id: f.id || `faq-${i}`,
@@ -338,6 +365,12 @@ function validate(step: number, d: FormValues, projectImages: SelectedProjectIma
   if (step === 3) {
     if (!d.story.trim()) e.story = "Дэлгэрэнгүй тайлбар заавал бөглөх шаардлагатай";
     else if (d.story.trim().length < 50) e.story = "Тайлбар хэтэрхий богино (хамгийн багадаа 50 тэмдэгт)";
+    if (d.storyBlocks.length < MIN_STORY_BLOCKS) {
+      e.storyBlocks = `Хамгийн багадаа ${MIN_STORY_BLOCKS} зурагтай мэдээллийн блок оруулна уу`;
+    }
+    if (d.storyBlocks.length > MAX_STORY_BLOCKS) {
+      e.storyBlocks = `Хамгийн ихдээ ${MAX_STORY_BLOCKS} зурагтай мэдээллийн блок оруулна уу`;
+    }
     d.storyBlocks.forEach((block, i) => {
       if (!block.image.trim()) e[`sbImage${i}`] = "Зураг оруулна уу";
       if (!block.title.trim()) e[`sbTitle${i}`] = "Гарчиг оруулна уу";
@@ -362,6 +395,7 @@ function validate(step: number, d: FormValues, projectImages: SelectedProjectIma
 
   if (step === 5) {
     d.rewards.forEach((r, i) => {
+      if (!r.image.trim()) e[`ri${i}`] = "Урамшууллын зураг оруулна уу";
       if (!r.title.trim()) e[`rt${i}`] = "Урамшуулалын нэр оруулна уу";
       if (!r.amount) e[`ra${i}`] = "Дүн оруулна уу";
       else if (isNaN(Number(r.amount)) || Number(r.amount) < MIN_REWARD_AMOUNT)
@@ -981,16 +1015,16 @@ function StoryBlocksFields({ blocks, errors, setBlock, addBlock, removeBlock, mo
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Дэлгэрэнгүй Story Blocks</p>
-          <h3 className="mt-1 font-display text-xl font-bold text-slate-950">Campaign story</h3>
+          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Дэлгэрэнгүй story</p>
+          <h3 className="mt-1 font-display text-xl font-bold text-slate-950">4-10 зурагтай мэдээллийн блок</h3>
           <p className="mt-1.5 text-sm leading-6 text-slate-500">
-            Campaign story-г зураг, гарчиг, тайлбартайгаар дарааллаар үүсгэнэ. Блок нэмэх заавал биш.
+            Төслийн доод хэсэгт дарааллаараа харагдах зураг, гарчиг, мэдээлэл. Хамгийн багадаа 4, ихдээ 10 блок оруулна.
           </p>
         </div>
-        {blocks.length > 0 && (
-          <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">{blocks.length} блок</span>
-        )}
+        <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">{blocks.length} / {MAX_STORY_BLOCKS}</span>
       </div>
+
+      <ErrMsg msg={errors.storyBlocks} />
 
       <div className="space-y-4">
         {blocks.map((block, i) => (
@@ -1006,7 +1040,8 @@ function StoryBlocksFields({ blocks, errors, setBlock, addBlock, removeBlock, mo
                   className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 transition-colors" title="Доош">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
-                <button type="button" onClick={() => removeBlock(i)} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Устгах">
+                <button type="button" onClick={() => removeBlock(i)} disabled={blocks.length <= MIN_STORY_BLOCKS}
+                  className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors" title="Устгах">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -1038,21 +1073,13 @@ function StoryBlocksFields({ blocks, errors, setBlock, addBlock, removeBlock, mo
         ))}
       </div>
 
-      {blocks.length === 0 && (
-        <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          </div>
-          <p className="text-sm text-slate-500 font-medium">Одоохондоо story блок байхгүй байна</p>
-          <p className="text-xs text-slate-400 mt-1">Доорх товчийг дарж зурагтай story блок нэмнэ үү</p>
-        </div>
+      {blocks.length < MAX_STORY_BLOCKS && (
+        <button type="button" onClick={addBlock}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 py-4 text-sm font-bold text-blue-700 transition hover:border-blue-400 hover:bg-blue-50">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          Блок нэмэх
+        </button>
       )}
-
-      <button type="button" onClick={addBlock}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 py-4 text-sm font-bold text-blue-700 transition hover:border-blue-400 hover:bg-blue-50">
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-        Story блок нэмэх
-      </button>
     </div>
   );
 }
@@ -1354,8 +1381,9 @@ function Step5({ d, e, setReward, addReward, removeReward }: {
             </div>
             <div className="grid gap-5 p-5 lg:grid-cols-[200px_minmax(0,1fr)]">
               <div>
-                <Label htmlFor={`ri${i}`}>Урамшууллын зураг</Label>
+                <Label htmlFor={`ri${i}`} required>Урамшууллын зураг</Label>
                 <SingleImageUpload id={`ri${i}`} value={r.image} onChange={v => setReward(i, "image", v)} emptyLabel="Шагналын зураг оруулах" badgeLabel="Шагналын зураг" />
+                <ErrMsg msg={e[`ri${i}`]} />
                 <Hint>Бодит бүтээгдэхүүн, postcard, teaser зураг оруулбал сайн.</Hint>
               </div>
               <div className="space-y-4">
@@ -1463,10 +1491,18 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     if (ek && errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
   }
   function addBlock() {
-    setData(d => ({ ...d, storyBlocks: [...d.storyBlocks, emptyStoryBlock(d.storyBlocks.length)] }));
+    setData(d => (
+      d.storyBlocks.length >= MAX_STORY_BLOCKS
+        ? d
+        : { ...d, storyBlocks: [...d.storyBlocks, emptyStoryBlock(d.storyBlocks.length)] }
+    ));
   }
   function removeBlock(i: number) {
-    setData(d => ({ ...d, storyBlocks: d.storyBlocks.filter((_, ci) => ci !== i) }));
+    setData(d => (
+      d.storyBlocks.length <= MIN_STORY_BLOCKS
+        ? d
+        : { ...d, storyBlocks: d.storyBlocks.filter((_, ci) => ci !== i) }
+    ));
   }
   function moveBlockUp(i: number) {
     if (i <= 0) return;
@@ -1514,7 +1550,12 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
   /* Rewards */
   function setReward(i: number, k: keyof RewardTier, v: string) {
     setData(d => ({ ...d, rewards: d.rewards.map((r, ci) => ci === i ? { ...r, [k]: v } : r) }));
-    const ek = k === "title" ? `rt${i}` : k === "amount" ? `ra${i}` : k === "description" ? `rd${i}` : "";
+    const ek =
+      k === "image" ? `ri${i}` :
+      k === "title" ? `rt${i}` :
+      k === "amount" ? `ra${i}` :
+      k === "description" ? `rd${i}` :
+      "";
     if (ek && errors[ek]) setErrors(e => { const n = { ...e }; delete n[ek]; return n; });
   }
   function addReward() {

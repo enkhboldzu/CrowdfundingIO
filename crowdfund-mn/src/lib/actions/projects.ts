@@ -8,13 +8,6 @@ import { projectCreatorInclude } from "@/lib/db/queries";
 import { normalizeImageList, normalizeImageSrc } from "@/lib/image-src";
 import { normalizeDocumentList } from "@/lib/document-src";
 
-type ProjectStoryMediaInput = {
-  section: string;
-  image?: string;
-  label?: string;
-  caption?: string;
-};
-
 type ProjectStoryBlockInput = {
   id?: string;
   title: string;
@@ -43,6 +36,9 @@ type ProjectSocialLinksInput = {
   discord?: string;
   twitter?: string;
 };
+
+const MIN_STORY_BLOCKS = 4;
+const MAX_STORY_BLOCKS = 10;
 
 function makeSlug(title: string): string {
   const base = title
@@ -89,28 +85,6 @@ function toStoredVideoUrl(videoUrl?: string): string | null {
   }
 }
 
-const STORY_MEDIA_SECTIONS = new Set(["story", "problem", "solution", "funding", "team", "risks"]);
-
-function toStoredStoryMedia(media?: ProjectStoryMediaInput[]): Prisma.InputJsonValue | typeof Prisma.JsonNull {
-  const rows = (media ?? []).flatMap((item) => {
-    if (!STORY_MEDIA_SECTIONS.has(item.section)) return [];
-
-    const image = toStoredImage(item.image);
-    const label = item.label?.trim() ?? "";
-    const caption = item.caption?.trim() ?? "";
-    if (!image && !label && !caption) return [];
-
-    return [{
-      section: item.section,
-      image,
-      label: label || null,
-      caption: caption || null,
-    }];
-  });
-
-  return rows.length ? rows : Prisma.JsonNull;
-}
-
 function toStoredStoryBlocks(blocks?: ProjectStoryBlockInput[]): Prisma.InputJsonObject[] {
   return (blocks ?? []).flatMap((block, index): Prisma.InputJsonObject[] => {
     const title = block.title.trim();
@@ -127,7 +101,7 @@ function toStoredStoryBlocks(blocks?: ProjectStoryBlockInput[]): Prisma.InputJso
       image,
       caption: caption || null,
     }];
-  });
+  }).slice(0, MAX_STORY_BLOCKS);
 }
 
 function toStoredFaq(faq?: ProjectFaqInput[]): Prisma.InputJsonValue | typeof Prisma.JsonNull {
@@ -222,6 +196,14 @@ export async function createProject(data: {
     const faq = toStoredFaq(data.faq);
     const timeline = toStoredTimeline(data.timeline);
     const socialLinks = toStoredSocialLinks(data.socialLinks);
+
+    if (storyBlocks.length < MIN_STORY_BLOCKS) {
+      return { success: false, error: `Дэлгэрэнгүй story хэсэгт хамгийн багадаа ${MIN_STORY_BLOCKS} зурагтай мэдээлэл оруулна уу.` };
+    }
+
+    if (data.rewards.some((reward) => !toStoredImage(reward.image))) {
+      return { success: false, error: "Урамшуулал бүрт тусдаа зураг оруулна уу." };
+    }
 
     const project = await prisma.project.create({
       data: {
@@ -335,6 +317,14 @@ export async function updateOwnProject(data: {
     const faq = toStoredFaq(data.faq);
     const timeline = toStoredTimeline(data.timeline);
     const socialLinks = toStoredSocialLinks(data.socialLinks);
+
+    if (storyBlocks.length < MIN_STORY_BLOCKS) {
+      return { success: false, error: `Дэлгэрэнгүй story хэсэгт хамгийн багадаа ${MIN_STORY_BLOCKS} зурагтай мэдээлэл оруулна уу.` };
+    }
+
+    if (data.rewards.some((reward) => !toStoredImage(reward.image))) {
+      return { success: false, error: "Урамшуулал бүрт тусдаа зураг оруулна уу." };
+    }
 
     const project = await prisma.project.update({
       where: { id: existing.id },
