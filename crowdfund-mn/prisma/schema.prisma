@@ -72,6 +72,7 @@ model Project {
   category        String
   coverImage      String?
   galleryImages   String[]        @default([])
+  videoUrl        String?
   documents       String[]        @default([])
   goal            Int
   raised          Int             @default(0)

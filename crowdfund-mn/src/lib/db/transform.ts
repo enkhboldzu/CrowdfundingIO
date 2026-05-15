@@ -26,6 +26,7 @@ interface DBProject {
   category: string;
   coverImage: string | null;
   galleryImages?: string[];
+  videoUrl?: string | null;
   goal: number;
   raised: number;
   backers: number;
@@ -81,6 +82,7 @@ export function toProject(p: DBProject): Project {
     category:        p.category as Project["category"],
     coverImage:      imageSrcOrFallback(p.coverImage),
     galleryImages:   normalizeImageList(p.galleryImages).slice(0, 3),
+    videoUrl:        p.videoUrl?.trim() || null,
     goal:            p.goal,
     raised:          p.raised,
     backers:         p.backers,

@@ -41,7 +41,7 @@ function NavLink({ href, label, scrolled }: { href: string; label: string; scrol
     <Link
       href={href}
       className={cn(
-        "group relative flex items-center pt-2 pb-2.5 text-sm font-medium transition-colors duration-200",
+        "group relative flex items-center pt-2 pb-2.5 text-[15px] font-semibold transition-colors duration-200",
         scrolled
           ? isActive ? "text-blue-800"  : "text-slate-600 hover:text-blue-700"
           : isActive ? "text-white"     : "text-white/75  hover:text-white"
@@ -117,7 +117,7 @@ export function Navbar() {
   const hasBg = scrolled || pathname !== "/";
 
   const ghostLink = cn(
-    "text-sm font-semibold px-4 py-2 rounded-lg transition-colors duration-200",
+    "text-[15px] font-semibold px-4 py-2.5 rounded-xl transition-colors duration-200",
     hasBg ? "text-slate-700 hover:text-blue-800 hover:bg-blue-50" : "text-white/90 hover:text-white hover:bg-white/10"
   );
 
@@ -129,21 +129,21 @@ export function Navbar() {
       )}
     >
       <div className="container-page">
-        <nav className="flex items-center justify-between h-14 sm:h-16">
+        <nav className="flex items-center justify-between h-16 sm:h-[72px]">
 
           {/* ── Col 1: Logo ──────────────────────────── */}
-          <Link href="/" className="flex items-center gap-2 min-w-0 flex-shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg gradient-brand flex items-center justify-center shadow-md flex-shrink-0">
-              <span className="text-white font-bold text-xs sm:text-sm font-display">CF</span>
+          <Link href="/" className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl gradient-brand flex items-center justify-center shadow-md flex-shrink-0">
+              <span className="text-white font-bold text-sm sm:text-[15px] font-display">CF</span>
             </div>
-            <span className={cn("font-display font-bold text-base sm:text-lg transition-colors duration-300", hasBg ? "text-blue-800" : "text-white")}>
+            <span className={cn("font-display font-bold text-lg sm:text-xl transition-colors duration-300", hasBg ? "text-blue-800" : "text-white")}>
               crowdfund<span className="text-blue-300">.mn</span>
             </span>
           </Link>
 
           {/* ── Col 2: Centred nav links ──────────────── */}
           <LayoutGroup>
-            <div className="hidden md:flex flex-1 justify-center items-center gap-10">
+            <div className="hidden md:flex flex-1 justify-center items-center gap-12">
               {NAV_LINKS.map(link => (
                 <NavLink key={link.href} href={link.href} label={link.label} scrolled={hasBg} />
               ))}
@@ -151,9 +151,9 @@ export function Navbar() {
           </LayoutGroup>
 
           {/* ── Col 3: Desktop right cluster ─────────── */}
-          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             {isLoggedIn ? (
-              <div key="auth" className="flex items-center gap-2 animate-fade-up">
+              <div key="auth" className="flex items-center gap-3 animate-fade-up">
                 {role === "admin" && (
                   <Link
                     href="/admin/dashboard"
@@ -173,19 +173,19 @@ export function Navbar() {
                 <Divider scrolled={hasBg} />
                 <Link
                   href="/create-project"
-                  className={cn(buttonVariants({ size: "md" }), !hasBg && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
+                  className={cn(buttonVariants({ size: "md" }), "px-5 py-2.5 text-[15px] font-bold", !hasBg && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
                 >
                   Төсөл эхлэх
                 </Link>
               </div>
             ) : (
-              <div key="guest" className="flex items-center gap-2 animate-fade-up">
+              <div key="guest" className="flex items-center gap-3 animate-fade-up">
                 <Link href="/login" className={ghostLink}>
                   Нэвтрэх
                 </Link>
                 <GuardedLink
                   href="/create-project"
-                  className={cn(buttonVariants({ size: "md" }), !hasBg && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
+                  className={cn(buttonVariants({ size: "md" }), "px-5 py-2.5 text-[15px] font-bold", !hasBg && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
                 >
                   Төсөл эхлэх
                 </GuardedLink>

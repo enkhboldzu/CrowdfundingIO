@@ -31,6 +31,28 @@ function toStoredDocuments(documents?: string[]): string[] {
   return normalizeDocumentList(documents).slice(0, 5);
 }
 
+function toStoredVideoUrl(videoUrl?: string): string | null {
+  const value = videoUrl?.trim();
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    const path = url.pathname.toLowerCase();
+    const isHostedVideo =
+      host === "youtu.be" ||
+      host.endsWith("youtube.com") ||
+      host.endsWith("vimeo.com");
+    const isDirectVideo = /\.(mp4|webm|mov|m4v)$/.test(path);
+
+    return isHostedVideo || isDirectVideo ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 const OWNER_EDITABLE_STATUSES = new Set(["PENDING", "REJECTED", "ACTIVE"]);
 
 function createProjectErrorMessage(err: unknown) {
@@ -70,6 +92,7 @@ export async function createProject(data: {
   risks: string;
   coverImage?: string;
   galleryImages?: string[];
+  videoUrl?: string;
   documents?: string[];
   rewards: Array<{ title: string; amount: number; description: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
@@ -84,6 +107,7 @@ export async function createProject(data: {
     const deliveryMonth = endsAt.toISOString().slice(0, 7);
     const galleryImages = toStoredImages(data.galleryImages);
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
+    const videoUrl = toStoredVideoUrl(data.videoUrl);
     const documents = toStoredDocuments(data.documents);
 
     const project = await prisma.project.create({
@@ -99,6 +123,7 @@ export async function createProject(data: {
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
+        videoUrl,
         documents,
         goal:            data.goal,
         location:        data.location.trim(),
@@ -149,6 +174,7 @@ export async function updateOwnProject(data: {
   risks: string;
   coverImage?: string;
   galleryImages?: string[];
+  videoUrl?: string;
   documents?: string[];
   rewards: Array<{ title: string; amount: number; description: string }>;
 }): Promise<{ success: boolean; error?: string; slug?: string }> {
@@ -185,6 +211,7 @@ export async function updateOwnProject(data: {
     const deliveryMonth = endsAt.toISOString().slice(0, 7);
     const galleryImages = toStoredImages(data.galleryImages);
     const coverImage = toStoredImage(data.coverImage) ?? galleryImages[0] ?? null;
+    const videoUrl = toStoredVideoUrl(data.videoUrl);
     const documents = toStoredDocuments(data.documents);
 
     const project = await prisma.project.update({
@@ -200,6 +227,7 @@ export async function updateOwnProject(data: {
         category:        data.category,
         coverImage,
         galleryImages:   galleryImages.length ? galleryImages : coverImage ? [coverImage] : [],
+        videoUrl,
         documents,
         goal:            data.goal,
         location:        data.location.trim(),
@@ -265,6 +293,7 @@ function formatProject(p: {
   category: string;
   coverImage: string | null;
   galleryImages: string[];
+  videoUrl?: string | null;
   goal: number;
   raised: number;
   backers: number;
@@ -294,6 +323,7 @@ function formatProject(p: {
     category: p.category,
     coverImage: normalizeImageSrc(p.coverImage) ?? "",
     galleryImages: normalizeImageList(p.galleryImages),
+    videoUrl: p.videoUrl?.trim() || null,
     goal: p.goal,
     raised: p.raised,
     backers: p.backers,

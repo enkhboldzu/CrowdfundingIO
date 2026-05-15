@@ -29,6 +29,7 @@ export interface Project {
   category: Category;
   coverImage: string;
   galleryImages?: string[];
+  videoUrl?: string | null;
   creator: Creator;
   goal: number;
   raised: number;

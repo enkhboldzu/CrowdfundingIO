@@ -59,6 +59,7 @@ export interface EditableProjectSeed {
   teamInfo:        string;
   risks:           string;
   images:          string[];
+  videoUrl?:       string | null;
   documents:       string[];
   rewards:         Array<{
     id:          string;
@@ -83,6 +84,7 @@ interface FormValues {
   fundingUsage:    string;
   teamInfo:        string;
   risks:           string;
+  videoUrl:        string;
   coverImageName:  string;
   rewards:         RewardTier[];
 }
@@ -94,6 +96,27 @@ const MAX_PROJECT_IMAGES = 3;
 const MAX_PROJECT_DOCUMENTS = 5;
 const MIN_PROJECT_GOAL = 10;
 const MIN_REWARD_AMOUNT = 10;
+
+function isSupportedVideoUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+
+  try {
+    const url = new URL(trimmed);
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    const path = url.pathname.toLowerCase();
+    return (
+      host === "youtu.be" ||
+      host.endsWith("youtube.com") ||
+      host.endsWith("vimeo.com") ||
+      /\.(mp4|webm|mov|m4v)$/.test(path)
+    );
+  } catch {
+    return false;
+  }
+}
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
@@ -135,16 +158,16 @@ const BANKS = [
 ];
 
 const STEPS = [
-  { num: 1, label: "Танилцуулга" },
-  { num: 2, label: "Төсөв" },
-  { num: 3, label: "Түүх" },
+  { num: 1, label: "Кампанийн нүүр" },
+  { num: 2, label: "Санхүүжилт" },
+  { num: 3, label: "Медиа & түүх" },
   { num: 4, label: "Урамшуулал" },
 ];
 
 const EMPTY: FormValues = {
   title: "", blurb: "", category: "", location: "",
   goal: "", duration: "", bankName: "", bankAccount: "", bankAccountName: "",
-  story: "", purpose: "", fundingUsage: "", teamInfo: "", risks: "", coverImageName: "",
+  story: "", purpose: "", fundingUsage: "", teamInfo: "", risks: "", videoUrl: "", coverImageName: "",
   rewards: [{ id: "r1", title: "", amount: "", description: "" }],
 };
 
@@ -166,6 +189,7 @@ function formValuesFromSeed(seed?: EditableProjectSeed): FormValues {
     fundingUsage:    seed.fundingUsage,
     teamInfo:        seed.teamInfo,
     risks:           seed.risks,
+    videoUrl:        seed.videoUrl ?? "",
     coverImageName:  "",
     rewards:         seed.rewards.length > 0
       ? seed.rewards.map((reward) => ({
@@ -243,6 +267,8 @@ function validate(step: number, d: FormValues): ErrMap {
     else if (d.teamInfo.trim().length < 20)                 e.teamInfo = "Багийн мэдээллээ арай дэлгэрэнгүй бичнэ үү";
     if (!d.risks.trim())                                    e.risks = "Эрсдэл, сорилтоо бичнэ үү";
     else if (d.risks.trim().length < 20)                    e.risks = "Эрсдэлийн хэсгийг арай дэлгэрэнгүй бичнэ үү";
+    if (d.videoUrl.trim() && !isSupportedVideoUrl(d.videoUrl))
+                                                            e.videoUrl = "YouTube, Vimeo эсвэл шууд MP4/WEBM видео линк оруулна уу";
   }
 
   if (step === 4) {
@@ -897,19 +923,19 @@ function Step1({ d, set, e }: { d: FormValues; set: (k: StringKey, v: string) =>
   return (
     <div className="space-y-6">
       <div>
-        <Label htmlFor="title" required>Төслийн нэр</Label>
+        <Label htmlFor="title" required>Кампанийн гарчиг</Label>
         <FInput id="title" value={d.title} onChange={v => set("title", v)}
           placeholder="Жишээ: DreamFrame богино кино" error={e.title} />
         <ErrMsg msg={e.title} />
-        {!e.title && <Hint>Хүмүүс шууд ойлгохоор тодорхой нэр сонгоорой.</Hint>}
+        {!e.title && <Hint>Project detail-ийн эхний дэлгэц дээр хамгийн томоор харагдана.</Hint>}
       </div>
 
       <div>
-        <Label htmlFor="blurb" required>Товч тайлбар</Label>
+        <Label htmlFor="blurb" required>Tagline / товч тайлбар</Label>
         <FInput id="blurb" value={d.blurb} onChange={v => set("blurb", v)}
           placeholder="Нэг өгүүлбэрт: юуг, хэнд, яагаад бүтээж байна вэ?" error={e.blurb} />
         <ErrMsg msg={e.blurb} />
-        {!e.blurb && <Hint>Энэ өгүүлбэр карт дээр хамгийн түрүүнд уншигдана.</Hint>}
+        {!e.blurb && <Hint>Hero хэсэг болон project card дээр хамгийн түрүүнд уншигдана.</Hint>}
       </div>
 
       <div>
@@ -1082,7 +1108,20 @@ function Step3({
       </div>
 
       <div>
-        <Label htmlFor="coverImages" required>Төслийн зураг</Label>
+        <Label htmlFor="videoUrl">Pitch video / богино видео линк</Label>
+        <FInput
+          id="videoUrl"
+          value={d.videoUrl}
+          onChange={v => set("videoUrl", v)}
+          placeholder="https://youtube.com/watch?v=... эсвэл https://.../intro.mp4"
+          error={e.videoUrl}
+        />
+        <ErrMsg msg={e.videoUrl} />
+        <Hint>Заавал биш. Оруулбал project detail-ийн media carousel эхэнд video болж харагдана.</Hint>
+      </div>
+
+      <div>
+        <Label htmlFor="coverImages" required>Campaign зураг / gallery</Label>
         <ImageUpload
           images={projectImages}
           error={e.coverImages}
@@ -1090,7 +1129,7 @@ function Step3({
           onChange={onProjectImagesChange}
           onUploadingChange={onProjectImagesUploadingChange}
         />
-        <Hint>1-3 бодит зураг оруулна. Эхний зураг төсөл танилцуулах гол зураг болно.</Hint>
+        <Hint>1-3 бодит зураг оруулна. Эхний зураг hero media болон project card-ийн cover болно.</Hint>
       </div>
 
       <div>
@@ -1355,6 +1394,7 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
       fundingUsage:    data.fundingUsage,
       teamInfo:        data.teamInfo,
       risks:           data.risks,
+      videoUrl:        data.videoUrl,
       coverImage:      uploadedImages[0],
       galleryImages:   uploadedImages,
       documents:       uploadedDocuments,
@@ -1383,11 +1423,11 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const stepHeadings = ["Төслөө танилцуул", "Төсвөө тодорхойл", "Итгэл төрүүлэх түүхээ бич", "Дэмжигчдэд өгөх үнэ цэн"];
+  const stepHeadings = ["Кампанийн нүүрээ бэлдэх", "Санхүүжилтээ тодорхойлох", "Видео, зураг, түүхээ оруулах", "Дэмжигчдэд өгөх үнэ цэн"];
   const stepDescriptions = [
-    "Хүмүүс хамгийн түрүүнд нэр, тайлбар, ангиллаар таны төслийг ойлгоно.",
+    "Гарчиг, tagline, ангилал нь project card болон detail hero дээр шууд харагдана.",
     "Зорилтот дүн, хугацаа, банкны мэдээлэл тодорхой байх тусам баталгаажуулалт хурдан явна.",
-    "Энд бичсэн мэдээлэл project detail дээр шууд харагдана.",
+    "Pitch video, gallery зураг, түүх нь project detail-ийн media showcase болон доорх content-д харагдана.",
     "Сайн урамшуулал нь дэмжигчид оролцож байгаа мэдрэмж өгдөг.",
   ];
 
@@ -1407,7 +1447,7 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
             <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
               {editing
                 ? "Зассан мэдээллээ илгээгээд админаар дахин хянуулна."
-                : "Таны санааг хүмүүс ойлгож, итгэж, дэмжихэд хэрэгтэй бүх мэдээллийг цэгцтэй авна."}
+                : "Видео, зураг, funding summary, түүхээ нэг дор цэгцлээд campaign page-ээ бэлдэнэ."}
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Montserrat } from "next/font/google";
+import { Manrope, Noto_Sans } from "next/font/google";
 import { AuthProvider }    from "@/context/AuthContext";
 import { ToastProvider }   from "@/context/ToastContext";
 import { NavbarShell }     from "@/components/landing/NavbarShell";
@@ -7,15 +7,17 @@ import { ChatBotShell }    from "@/components/chat/ChatBotShell";
 import { PageTransition }  from "@/components/ui/PageTransition";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const notoSans = Noto_Sans({
+  variable: "--font-noto-sans",
   subsets: ["latin", "cyrillic"],
+  weight: "variable",
   display: "swap",
 });
 
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin", "cyrillic"],
+  weight: "variable",
   display: "swap",
 });
 
@@ -40,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="mn"
-      className={`${inter.variable} ${montserrat.variable} h-full`}
+      className={`${notoSans.variable} ${manrope.variable} h-full`}
     >
       <body className="min-h-full flex flex-col antialiased">
         <AuthProvider>

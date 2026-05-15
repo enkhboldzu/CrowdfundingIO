@@ -34,8 +34,8 @@ interface AvatarProps {
 
 function Avatar({ name, avatar, size = "sm", className }: AvatarProps) {
   const [imgError, setImgError] = useState(false);
-  const dim    = size === "sm" ? "w-8 h-8" : "w-9 h-9";
-  const textSz = size === "sm" ? "text-xs"  : "text-sm";
+  const dim    = size === "sm" ? "w-9 h-9" : "w-10 h-10";
+  const textSz = size === "sm" ? "text-sm" : "text-base";
 
   if (avatar && !imgError) {
     return (
@@ -85,7 +85,7 @@ function AvatarSkeleton({ scrolled }: { scrolled: boolean }) {
   return (
     <div
       className={cn(
-        "w-8 h-8 rounded-full animate-pulse",
+        "w-9 h-9 rounded-full animate-pulse",
         scrolled ? "bg-slate-200" : "bg-white/25"
       )}
     />
@@ -138,7 +138,7 @@ export function UserDropdown({ scrolled }: Props) {
         aria-label="Хэрэглэгчийн цэс"
         aria-expanded={open}
         className={cn(
-          "flex items-center gap-1.5 rounded-full transition-all duration-200 ring-2 p-0.5",
+          "flex items-center gap-2 rounded-full transition-all duration-200 ring-2 p-0.5",
           scrolled
             ? ["ring-slate-200 hover:ring-blue-300", open && "ring-blue-400"]
             : ["ring-white/25 hover:ring-white/55", open && "ring-white/65"]
@@ -164,7 +164,7 @@ export function UserDropdown({ scrolled }: Props) {
         {/* Chevron */}
         <ChevronDown
           className={cn(
-            "hidden sm:block w-3 h-3 transition-all duration-200 mr-1",
+            "hidden sm:block h-3.5 w-3.5 transition-all duration-200 mr-1",
             scrolled ? "text-slate-400" : "text-white/60",
             open && "rotate-180"
           )}

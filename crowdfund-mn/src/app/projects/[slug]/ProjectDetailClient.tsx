@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
+import { CalendarDays, ChevronLeft, ChevronRight, Play, Users } from "lucide-react";
 import { Footer }       from "@/components/landing/Footer";
 import { Badge }        from "@/components/ui/Badge";
 import { ProgressBar }  from "@/components/ui/ProgressBar";
@@ -42,6 +44,70 @@ const CATEGORY_LABELS: Record<string, string> = {
   social:      "Нийгэм",
   startups:    "Стартап",
 };
+
+type ProjectMediaItem =
+  | { type: "video"; src: string }
+  | { type: "image"; src: string };
+
+function uniqueProjectImages(project: Project) {
+  const images = [project.coverImage, ...(project.galleryImages ?? [])]
+    .map((image) => image?.trim())
+    .filter((image): image is string => Boolean(image));
+
+  return Array.from(new Set(images));
+}
+
+function projectMedia(project: Project): ProjectMediaItem[] {
+  const images = uniqueProjectImages(project).map((src) => ({ type: "image" as const, src }));
+  const videoUrl = project.videoUrl?.trim();
+
+  return videoUrl ? [{ type: "video", src: videoUrl }, ...images] : images;
+}
+
+function youtubeEmbedUrl(url: URL): string | null {
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  let id: string | null = null;
+
+  if (host === "youtu.be") {
+    id = url.pathname.split("/").filter(Boolean)[0] ?? null;
+  } else if (host.endsWith("youtube.com")) {
+    id = url.searchParams.get("v");
+    if (!id && url.pathname.startsWith("/shorts/")) {
+      id = url.pathname.split("/").filter(Boolean)[1] ?? null;
+    }
+    if (!id && url.pathname.startsWith("/embed/")) {
+      id = url.pathname.split("/").filter(Boolean)[1] ?? null;
+    }
+  }
+
+  return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : null;
+}
+
+function videoEmbedUrl(src: string): string | null {
+  try {
+    const url = new URL(src);
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    const youtube = youtubeEmbedUrl(url);
+    if (youtube) return youtube;
+
+    if (host.endsWith("vimeo.com")) {
+      const id = url.pathname.split("/").filter(Boolean)[0];
+      return id ? `https://player.vimeo.com/video/${encodeURIComponent(id)}` : null;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function isDirectVideo(src: string) {
+  try {
+    return /\.(mp4|webm|mov|m4v)$/i.test(new URL(src).pathname);
+  } catch {
+    return false;
+  }
+}
 
 interface Props {
   project: Project;
@@ -100,30 +166,7 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
     <>
       <main className="min-h-screen bg-slate-50">
 
-        {/* ── Cover image ──────────────────────────────────── */}
-        <div className="relative w-full h-64 sm:h-80 lg:h-[420px] bg-slate-200 overflow-hidden">
-          <Image
-            src={project.coverImage}
-            alt={project.title}
-            fill
-            className="object-cover"
-            priority
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
-
-          {/* Overlay badges (bottom-left of image) */}
-          <div className="absolute bottom-4 left-4 flex gap-2">
-            <Badge variant="blue" className="backdrop-blur-sm bg-blue-800/90 text-white border-0 text-xs px-3 py-1">
-              {CATEGORY_LABELS[project.category] ?? project.category}
-            </Badge>
-            {project.isTrending && (
-              <Badge variant="yellow" className="backdrop-blur-sm text-xs px-3 py-1">
-                🔥 Тренд
-              </Badge>
-            )}
-          </div>
-        </div>
+        <ProjectShowcase project={liveProject} percent={percent} onSupport={() => openSupport()} />
 
         {/* ── Main layout ──────────────────────────────────── */}
         <div className="container-page py-8 lg:py-12">
@@ -131,53 +174,6 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
 
             {/* ── Left: content ──────────────────────────── */}
             <div className="lg:col-span-7 min-w-0">
-
-              {/* Project header */}
-              <div className="mb-5">
-                {/* Verified badge */}
-                {project.isVerified && (
-                  <div className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full mb-3">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                    </svg>
-                    Баталгаажсан төсөл
-                  </div>
-                )}
-
-                <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 leading-tight mb-4">
-                  {project.title}
-                </h1>
-
-                {/* Creator row */}
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-                    <Image
-                      src={project.creator.avatar}
-                      alt={project.creator.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-slate-900">
-                        {project.creator.name}
-                      </span>
-                      {project.creator.isVerified && (
-                        <svg className="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500">{project.creator.projectCount} төсөл байршуулсан</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile: funding card */}
-              <div className="lg:hidden mb-6">
-                <FundingCard project={liveProject} percent={percent} onSupport={() => openSupport()} />
-              </div>
 
               {/* Tags */}
               {project.tags.length > 0 && (
@@ -222,8 +218,6 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
             {/* ── Right: sticky sidebar ─────────────────── */}
             <div className="hidden lg:block lg:col-span-5">
               <div className="sticky top-24 space-y-4">
-                <FundingCard project={liveProject} percent={percent} onSupport={() => openSupport()} />
-
                 {tiers.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">
@@ -286,64 +280,253 @@ export function ProjectDetailClient({ project, rewards, updates }: Props) {
 
 /* ── Sub-components ──────────────────────────────────────────── */
 
-function FundingCard({ project, percent, onSupport }: { project: Project; percent: number; onSupport: () => void }) {
+function ProjectShowcase({
+  project,
+  percent,
+  onSupport,
+}: {
+  project: Project;
+  percent: number;
+  onSupport: () => void;
+}) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
-      {/* Raised */}
-      <div className="mb-1">
-        <span className="font-display font-bold text-3xl text-slate-900">
-          {formatMNT(project.raised)}
-        </span>
-      </div>
-      <p className="text-slate-500 text-sm mb-4">
-        {formatMNT(project.goal)} зорилтоос цугларсан
-      </p>
-
-      {/* Progress */}
-      <ProgressBar value={percent} raised={project.raised} goal={project.goal} className="mb-5" />
-
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-0 mb-5 rounded-xl bg-slate-50 divide-x divide-slate-200 overflow-hidden">
-        <div className="text-center py-3">
-          <div className="font-display font-bold text-lg text-blue-800">{percent.toFixed(0)}%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">санхүүжсэн</div>
-        </div>
-        <div className="text-center py-3">
-          <div className="font-display font-bold text-lg text-slate-900">{project.backers.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">дэмжигч</div>
-        </div>
-        <div className="text-center py-3">
-          <div className={cn(
-            "font-display font-bold text-lg",
-            project.daysLeft <= 3 ? "text-red-600" : "text-slate-900"
-          )}>
-            {project.daysLeft}
+    <section className="relative overflow-hidden bg-slate-950 pt-24 pb-10 sm:pt-28 lg:pb-12">
+      <Image
+        src={project.coverImage}
+        alt=""
+        fill
+        priority
+        className="object-cover opacity-25 blur-sm scale-105"
+        sizes="100vw"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-blue-950/70" />
+      <div className="container-page relative z-10">
+        <div className="mb-5 max-w-4xl">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Badge variant="blue" className="bg-white/10 text-blue-100 border-white/15 backdrop-blur-sm">
+              {CATEGORY_LABELS[project.category] ?? project.category}
+            </Badge>
+            {project.isTrending && (
+              <Badge variant="yellow" className="border-0 bg-amber-300 text-amber-950">
+                🔥 Тренд
+              </Badge>
+            )}
+            {project.isVerified && (
+              <span className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100">
+                Баталгаажсан
+              </span>
+            )}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">өдөр үлдсэн</div>
+
+          <h1 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
+            {project.title}
+          </h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-blue-100">
+            <span>by {project.creator.name}</span>
+            <span className="hidden h-1 w-1 rounded-full bg-blue-200/60 sm:block" />
+            <span>{project.creator.projectCount} төсөл байршуулсан</span>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200 sm:text-base">
+            {project.description}
+          </p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-stretch">
+          <ProjectMediaCarousel project={project} />
+          <FundingCard project={project} percent={percent} onSupport={onSupport} />
         </div>
       </div>
+    </section>
+  );
+}
 
-      {/* CTA */}
-      <button
-        onClick={onSupport}
-        className="w-full bg-blue-800 hover:bg-blue-900 active:bg-blue-950 text-white font-bold text-base py-3.5 rounded-xl transition-colors shadow-cta flex items-center justify-center gap-2"
+function ProjectMediaCarousel({ project }: { project: Project }) {
+  const media = useMemo(() => projectMedia(project), [project]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const active = media[activeIndex] ?? media[0] ?? { type: "image" as const, src: project.coverImage };
+
+  function showMedia(nextIndex: number, nextDirection: number) {
+    if (media.length <= 1) return;
+    setDirection(nextDirection);
+    setActiveIndex((nextIndex + media.length) % media.length);
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl shadow-slate-950/30">
+      <div className="relative aspect-video min-h-[260px] overflow-hidden sm:min-h-[360px] lg:min-h-[420px]">
+        <AnimatePresence mode="popLayout" custom={direction}>
+          <motion.div
+            key={`${active.type}-${active.src}-${activeIndex}`}
+            custom={direction}
+            initial={{ x: direction * 80, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: direction * -80, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0"
+          >
+            {active.type === "video" ? (
+              <ProjectVideo src={active.src} poster={project.coverImage} />
+            ) : (
+              <Image
+                src={active.src}
+                alt={project.title}
+                fill
+                priority={activeIndex === 0}
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 760px"
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/70 to-transparent" />
+
+        {active.type === "video" && (
+          <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm">
+            <Play className="h-3.5 w-3.5 fill-white" strokeWidth={2.4} />
+            Богино видео
+          </div>
+        )}
+
+        {media.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() => showMedia(activeIndex - 1, -1)}
+              className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-slate-900 shadow-lg transition hover:bg-white"
+              aria-label="Өмнөх медиа"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => showMedia(activeIndex + 1, 1)}
+              className="absolute right-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-slate-900 shadow-lg transition hover:bg-white"
+              aria-label="Дараах медиа"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
+              {media.map((item, index) => (
+                <button
+                  key={`${item.type}-${item.src}-${index}`}
+                  type="button"
+                  onClick={() => showMedia(index, index >= activeIndex ? 1 : -1)}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all",
+                    index === activeIndex ? "w-8 bg-blue-300" : "w-4 bg-white/70 hover:bg-white"
+                  )}
+                  aria-label={`${index + 1}-р медиа`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProjectVideo({ src, poster }: { src: string; poster: string }) {
+  const embed = videoEmbedUrl(src);
+
+  if (embed) {
+    return (
+      <iframe
+        src={embed}
+        title="Төслийн богино видео"
+        className="h-full w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    );
+  }
+
+  if (isDirectVideo(src)) {
+    return (
+      <video
+        className="h-full w-full object-cover"
+        controls
+        playsInline
+        preload="metadata"
+        poster={poster}
       >
-        Энэ төслийг дэмжих
-        <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
-        </svg>
-      </button>
+        <source src={src} />
+      </video>
+    );
+  }
 
-      {/* Payment icons */}
-      <div className="mt-3.5 flex items-center justify-center gap-3">
-        <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">QPay</span>
+  return (
+    <Image
+      src={poster}
+      alt="Төслийн видео"
+      fill
+      className="object-cover"
+      sizes="(max-width: 1024px) 100vw, 760px"
+    />
+  );
+}
+
+function FundingCard({ project, percent, onSupport }: { project: Project; percent: number; onSupport: () => void }) {
+  const reached = percent >= 100;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20">
+      <div className="bg-gradient-to-r from-blue-800 to-blue-600 px-6 py-4 text-center text-sm font-bold text-white">
+        {reached ? "Зорилго биелсэн" : `${percent.toFixed(0)}% санхүүжсэн`}
       </div>
 
-      {project.daysLeft <= 7 && (
-        <p className="mt-3 text-center text-xs text-red-500 font-semibold">
-          {daysLeftLabel(project.daysLeft)}. Дэмжих хугацаа ойртож байна.
+      <div className="p-6">
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+          Зорилго: {formatMNT(project.goal)}
         </p>
-      )}
+        <div className="mt-2">
+          <span className="font-display text-4xl font-bold text-slate-950">
+            {formatMNT(project.raised)}
+          </span>
+        </div>
+
+        <ProgressBar
+          value={percent}
+          raised={project.raised}
+          goal={project.goal}
+          showLabel={false}
+          className="mt-4 mb-5"
+        />
+
+        <div className="mb-8 grid grid-cols-2 gap-3 text-sm font-semibold text-slate-700">
+          <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
+            <Users className="h-4 w-4 text-slate-500" />
+            <span>{project.backers.toLocaleString()} дэмжигч</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
+            <CalendarDays className="h-4 w-4 text-slate-500" />
+            <span>{daysLeftLabel(project.daysLeft)}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={onSupport}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-800 py-3.5 text-base font-bold text-white shadow-cta transition-colors hover:bg-blue-900 active:bg-blue-950"
+        >
+          Энэ төслийг дэмжих
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+          </svg>
+        </button>
+
+        {project.daysLeft <= 7 && (
+          <p className="mt-4 text-center text-xs font-semibold text-red-500">
+            {daysLeftLabel(project.daysLeft)}. Дэмжих хугацаа ойртож байна.
+          </p>
+        )}
+
+        <div className="mt-4 text-center text-xs font-medium text-slate-400">
+          Төлбөр баталгаажмагц дэмжлэг төслийн дүнд нэмэгдэнэ.
+        </div>
+      </div>
     </div>
   );
 }
@@ -474,19 +657,19 @@ function SupportModal({
       <form
         onSubmit={handleSubmit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="w-full max-w-lg max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-white/80"
+        className="w-full max-w-md max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-white/80"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Аюулгүй QPay төлбөр</p>
-            <h2 id="support-modal-title" className="mt-1 font-display text-xl font-bold text-slate-950">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-blue-700">Аюулгүй QPay төлбөр</p>
+            <h2 id="support-modal-title" className="mt-1 font-display text-lg font-bold text-slate-950">
               {project.title}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+            className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
             aria-label="Хаах"
           >
             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -495,12 +678,12 @@ function SupportModal({
           </button>
         </div>
 
-        <div className="space-y-5 px-5 py-5">
+        <div className="space-y-4 px-4 py-4">
           {invoice ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4 text-center">
+            <div className="space-y-3.5">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-center">
                 <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Төлөх дүн</p>
-                <p className="mt-1 text-2xl font-bold text-blue-950">{formatMNT(invoice.amount)}</p>
+                <p className="mt-1 text-xl font-bold text-blue-950">{formatMNT(invoice.amount)}</p>
               </div>
 
               {invoice.qrImage ? (
@@ -508,10 +691,10 @@ function SupportModal({
                   <Image
                     src={invoice.qrImage.startsWith("data:") ? invoice.qrImage : `data:image/png;base64,${invoice.qrImage}`}
                     alt="QPay QR"
-                    width={224}
-                    height={224}
+                    width={192}
+                    height={192}
                     unoptimized
-                    className="h-56 w-56 rounded-2xl border border-slate-200 bg-white object-contain p-3"
+                    className="h-48 w-48 rounded-2xl border border-slate-200 bg-white object-contain p-2.5"
                   />
                 </div>
               ) : (
@@ -523,13 +706,13 @@ function SupportModal({
               {invoice.urls.length > 0 && (
                 <div className="md:hidden">
                   <p className="mb-2 text-sm font-bold text-slate-800">Төлөх апп аа сонгоно уу</p>
-                  <div className="max-h-44 overflow-y-auto pr-1 grid grid-cols-2 gap-2">
+                  <div className="max-h-36 overflow-y-auto pr-1 grid grid-cols-2 gap-2">
                     {invoice.urls.map((url) => (
                       <button
                         key={`${url.name}-${url.link}`}
                         type="button"
                         onClick={() => openPaymentLink(url.link)}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
+                        className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-center text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
                       >
                         {url.name}
                       </button>
@@ -566,7 +749,7 @@ function SupportModal({
                   type="button"
                   onClick={() => selectRewardTier(null)}
                   className={cn(
-                    "w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                    "w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
                     selectedRewardTierId === null
                       ? "border-blue-700 bg-blue-50 text-blue-900"
                       : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
@@ -584,7 +767,7 @@ function SupportModal({
                       onClick={() => selectRewardTier(tier)}
                       disabled={isSoldOut}
                       className={cn(
-                        "w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+                        "w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
                         selectedRewardTierId === tier.id
                           ? "border-blue-700 bg-blue-50 text-blue-900"
                           : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"
@@ -620,7 +803,7 @@ function SupportModal({
                 onChange={(event) => changeAmount(event.target.value)}
                 inputMode="numeric"
                 min={minimumAmount}
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-base font-semibold text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
               />
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -652,15 +835,15 @@ function SupportModal({
           )}
         </div>
 
-        <div className="border-t border-slate-100 px-5 py-4">
+        <div className="border-t border-slate-100 px-4 py-3">
           <button
             type={invoice ? "button" : "submit"}
             onClick={invoice ? () => void checkPayment(invoice.donationId) : undefined}
             disabled={isPending || isCheckingPayment}
-            className="w-full rounded-xl bg-blue-800 py-3.5 text-base font-bold text-white shadow-cta transition-colors hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="w-full rounded-xl bg-blue-800 py-3 text-sm font-bold text-white shadow-cta transition-colors hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {invoice
-              ? isCheckingPayment ? "Төлбөр шалгаж байна..." : "Би төлсөн, шалгах"
+              ? isCheckingPayment ? "Төлбөр шалгаж байна..." : "Төлбөр шалгах"
               : isPending ? "Нэхэмжлэх үүсгэж байна..." : `${formatMNT(parsedAmount || minimumAmount)} дэмжих`}
           </button>
         </div>
