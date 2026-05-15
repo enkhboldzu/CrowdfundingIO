@@ -896,14 +896,25 @@ function ProjectMediaCarousel({ project }: { project: Project }) {
             {active.type === "video" ? (
               <ProjectVideo src={active.src} poster={project.coverImage} />
             ) : (
-              <Image
-                src={active.src}
-                alt={project.title}
-                fill
-                priority={activeIndex === 0}
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 760px"
-              />
+              <>
+                <Image
+                  src={active.src}
+                  alt=""
+                  fill
+                  priority={activeIndex === 0}
+                  className="scale-110 object-cover opacity-35 blur-xl"
+                  sizes="(max-width: 1024px) 100vw, 760px"
+                  aria-hidden
+                />
+                <Image
+                  src={active.src}
+                  alt={project.title}
+                  fill
+                  priority={activeIndex === 0}
+                  className="object-contain"
+                  sizes="(max-width: 1024px) 100vw, 760px"
+                />
+              </>
             )}
           </motion.div>
         </AnimatePresence>
