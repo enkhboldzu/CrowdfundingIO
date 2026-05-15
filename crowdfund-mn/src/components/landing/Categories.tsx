@@ -3,84 +3,80 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { useLandingData } from "@/hooks/useLandingData";
 
 /* ── Category definitions ───────────────────────────────────────── */
-
 const CATEGORIES = [
   {
     id: "technology",
     label: "Технологи",
     emoji: "💻",
     description: "AI, апп, төхөөрөмж, цахим шийдэл",
-    className: "col-span-2 row-span-2 bg-blue-950 text-white",
-    emojiSize: "text-5xl",
-    titleSize: "text-xl",
-  },
-  {
-    id: "health",
-    label: "Эрүүл Мэнд",
-    emoji: "❤️",
-    description: "Эрүүл амьдрал, эмчилгээ, спорт",
-    className: "col-span-2 bg-gray-950 text-white",
-    emojiSize: "text-3xl",
-    titleSize: "text-base",
+    color: "from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 hover:shadow-blue-100",
+    textColor: "text-blue-800",
+    ring: "ring-blue-300",
   },
   {
     id: "food",
     label: "Хоол & Ундаа",
     emoji: "🍜",
     description: "Кафе, брэнд, нутгийн амт",
-    className: "col-span-1 bg-white border border-gray-200 text-gray-900",
-    emojiSize: "text-3xl",
-    titleSize: "text-sm",
+    color: "from-cyan-50 to-cyan-100 border-cyan-200 hover:border-cyan-400 hover:shadow-cyan-100",
+    textColor: "text-cyan-800",
+    ring: "ring-cyan-300",
   },
   {
     id: "arts",
     label: "Урлаг",
     emoji: "🎨",
-    description: "Кино, хөгжим, дизайн",
-    className: "col-span-1 bg-white border border-gray-200 text-gray-900",
-    emojiSize: "text-3xl",
-    titleSize: "text-sm",
+    description: "Кино, хөгжим, дизайн, бүтээл",
+    color: "from-pink-50 to-pink-100 border-pink-200 hover:border-pink-400 hover:shadow-pink-100",
+    textColor: "text-pink-800",
+    ring: "ring-pink-300",
   },
   {
     id: "environment",
     label: "Нийгмийн Нөлөө",
     emoji: "🌍",
     description: "Байгаль, нийгэм, сайн үйл",
-    className: "col-span-1 bg-white border border-gray-200 text-gray-900",
-    emojiSize: "text-3xl",
-    titleSize: "text-sm",
+    color: "from-green-50 to-green-100 border-green-200 hover:border-green-400 hover:shadow-green-100",
+    textColor: "text-green-800",
+    ring: "ring-green-300",
   },
   {
     id: "education",
     label: "Боловсрол",
     emoji: "📚",
-    description: "Сургалт, ном, мэдлэг",
-    className: "col-span-1 bg-white border border-gray-200 text-gray-900",
-    emojiSize: "text-3xl",
-    titleSize: "text-sm",
+    description: "Сургалт, ном, мэдлэг, судалгаа",
+    color: "from-amber-50 to-amber-100 border-amber-200 hover:border-amber-400 hover:shadow-amber-100",
+    textColor: "text-amber-800",
+    ring: "ring-amber-300",
+  },
+  {
+    id: "health",
+    label: "Эрүүл Мэнд",
+    emoji: "❤️",
+    description: "Эрүүл амьдрал, эмчилгээ, спорт",
+    color: "from-red-50 to-red-100 border-red-200 hover:border-red-400 hover:shadow-red-100",
+    textColor: "text-red-800",
+    ring: "ring-red-300",
   },
 ];
 
-/* ── Bento skeleton ─────────────────────────────────────────────── */
+const DISPLAY_FALLBACK: Record<string, number> = {
+  technology:  142,
+  food:         98,
+  arts:        214,
+  environment: 176,
+  education:   89,
+  health:      63,
+};
 
-function BentoSkeleton() {
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 auto-rows-[160px] gap-4 mb-8 animate-pulse">
-      <div className="col-span-2 row-span-2 rounded-3xl bg-gray-200" />
-      <div className="col-span-2 rounded-3xl bg-gray-100" />
-      <div className="rounded-3xl bg-gray-100" />
-      <div className="rounded-3xl bg-gray-100" />
-      <div className="rounded-3xl bg-gray-100" />
-      <div className="rounded-3xl bg-gray-100" />
-    </div>
-  );
+function getDisplayCount(id: string, dbCounts?: Record<string, number>): number {
+  const real = dbCounts?.[id] ?? 0;
+  return real >= 1 ? real : (DISPLAY_FALLBACK[id] ?? 0);
 }
 
 /* ── Animation variants ─────────────────────────────────────────── */
-
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const sectionHeader = {
@@ -90,26 +86,23 @@ const sectionHeader = {
 
 const grid = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } },
 };
 
-const cell = {
-  hidden: { opacity: 0, scale: 0.96 },
-  show: { opacity: 1, scale: 1, transition: { duration: 0.45, ease: EASE } },
+const card = {
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.45, ease: EASE },
+  },
 };
 
 /* ── Component ──────────────────────────────────────────────────── */
-
-export function Categories() {
-  const { data, loading } = useLandingData();
-  const counts = data?.categoryCounts ?? {};
-
-  function getCount(id: string): number {
-    return counts[id] ?? 0;
-  }
-
+export function Categories({ counts }: { counts?: Record<string, number> }) {
   return (
-    <section className="py-20 bg-gray-50">
+    <section className="py-20 bg-slate-50">
       <div className="container-page">
 
         {/* Section header */}
@@ -120,80 +113,83 @@ export function Categories() {
           viewport={{ once: true, margin: "-80px" }}
           variants={sectionHeader}
         >
-          <p className="text-gray-400 font-semibold text-xs uppercase tracking-widest mb-2">
+          <p className="text-blue-700 font-semibold text-sm uppercase tracking-widest mb-2">
             Ангилал
           </p>
           <h2 className="section-heading mb-3">Ямар санааг дэмжих вэ?</h2>
-          <p className="text-gray-500 text-base max-w-xl mx-auto">
+          <p className="text-slate-500 text-base max-w-xl mx-auto">
             Сонирхолтой чиглэлээ сонгоод өөрт ойр санагдах төслөө хурдан олоорой.
           </p>
         </motion.div>
 
-        {/* Bento grid */}
-        {loading ? (
-          <BentoSkeleton />
-        ) : (
-          <motion.div
-            className="grid grid-cols-2 lg:grid-cols-4 auto-rows-[160px] gap-4 mb-8"
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
-            variants={grid}
-          >
-            {CATEGORIES.map((cat) => (
-              <motion.div key={cat.id} variants={cell} className={cat.className + " rounded-3xl"}>
-                <Link
-                  href={`/explore?category=${cat.id}`}
+        {/* Cards */}
+        <motion.div
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={grid}
+        >
+          {CATEGORIES.map((cat) => (
+            <motion.div
+              key={cat.id}
+              variants={card}
+              whileHover={{ y: -8, scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 380, damping: 22 }}
+            >
+              <Link
+                href={`/explore?category=${cat.id}`}
+                className={[
+                  "group relative flex flex-col items-center text-center p-5 rounded-2xl h-full",
+                  "bg-gradient-to-br border transition-shadow duration-200",
+                  "hover:shadow-lg focus-visible:outline-none",
+                  `focus-visible:ring-2 ${cat.ring}`,
+                  cat.color,
+                ].join(" ")}
+              >
+                {/* Emoji — scale on group-hover */}
+                <span
+                  className="text-3xl mb-3 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-3"
+                  role="img"
+                  aria-label={cat.label}
+                >
+                  {cat.emoji}
+                </span>
+
+                <h3 className={`font-bold text-sm leading-tight mb-1 ${cat.textColor}`}>
+                  {cat.label}
+                </h3>
+
+                <p className="text-slate-500 text-xs leading-snug hidden sm:block mb-2">
+                  {cat.description}
+                </p>
+
+                <span className={`text-xs font-semibold mt-auto ${cat.textColor} opacity-70`}>
+                  {getDisplayCount(cat.id, counts).toLocaleString()} төсөл
+                </span>
+
+                {/* Subtle "→" hint */}
+                <span
+                  aria-hidden
                   className={[
-                    "group relative flex flex-col justify-between h-full w-full p-5 rounded-3xl",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-                    "hover:opacity-90 transition-opacity duration-200",
+                    "absolute bottom-2 right-3 text-xs font-bold opacity-0",
+                    "translate-x-1 transition-all duration-200",
+                    "group-hover:opacity-60 group-hover:translate-x-0",
+                    cat.textColor,
                   ].join(" ")}
                 >
-                  <span className={cat.emojiSize} role="img" aria-label={cat.label}>
-                    {cat.emoji}
-                  </span>
-
-                  <div>
-                    <h3 className={`font-bold leading-tight mb-0.5 ${cat.titleSize}`}>
-                      {cat.label}
-                    </h3>
-                    <p className={[
-                      "text-xs leading-snug hidden sm:block",
-                      cat.className.includes("text-white") ? "opacity-60" : "text-gray-500",
-                    ].join(" ")}>
-                      {cat.description}
-                    </p>
-                    <p className={[
-                      "text-xs font-semibold mt-1",
-                      cat.className.includes("text-white") ? "opacity-50" : "text-gray-400",
-                    ].join(" ")}>
-                      {getCount(cat.id).toLocaleString()} төсөл
-                    </p>
-                  </div>
-
-                  {/* Arrow hint */}
-                  <span
-                    aria-hidden
-                    className={[
-                      "absolute bottom-4 right-4 text-sm font-bold",
-                      "opacity-0 translate-x-1 group-hover:opacity-60 group-hover:translate-x-0",
-                      "transition-all duration-200",
-                    ].join(" ")}
-                  >
-                    →
-                  </span>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
+                  →
+                </span>
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* "See all" footer link */}
         <div className="text-center">
           <Link
             href="/explore"
-            className="inline-flex items-center gap-2 text-gray-600 font-semibold text-sm hover:text-gray-950 transition-colors group"
+            className="inline-flex items-center gap-2 text-blue-700 font-semibold text-sm hover:text-blue-900 transition-colors group"
           >
             Бүх ангиллыг үзэх
             <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />

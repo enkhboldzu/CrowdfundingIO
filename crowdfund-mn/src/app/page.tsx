@@ -6,19 +6,35 @@ import { Categories }       from "@/components/landing/Categories";
 import { TrustSection }     from "@/components/landing/TrustSection";
 import { HowItWorks }       from "@/components/landing/HowItWorks";
 import { Footer }           from "@/components/landing/Footer";
+import { getLandingProjects, getProjectCountsByCategory } from "@/lib/db/queries";
+import { toProject } from "@/lib/db/transform";
+import { getPublicStats } from "@/lib/db/stats";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const [{ projects: rawProjects, featured: rawFeatured, trending: rawTrending }, counts, stats] = await Promise.all([
+    getLandingProjects(20),
+    getProjectCountsByCategory(),
+    getPublicStats(),
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projects = (rawProjects as any[]).map(toProject);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const featured = (rawFeatured as any[]).map(toProject);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trending = (rawTrending as any[]).map(toProject);
+
   return (
     <>
       <main className="flex flex-col">
-        <Hero />
-        <TrendingProjects />
-        <Categories />
+        <Hero stats={stats} />
+        <TrendingProjects projects={projects} featured={featured} trending={trending} />
+        <Categories counts={counts} />
         <TrustSection />
         <HowItWorks />
 
         {/* CTA Banner */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-slate-50">
           <div className="container-page text-center">
             <h2 className="section-heading mb-4">
               Таны санаа хэрэгжих цаг нь болжээ
@@ -30,7 +46,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <GuardedLink
                 href="/create-project"
-                className="inline-flex items-center justify-center gap-2 bg-gray-950 hover:bg-gray-800 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-cta transition-all duration-200 hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center gap-2 bg-blue-800 hover:bg-blue-900 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-cta transition-all duration-200 hover:-translate-y-0.5"
               >
                 Төсөл эхлэх
                 <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
@@ -39,7 +55,7 @@ export default function LandingPage() {
               </GuardedLink>
               <Link
                 href="/explore"
-                className="inline-flex items-center justify-center gap-2 border-2 border-gray-950 text-gray-950 hover:bg-gray-950 hover:text-white font-bold text-lg px-8 py-4 rounded-2xl transition-all duration-200"
+                className="inline-flex items-center justify-center gap-2 border-2 border-blue-800 text-blue-800 hover:bg-blue-800 hover:text-white font-bold text-lg px-8 py-4 rounded-2xl transition-all duration-200"
               >
                 Төслүүд харах
               </Link>

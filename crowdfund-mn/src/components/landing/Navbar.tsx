@@ -33,7 +33,7 @@ function Divider({ scrolled }: { scrolled: boolean }) {
 }
 
 /* Desktop nav link with animated underline */
-function NavLink({ href, label }: { href: string; label: string }) {
+function NavLink({ href, label, scrolled }: { href: string; label: string; scrolled: boolean }) {
   const pathname = usePathname();
   const isActive = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
@@ -42,7 +42,9 @@ function NavLink({ href, label }: { href: string; label: string }) {
       href={href}
       className={cn(
         "group relative flex items-center pt-2 pb-2.5 text-[15px] font-semibold transition-colors duration-200",
-        isActive ? "text-blue-700" : "text-slate-600 hover:text-blue-700"
+        scrolled
+          ? isActive ? "text-blue-800"  : "text-slate-600 hover:text-blue-700"
+          : isActive ? "text-white"     : "text-white/75  hover:text-white"
       )}
     >
       {label}
@@ -51,7 +53,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
       {isActive && (
         <motion.span
           layoutId="nav-underline"
-          className="absolute bottom-0 inset-x-0 h-[2px] rounded-full bg-blue-600"
+          className={cn("absolute bottom-0 inset-x-0 h-[2px] rounded-full", scrolled ? "bg-blue-600" : "bg-white")}
           transition={{ type: "spring", stiffness: 500, damping: 35 }}
         />
       )}
@@ -60,7 +62,11 @@ function NavLink({ href, label }: { href: string; label: string }) {
       {!isActive && (
         <span
           aria-hidden
-          className="absolute bottom-0 inset-x-0 h-[2px] rounded-full bg-blue-200 scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-center"
+          className={cn(
+            "absolute bottom-0 inset-x-0 h-[2px] rounded-full",
+            "scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-center",
+            scrolled ? "bg-blue-200" : "bg-white/30"
+          )}
         />
       )}
     </Link>
@@ -88,7 +94,7 @@ function MobileNavLink({ href, label, onClick }: { href: string; label: string; 
 }
 
 export function Navbar() {
-  const { isLoggedIn, role, user, logout } = useAuth();
+  const { isLoggedIn, role, logout } = useAuth();
   const pathname               = usePathname();
   const [scrolled,   setScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -107,17 +113,19 @@ export function Navbar() {
 
   const closeMobile = () => setMobileOpen(false);
 
+  /* Homepage hero starts transparent; every other page and after scroll → solid */
   const hasBg = scrolled || pathname !== "/";
 
-  const ghostLink = "text-[15px] font-semibold px-4 py-2.5 rounded-xl transition-colors duration-200 text-slate-700 hover:text-blue-800 hover:bg-blue-50";
+  const ghostLink = cn(
+    "text-[15px] font-semibold px-4 py-2.5 rounded-xl transition-colors duration-200",
+    hasBg ? "text-slate-700 hover:text-blue-800 hover:bg-blue-50" : "text-white/90 hover:text-white hover:bg-white/10"
+  );
 
   return (
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        scrolled
-          ? "bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm"
-          : "bg-white/80 backdrop-blur-sm border-b border-transparent"
+        hasBg ? "bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm" : "bg-transparent"
       )}
     >
       <div className="container-page">
@@ -125,11 +133,11 @@ export function Navbar() {
 
           {/* ── Col 1: Logo ──────────────────────────── */}
           <Link href="/" className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-950 flex items-center justify-center shadow-md flex-shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl gradient-brand flex items-center justify-center shadow-md flex-shrink-0">
               <span className="text-white font-bold text-sm sm:text-[15px] font-display">CF</span>
             </div>
-            <span className="font-display font-bold text-lg sm:text-xl text-gray-950">
-              crowdfund<span className="text-blue-600">.mn</span>
+            <span className={cn("font-display font-bold text-lg sm:text-xl transition-colors duration-300", hasBg ? "text-blue-800" : "text-white")}>
+              crowdfund<span className="text-blue-300">.mn</span>
             </span>
           </Link>
 
@@ -137,7 +145,7 @@ export function Navbar() {
           <LayoutGroup>
             <div className="hidden md:flex flex-1 justify-center items-center gap-12">
               {NAV_LINKS.map(link => (
-                <NavLink key={link.href} href={link.href} label={link.label} />
+                <NavLink key={link.href} href={link.href} label={link.label} scrolled={hasBg} />
               ))}
             </div>
           </LayoutGroup>
@@ -146,11 +154,6 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             {isLoggedIn ? (
               <div key="auth" className="flex items-center gap-3 animate-fade-up">
-                {user?.name && (
-                  <span className="hidden xl:block text-sm font-semibold text-slate-700 truncate max-w-[120px]">
-                    {user.name}
-                  </span>
-                )}
                 {role === "admin" && (
                   <Link
                     href="/admin/dashboard"
@@ -170,7 +173,7 @@ export function Navbar() {
                 <Divider scrolled={hasBg} />
                 <Link
                   href="/create-project"
-                  className={cn(buttonVariants({ size: "md" }), "px-5 py-2.5 text-[15px] font-bold")}
+                  className={cn(buttonVariants({ size: "md" }), "px-5 py-2.5 text-[15px] font-bold", !hasBg && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
                 >
                   Төсөл эхлэх
                 </Link>
@@ -182,7 +185,7 @@ export function Navbar() {
                 </Link>
                 <GuardedLink
                   href="/create-project"
-                  className={cn(buttonVariants({ size: "md" }), "px-5 py-2.5 text-[15px] font-bold")}
+                  className={cn(buttonVariants({ size: "md" }), "px-5 py-2.5 text-[15px] font-bold", !hasBg && "bg-white text-blue-800 hover:bg-blue-50 shadow-cta")}
                 >
                   Төсөл эхлэх
                 </GuardedLink>
