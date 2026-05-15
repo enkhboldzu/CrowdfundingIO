@@ -246,6 +246,7 @@ export function ProfileClient({
   const displayName = getDisplayName(user);
   const profileScore = getProfileScore(user);
   const profilePercent = Math.round((profileScore / 4) * 100);
+  const isProfileComplete = profileScore >= 4;
 
   const tabs: { id: ProfileTab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: "backed", label: "Дэмжсэн төслүүд", icon: Heart, count: donationStats.count },
@@ -268,7 +269,10 @@ export function ProfileClient({
         <section className="border-b border-slate-200 bg-white pt-24">
           <div className="container-page">
             <div className="rounded-3xl border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_55%,#eff6ff_100%)] p-5 shadow-sm sm:p-7 lg:p-8">
-              <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+              <div className={cn(
+                "grid gap-7 lg:items-end",
+                !isProfileComplete && "lg:grid-cols-[minmax(0,1fr)_360px]",
+              )}>
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                   <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[1.4rem] border border-white bg-slate-100 shadow-sm ring-1 ring-slate-200">
                     {user.avatar ? (
@@ -289,10 +293,16 @@ export function ProfileClient({
                         <Sparkles className="h-3.5 w-3.5" strokeWidth={2.4} />
                         Миний профайл
                       </span>
-                      {user.isVerified ? (
+                      {user.isVerified && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
                           <BadgeCheck className="h-3.5 w-3.5" strokeWidth={2.4} />
                           Баталгаажсан
+                        </span>
+                      )}
+                      {isProfileComplete ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.4} />
+                          Профайл бүрэн
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
@@ -324,26 +334,28 @@ export function ProfileClient({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Профайл бэлэн байдал</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-700">{profileScore} / 4 мэдээлэл бүрэн</p>
+                {!isProfileComplete && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Профайл бэлэн байдал</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-700">{profileScore} / 4 мэдээлэл бүрэн</p>
+                      </div>
+                      <span className="text-2xl font-black text-blue-700">{profilePercent}%</span>
                     </div>
-                    <span className="text-2xl font-black text-blue-700">{profilePercent}%</span>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-blue-700 transition-all duration-500" style={{ width: `${profilePercent}%` }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => selectTab("settings")}
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800"
+                    >
+                      <Pencil className="h-4 w-4" strokeWidth={2.4} />
+                      Профайл засах
+                    </button>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-blue-700 transition-all duration-500" style={{ width: `${profilePercent}%` }} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => selectTab("settings")}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800"
-                  >
-                    <Pencil className="h-4 w-4" strokeWidth={2.4} />
-                    Профайл засах
-                  </button>
-                </div>
+                )}
               </div>
             </div>
 
@@ -850,6 +862,8 @@ function ProfileChecklist({ user }: { user: ProfileUser }) {
     { label: "Холбоо барих мэдээлэлтэй", done: Boolean(user.email || user.phone) },
   ];
   const doneCount = items.filter(item => item.done).length;
+
+  if (doneCount >= items.length) return null;
 
   return (
     <Panel

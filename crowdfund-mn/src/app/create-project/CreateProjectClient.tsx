@@ -2,6 +2,23 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpenText,
+  Check,
+  CheckCircle2,
+  Clock3,
+  FileCheck2,
+  Gift,
+  ImagePlus,
+  Info,
+  Loader2,
+  Rocket,
+  Send,
+  Sparkles,
+  WalletCards,
+} from "lucide-react";
 import { Footer } from "@/components/landing/Footer";
 import { buttonVariants } from "@/lib/button-variants";
 import { cn } from "@/lib/utils";
@@ -164,18 +181,18 @@ function isSupportedVideoUrl(value: string): boolean {
 
 const CATEGORIES = [
   { value: "", label: "Ангилал сонгоно уу..." },
-  { value: "technology", label: "💻  Технологи & Гаджет" },
-  { value: "arts", label: "🎨  Бүтээлч урлаг" },
-  { value: "film", label: "🎬  Кино & Видео" },
-  { value: "environment", label: "🌿  Байгаль & Ногоон эрчим хүч" },
-  { value: "games", label: "🎮  Тоглоом" },
-  { value: "health", label: "❤️  Эрүүл мэнд & Сайн сайхан" },
-  { value: "education", label: "📚  Боловсрол" },
-  { value: "community", label: "🤝  Нийгмийн төсөл" },
-  { value: "food", label: "🍜  Хоол & Ундаа" },
-  { value: "fashion", label: "👗  Загвар хувцас" },
-  { value: "music", label: "🎵  Хөгжим" },
-  { value: "publishing", label: "📖  Хэвлэл & Ном" },
+  { value: "technology", label: "Технологи & Гаджет" },
+  { value: "arts", label: "Бүтээлч урлаг" },
+  { value: "film", label: "Кино & Видео" },
+  { value: "environment", label: "Байгаль & Ногоон эрчим хүч" },
+  { value: "games", label: "Тоглоом" },
+  { value: "health", label: "Эрүүл мэнд & Сайн сайхан" },
+  { value: "education", label: "Боловсрол" },
+  { value: "community", label: "Нийгмийн төсөл" },
+  { value: "food", label: "Хоол & Ундаа" },
+  { value: "fashion", label: "Загвар хувцас" },
+  { value: "music", label: "Хөгжим" },
+  { value: "publishing", label: "Хэвлэл & Ном" },
 ];
 
 const DURATIONS = [
@@ -200,11 +217,35 @@ const BANKS = [
 ];
 
 const STEPS = [
-  { num: 1, label: "Үндсэн мэдээлэл" },
-  { num: 2, label: "Санхүүжилт" },
-  { num: 3, label: "Түүх" },
-  { num: 4, label: "Медиа" },
-  { num: 5, label: "Урамшуулал" },
+  { num: 1, label: "Үндсэн", short: "Гарчиг, ангилал", icon: Sparkles },
+  { num: 2, label: "Санхүүжилт", short: "Дүн, данс", icon: WalletCards },
+  { num: 3, label: "Түүх", short: "Story, FAQ", icon: BookOpenText },
+  { num: 4, label: "Медиа", short: "Зураг, видео", icon: ImagePlus },
+  { num: 5, label: "Урамшуулал", short: "Reward cards", icon: Gift },
+];
+
+const STEP_HEADINGS = [
+  "Кампанийн нүүрээ бэлдэх",
+  "Санхүүжилтээ тодорхойлох",
+  "Түүх, story blocks, FAQ, timeline",
+  "Видео, зураг, баримт",
+  "Дэмжигчдэд өгөх үнэ цэн",
+];
+
+const STEP_DESCRIPTIONS = [
+  "Гарчиг, tagline, ангилал нь project card болон detail hero дээр шууд харагдана.",
+  "Зорилтот дүн, хугацаа, банкны мэдээлэл тодорхой байх тусам баталгаажуулалт хурдан явна.",
+  "Markdown тайлбар, story blocks, FAQ, timeline болон социал холбоосоо нэмнэ.",
+  "Кампанийн зургийн цомог, танилцуулга видео болон баримт бичгийг хавсаргана.",
+  "Сайн урамшуулал нь дэмжигчид оролцож байгаа мэдрэмж өгдөг.",
+];
+
+const STEP_TIPS = [
+  ["Гарчиг богино, шууд ойлгогдох байвал сайн.", "Tagline дээр хэнд ямар үнэ цэн өгөхөө бич.", "Байршил нь итгэл нэмдэг жижиг detail."],
+  ["Зорилтот дүнгээ бодит хэрэгцээнд тулгуурла.", "30 хоног ихэнх кампанид тохиромжтой.", "Дансны нэр яг банк дээрхтэй адил байх ёстой."],
+  ["Эхлэл, асуудал, шийдэл, багийн тухайгаа дарааллаар бич.", "Story block бүр зураг + гарчиг + тайлбартай байх ёстой.", "FAQ, timeline нь заавал биш ч итгэл нэмнэ."],
+  ["Эхний зураг project card дээр cover болно.", "Видео заавал биш, гэхдээ богино байвал хүчтэй.", "Баримт бичиг админ шалгалтад тусална."],
+  ["Reward бүр зурагтай байвал илүү татдаг.", "Дэмжигч яг юу авах нь тодорхой байх хэрэгтэй.", "Дүнг багаас их рүү логиктой байрлуул."],
 ];
 
 function emptyStoryBlock(index: number): StoryBlock {
@@ -405,6 +446,44 @@ function validate(step: number, d: FormValues, projectImages: SelectedProjectIma
   }
 
   return e;
+}
+
+function getCompletionItems(d: FormValues, projectImages: SelectedProjectImage[]) {
+  const storyBlocksReady =
+    d.storyBlocks.length >= MIN_STORY_BLOCKS &&
+    d.storyBlocks.every(block => block.image.trim() && block.title.trim() && block.body.trim().length >= 20);
+
+  const rewardsReady =
+    d.rewards.length > 0 &&
+    d.rewards.every(reward =>
+      reward.image.trim() &&
+      reward.title.trim() &&
+      Number(reward.amount) >= MIN_REWARD_AMOUNT &&
+      reward.description.trim()
+    );
+
+  return [
+    {
+      label: "Үндсэн мэдээлэл",
+      done: Boolean(d.title.trim() && d.blurb.trim() && d.category && d.location.trim()),
+    },
+    {
+      label: "Санхүүжилт ба данс",
+      done: Boolean(d.goal && d.duration && d.bankName && d.bankAccount.trim() && d.bankAccountName.trim()),
+    },
+    {
+      label: "Түүх ба story blocks",
+      done: Boolean(d.story.trim().length >= 50 && storyBlocksReady),
+    },
+    {
+      label: "Зураг, медиа",
+      done: projectImages.length > 0,
+    },
+    {
+      label: "Урамшуулал",
+      done: rewardsReady,
+    },
+  ];
 }
 
 /* ── UI Primitives ──────────────────────────────────────────────────────── */
@@ -884,40 +963,68 @@ function DocumentUpload({ documents, error, uploading, onChange, onUploadingChan
 /* ── Stepper (5 steps) ──────────────────────────────────────────────────── */
 
 function Stepper({ current }: { current: number }) {
+  const currentStep = STEPS[current - 1];
+  const CurrentIcon = currentStep.icon;
+
   return (
     <div className="mb-6">
-      <div className="sm:hidden bg-white rounded-2xl px-5 py-4 shadow-card flex items-center justify-between">
-        <div>
-          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Алхам {current} / {STEPS.length}</p>
-          <p className="text-base font-bold text-slate-900 mt-0.5">{STEPS[current - 1].label}</p>
+      <div className="sm:hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+              <CurrentIcon className="h-5 w-5" strokeWidth={2.4} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Алхам {current} / {STEPS.length}</p>
+              <p className="mt-0.5 truncate text-base font-black text-slate-950">{currentStep.label}</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">{Math.round((current / STEPS.length) * 100)}%</span>
         </div>
-        <div className="flex gap-1">
+        <div className="mt-4 flex gap-1">
           {STEPS.map(s => (
-            <div key={s.num} className={cn("h-1.5 rounded-full transition-all duration-300", s.num < current ? "bg-blue-800 w-5" : s.num === current ? "bg-blue-600 w-8" : "bg-slate-200 w-5")} />
+            <div key={s.num} className={cn("h-1.5 flex-1 rounded-full transition-colors", s.num <= current ? "bg-blue-700" : "bg-slate-200")} />
           ))}
         </div>
       </div>
-      <div className="hidden sm:flex items-center bg-white rounded-2xl px-6 py-5 shadow-card">
-        {STEPS.map((s, i) => (
-          <div key={s.num} className="flex-1 flex items-center">
-            <div className="flex flex-col items-center shrink-0">
-              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center border-2 font-bold text-sm transition-all duration-300",
-                s.num < current ? "bg-blue-800 border-blue-800 text-white" : s.num === current ? "bg-white border-blue-800 text-blue-800 shadow-md" : "bg-white border-slate-200 text-slate-400")}>
+
+      <div className="hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:grid sm:grid-cols-5 sm:gap-2">
+        {STEPS.map(s => {
+          const Icon = s.icon;
+          const active = s.num === current;
+          const done = s.num < current;
+
+          return (
+            <div
+              key={s.num}
+              className={cn(
+                "relative rounded-2xl border px-3 py-3 transition-colors",
+                active
+                  ? "border-blue-200 bg-blue-50 text-blue-800"
+                  : done
+                    ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                    : "border-transparent bg-slate-50 text-slate-400",
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-black",
+                  active ? "bg-white text-blue-800 shadow-sm" : done ? "bg-white text-emerald-700 shadow-sm" : "bg-white text-slate-400",
+                )}>
                 {s.num < current ? (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                ) : s.num}
+                    <Check className="h-4 w-4" strokeWidth={3} />
+                  ) : (
+                    <Icon className="h-4 w-4" strokeWidth={2.4} />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black">{s.label}</p>
+                  <p className="mt-0.5 truncate text-[11px] font-semibold opacity-70">{s.short}</p>
+                </div>
               </div>
-              <span className={cn("mt-1.5 text-[11px] font-semibold whitespace-nowrap", s.num === current ? "text-blue-800" : s.num < current ? "text-slate-500" : "text-slate-400")}>
-                {s.label}
-              </span>
             </div>
-            {i < STEPS.length - 1 && (
-              <div className="flex-1 mx-2 mb-5">
-                <div className={cn("h-0.5 rounded-full transition-all duration-500", s.num < current ? "bg-blue-800" : "bg-slate-200")} />
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1426,33 +1533,144 @@ function Step5({ d, e, setReward, addReward, removeReward }: {
   );
 }
 
+/* ── Create Project Guide ───────────────────────────────────────────────── */
+
+function CreateProjectGuide({
+  step,
+  data,
+  projectImages,
+  projectImagesUploading,
+  projectDocumentsUploading,
+}: {
+  step: number;
+  data: FormValues;
+  projectImages: SelectedProjectImage[];
+  projectImagesUploading: boolean;
+  projectDocumentsUploading: boolean;
+}) {
+  const items = getCompletionItems(data, projectImages);
+  const doneCount = items.filter(item => item.done).length;
+  const percent = Math.round((doneCount / items.length) * 100);
+  const current = STEPS[step - 1];
+  const CurrentIcon = current.icon;
+  const categoryLabel = data.category ? CATEGORIES.find(item => item.value === data.category)?.label : "";
+
+  return (
+    <aside className="space-y-4 lg:sticky lg:top-24">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Бөглөлтийн явц</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{doneCount} / {items.length} хэсэг бэлэн</p>
+          </div>
+          <span className="text-2xl font-black text-blue-700">{percent}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-blue-700 transition-all duration-500" style={{ width: `${percent}%` }} />
+        </div>
+        <div className="mt-4 space-y-2">
+          {items.map(item => (
+            <div key={item.label} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2.5">
+              <span className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                item.done ? "bg-emerald-100 text-emerald-700" : "bg-white text-slate-300 ring-1 ring-slate-200",
+              )}>
+                {item.done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+              </span>
+              <span className={cn("text-sm font-bold", item.done ? "text-slate-800" : "text-slate-400")}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
+            <CurrentIcon className="h-5 w-5" strokeWidth={2.4} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Одоогийн алхам</p>
+            <h3 className="mt-1 font-display text-lg font-black text-slate-950">{current.label}</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{STEP_DESCRIPTIONS[step - 1]}</p>
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          {STEP_TIPS[step - 1].map(tip => (
+            <div key={tip} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+              <Info className="mt-1 h-3.5 w-3.5 shrink-0 text-blue-600" strokeWidth={2.4} />
+              <span>{tip}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Товч preview</p>
+        <h3 className="mt-2 line-clamp-2 font-display text-lg font-black text-slate-950">
+          {data.title || "Төслийн нэр хараахан ороогүй"}
+        </h3>
+        <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+          {data.blurb || "Project card дээр харагдах богино тайлбар эндээс бүрдэнэ."}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-2xl bg-slate-50 px-3 py-2">
+            <p className="font-bold text-slate-400">Ангилал</p>
+            <p className="mt-1 truncate font-black text-slate-800">{categoryLabel || "Сонгоогүй"}</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 px-3 py-2">
+            <p className="font-bold text-slate-400">Зорилго</p>
+            <p className="mt-1 truncate font-black text-slate-800">{data.goal ? `${Number(data.goal).toLocaleString("mn-MN")}₮` : "Оруулаагүй"}</p>
+          </div>
+        </div>
+        {(projectImagesUploading || projectDocumentsUploading) && (
+          <div className="mt-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Файл upload хийж байна
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 /* ── Success Screen ─────────────────────────────────────────────────────── */
 
 function SuccessScreen({ title, editing }: { title: string; editing: boolean }) {
   return (
-    <div className="text-center py-10 px-4 max-w-lg mx-auto">
-      <div className="w-20 h-20 rounded-3xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center mx-auto mb-6">
-        <svg className="w-10 h-10 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
-        </svg>
+    <div className="mx-auto max-w-2xl px-4 py-12 text-center">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+        <CheckCircle2 className="h-10 w-10" strokeWidth={2.3} />
       </div>
-      <h2 className="font-display font-bold text-2xl text-slate-900 mb-3">
+      <h2 className="mb-3 font-display text-3xl font-black tracking-tight text-slate-950">
         {editing ? "Төсөл шинэчлэгдэж дахин илгээгдлээ!" : "Төсөл амжилттай илгээгдлээ!"}
       </h2>
-      <p className="text-slate-600 text-sm leading-relaxed mb-1">
+      <p className="mx-auto mb-1 max-w-lg text-sm leading-6 text-slate-600">
         <span className="font-semibold">&ldquo;{title}&rdquo;</span>{" "}
         {editing ? "төсөл дахин хянуулахаар илгээгдлээ." : "төсөл хянуулахаар илгээгдлээ."}
       </p>
-      <div className="mt-5 mb-8 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-left space-y-2">
-        <p className="text-sm font-bold text-amber-800">Дараагийн алхам</p>
-        <ul className="text-sm text-amber-700 space-y-1.5">
-          <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-500 font-bold">1.</span>Манай админ баг таны мэдээллийг <span className="font-semibold">24–48 цагийн</span> дотор хянана.</li>
-          <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-500 font-bold">2.</span>Батлагдвал таны төсөл автоматаар нийтлэгдэж дэмжигчдэд харагдана.</li>
-          <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-500 font-bold">3.</span>Татгалзагдвал шалтгааныг мэдэгдэх тул засаад дахин илгээж болно.</li>
-        </ul>
+      <div className="my-8 rounded-3xl border border-blue-100 bg-blue-50 p-5 text-left">
+        <p className="mb-3 flex items-center gap-2 text-sm font-black text-blue-800">
+          <Clock3 className="h-4 w-4" strokeWidth={2.4} />
+          Дараагийн алхам
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            "Админ баг 24-48 цагийн дотор хянана.",
+            "Батлагдвал төсөл автоматаар нийтлэгдэнэ.",
+            "Засвар шаардвал профайлаас дахин илгээнэ.",
+          ].map((item, index) => (
+            <div key={item} className="rounded-2xl bg-white p-3 text-sm leading-6 text-slate-700 shadow-sm">
+              <span className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-xs font-black text-white">{index + 1}</span>
+              {item}
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Link href="/profile?tab=projects" className={buttonVariants({ variant: "primary", size: "lg" })}>Миний төслүүд харах</Link>
+      <div className="flex flex-col justify-center gap-3 sm:flex-row">
+        <Link href="/profile?tab=projects" className={buttonVariants({ variant: "primary", size: "lg" })}>
+          Миний төслүүд харах
+          <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+        </Link>
         <Link href="/" className={buttonVariants({ variant: "secondary", size: "lg" })}>Нүүр хуудас руу буцах</Link>
       </div>
     </div>
@@ -1639,111 +1857,140 @@ export function CreateProjectClient({ initialProject }: { initialProject?: Edita
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const stepHeadings = [
-    "Кампанийн нүүрээ бэлдэх",
-    "Санхүүжилтээ тодорхойлох",
-    "Түүх, story blocks, FAQ, timeline",
-    "Видео, зураг, баримт",
-    "Дэмжигчдэд өгөх үнэ цэн",
-  ];
-  const stepDescriptions = [
-    "Гарчиг, tagline, ангилал нь project card болон detail hero дээр шууд харагдана.",
-    "Зорилтот дүн, хугацаа, банкны мэдээлэл тодорхой байх тусам баталгаажуулалт хурдан явна.",
-    "Markdown тайлбар, story blocks, FAQ, timeline болон социал холбоосоо нэмнэ.",
-    "Кампанийн зургийн цомог, танилцуулга видео болон баримт бичгийг хавсаргана.",
-    "Сайн урамшуулал нь дэмжигчид оролцож байгаа мэдрэмж өгдөг.",
-  ];
-
   return (
     <>
       <main className="min-h-screen bg-slate-50 pt-16">
-        <div className="gradient-brand-hero py-10 sm:py-14">
-          <div className="container-page text-center">
-            <span className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-              {editing ? "Төсөл засах" : "🚀 Шинэ Төсөл"}
-            </span>
-            <h1 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2">
-              {editing ? "Төслөө илүү тодорхой болгох" : "Төслөө эхлүүлэх"}
-            </h1>
-            <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
-              {editing ? "Зассан мэдээллээ илгээгээд админаар дахин хянуулна." : "Кампанийн бүх мэдээллийг алхам алхмаар бөглөнө үү."}
-            </p>
+        <div className="border-b border-blue-100 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_52%,#eaf2ff_100%)] py-10 sm:py-14">
+          <div className="container-page">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+              <div>
+                <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-blue-700 shadow-sm">
+                  {editing ? <FileCheck2 className="h-3.5 w-3.5" strokeWidth={2.4} /> : <Rocket className="h-3.5 w-3.5" strokeWidth={2.4} />}
+                  {editing ? "Төсөл засах" : "Шинэ төсөл"}
+                </span>
+                <h1 className="font-display text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
+                  {editing ? "Төслөө илүү тодорхой болгох" : "Төслөө эхлүүлэх"}
+                </h1>
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                  {editing
+                    ? "Зассан мэдээллээ илгээхээс өмнө алхам бүрийг дахин нягтлаарай."
+                    : "Гарчиг, санхүүжилт, story, медиа, урамшууллаа нэг нэгээр нь бөглөөд админд хянуулаарай."}
+                </p>
+              </div>
+              <div className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Товч процесс</p>
+                <div className="mt-4 space-y-3">
+                  {[
+                    ["1", "Мэдээллээ бөглөх"],
+                    ["2", "Зураг, reward нэмэх"],
+                    ["3", "Админаар хянуулах"],
+                  ].map(([num, label]) => (
+                    <div key={num} className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-sm font-black text-blue-700">{num}</span>
+                      <span className="text-sm font-bold text-slate-700">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div ref={topRef} className="container-page py-8 lg:py-12">
-          <div className="max-w-2xl mx-auto">
+          <div className={cn("mx-auto", submitted ? "max-w-3xl" : "max-w-6xl")}>
             {submitted ? (
-              <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 animate-fade-up">
+              <div className="animate-fade-up rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                 <SuccessScreen title={data.title} editing={editing} />
               </div>
             ) : (
               <>
                 <Stepper current={step} />
 
-                <div key={step} className="bg-white rounded-2xl shadow-card p-6 sm:p-8 animate-fade-up">
-                  <div className="mb-6 pb-5 border-b border-slate-100">
-                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Алхам {step} / {STEPS.length}</p>
-                    <h2 className="font-display font-bold text-xl text-slate-900">{stepHeadings[step - 1]}</h2>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{stepDescriptions[step - 1]}</p>
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,760px)_340px] lg:items-start">
+                  <div key={step} className="animate-fade-up rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7 lg:p-8">
+                    <div className="mb-7 border-b border-slate-100 pb-6">
+                      <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700">Алхам {step} / {STEPS.length}</p>
+                      <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">{STEP_HEADINGS[step - 1]}</h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">{STEP_DESCRIPTIONS[step - 1]}</p>
+                    </div>
+
+                    {step === 1 && <Step1 d={data} set={set} e={errors} />}
+                    {step === 2 && <Step2 d={data} set={set} e={errors} />}
+                    {step === 3 && (
+                      <Step3
+                        d={data} set={set} e={errors}
+                        setBlock={setBlock} addBlock={addBlock} removeBlock={removeBlock}
+                        moveBlockUp={moveBlockUp} moveBlockDown={moveBlockDown}
+                        setFaq={setFaq} addFaq={addFaq} removeFaq={removeFaq}
+                        setTimeline={setTimeline} addTimeline={addTimeline} removeTimeline={removeTimeline}
+                        setLink={setLink}
+                      />
+                    )}
+                    {step === 4 && (
+                      <Step4
+                        d={data} set={set} e={errors}
+                        projectImages={projectImages}
+                        projectImagesUploading={projectImagesUploading}
+                        onProjectImagesChange={handleProjectImagesChange}
+                        onProjectImagesUploadingChange={setProjectImagesUploading}
+                        projectDocuments={projectDocuments}
+                        projectDocumentsUploading={projectDocumentsUploading}
+                        onProjectDocumentsChange={setProjectDocuments}
+                        onProjectDocumentsUploadingChange={setProjectDocumentsUploading}
+                      />
+                    )}
+                    {step === 5 && (
+                      <Step5 d={data} e={errors} setReward={setReward} addReward={addReward} removeReward={removeReward} />
+                    )}
+
+                    {errors.submit && (
+                      <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                        <ErrMsg msg={errors.submit} />
+                      </div>
+                    )}
+
+                    <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-6">
+                      <div>
+                        {step > 1 && (
+                          <button type="button" onClick={handleBack} className={buttonVariants({ variant: "secondary", size: "md" })}>
+                            <ArrowLeft className="h-4 w-4" strokeWidth={2.5} />
+                            Буцах
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleNext}
+                        disabled={submitting}
+                        className={cn(buttonVariants({ variant: "primary", size: "md" }), "min-w-[132px]")}
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Илгээж байна
+                          </>
+                        ) : step === STEPS.length ? (
+                          <>
+                            {editing ? "Шинэчлэн илгээх" : "Илгээх"}
+                            <Send className="h-4 w-4" strokeWidth={2.4} />
+                          </>
+                        ) : (
+                          <>
+                            Үргэлжлэх
+                            <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  {step === 1 && <Step1 d={data} set={set} e={errors} />}
-                  {step === 2 && <Step2 d={data} set={set} e={errors} />}
-                  {step === 3 && (
-                    <Step3
-                      d={data} set={set} e={errors}
-                      setBlock={setBlock} addBlock={addBlock} removeBlock={removeBlock}
-                      moveBlockUp={moveBlockUp} moveBlockDown={moveBlockDown}
-                      setFaq={setFaq} addFaq={addFaq} removeFaq={removeFaq}
-                      setTimeline={setTimeline} addTimeline={addTimeline} removeTimeline={removeTimeline}
-                      setLink={setLink}
-                    />
-                  )}
-                  {step === 4 && (
-                    <Step4
-                      d={data} set={set} e={errors}
-                      projectImages={projectImages}
-                      projectImagesUploading={projectImagesUploading}
-                      onProjectImagesChange={handleProjectImagesChange}
-                      onProjectImagesUploadingChange={setProjectImagesUploading}
-                      projectDocuments={projectDocuments}
-                      projectDocumentsUploading={projectDocumentsUploading}
-                      onProjectDocumentsChange={setProjectDocuments}
-                      onProjectDocumentsUploadingChange={setProjectDocumentsUploading}
-                    />
-                  )}
-                  {step === 5 && (
-                    <Step5 d={data} e={errors} setReward={setReward} addReward={addReward} removeReward={removeReward} />
-                  )}
-
-                  {errors.submit && (
-                    <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                      <ErrMsg msg={errors.submit} />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100 gap-3">
-                    <div>
-                      {step > 1 && (
-                        <button type="button" onClick={handleBack} className={buttonVariants({ variant: "secondary", size: "md" })}>
-                          ← Буцах
-                        </button>
-                      )}
-                    </div>
-                    <button type="button" onClick={handleNext} disabled={submitting}
-                      className={cn(buttonVariants({ variant: "primary", size: "md" }), "min-w-[120px]")}>
-                      {submitting ? (
-                        <span className="flex items-center gap-2">
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          Илгээж байна...
-                        </span>
-                      ) : step === STEPS.length ? (editing ? "Шинэчлэн илгээх" : "Илгээх") : "Үргэлжлэх →"}
-                    </button>
-                  </div>
+                  <CreateProjectGuide
+                    step={step}
+                    data={data}
+                    projectImages={projectImages}
+                    projectImagesUploading={projectImagesUploading}
+                    projectDocumentsUploading={projectDocumentsUploading}
+                  />
                 </div>
               </>
             )}
